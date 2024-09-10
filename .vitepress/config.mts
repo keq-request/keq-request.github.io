@@ -14,22 +14,35 @@ export default defineConfig({
     zh: {
       label: '简体中文',
       lang: 'zh-CN',
+      themeConfig: {
+        nav: [
+          { text: '文档', link: '/zh/guide/introduction' },
+        ],
+
+        sidebar: [
+          {
+            text: '开始',
+            items: [
+              { text: '介绍', link: '/zh/guide/introduction' },
+              { text: '快速上手', link: '/zh/guide/quick-start' }
+            ]
+          }
+        ],
+      }
     }
   },
 
   themeConfig: {
-    // https://vitepress.dev/reference/default-theme-config
     nav: [
-      { text: 'Home', link: '/' },
-      { text: 'Examples', link: '/markdown-examples' }
+      { text: 'Guide', link: '/guide/introduction' },
     ],
 
     sidebar: [
       {
-        text: 'Examples',
+        text: 'Getting Started',
         items: [
-          { text: 'Markdown Examples', link: '/markdown-examples' },
-          { text: 'Runtime API Examples', link: '/api-examples' }
+          { text: 'Introduction', link: '/guide/introduction' },
+          { text: 'Quick Start', link: '/guide/quick-start' }
         ]
       }
     ],
