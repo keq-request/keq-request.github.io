@@ -6,13 +6,16 @@ hero:
   name: "Keq"
   text: "Extensible and Readability Http Client"
   tagline: More Than Send a Request
+  image:
+    src: /images/logo.svg
+    alt: Keq
   actions:
     - theme: brand
       text: Get Started
-      link: /markdown-examples
-    - theme: alt
-      text: API Examples
-      link: /api-examples
+      link: /guide/introduction
+    # - theme: alt
+    #   text: API Examples
+    #   link: /api-examples
 
 features:
   - title: Chain calls

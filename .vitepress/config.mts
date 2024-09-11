@@ -17,35 +17,42 @@ export default defineConfig({
       themeConfig: {
         nav: [
           { text: '文档', link: '/zh/guide/introduction' },
+          { text: '更新日志', link: 'https://github.com/keq-request/keq/blob/master/CHANGELOG.md' },
         ],
 
-        sidebar: [
-          {
-            text: '开始',
-            items: [
-              { text: '介绍', link: '/zh/guide/introduction' },
-              { text: '快速上手', link: '/zh/guide/quick-start' }
-            ]
-          }
-        ],
+        sidebar: {
+          '/zh/guide/': [
+            {
+              text: '开始',
+              items: [
+                { text: '介绍', link: '/zh/guide/introduction' },
+                { text: '快速上手', link: '/zh/guide/quick-start' }
+              ]
+            }
+          ],
+        },
       }
     }
   },
 
   themeConfig: {
+    logo: '/images/logo.svg',
     nav: [
       { text: 'Guide', link: '/guide/introduction' },
+      { text: 'Changelog', link: 'https://github.com/keq-request/keq/blob/master/CHANGELOG.md' },
     ],
 
-    sidebar: [
-      {
-        text: 'Getting Started',
-        items: [
-          { text: 'Introduction', link: '/guide/introduction' },
-          { text: 'Quick Start', link: '/guide/quick-start' }
-        ]
-      }
-    ],
+    sidebar: {
+      '/guide/': [
+        {
+          text: 'Getting Started',
+          items: [
+            { text: 'Introduction', link: '/guide/introduction' },
+            { text: 'Quick Start', link: '/guide/quick-start' }
+          ]
+        }
+      ],
+    },
 
     socialLinks: [
       { icon: 'github', link: 'https://github.com/keq-request/keq?tab=readme-ov-file' }
