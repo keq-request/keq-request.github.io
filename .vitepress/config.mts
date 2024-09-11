@@ -56,6 +56,10 @@ export default defineConfig({
 
     socialLinks: [
       { icon: 'github', link: 'https://github.com/keq-request/keq?tab=readme-ov-file' }
-    ]
+    ],
+
+    footer: {
+      message: 'Released under the <a href="https://github.com/keq-request/keq/blob/master/LICENSE"> MIT License</a>.',
+    }
   }
 })
