@@ -56,8 +56,23 @@ export default defineConfig({
               text: '开始',
               items: [
                 { text: '介绍', link: '/zh/guide/introduction' },
-                { text: '快速上手', link: '/zh/guide/quick-start' }
+                { text: '快速上手', link: '/zh/guide/quick-start' },
+                { text: '中间件' },
               ]
+            },
+            {
+              text: '内置中间件',
+              items: [
+                { text: '超时控制' },
+                { text: '重试' },
+                { text: '并发控制' },
+                { text: '自动序列化响应体' },
+                { text: '错误处理' },
+                { text: '缓存' },
+              ],
+            },
+            {
+              text: 'CLI',
             }
           ],
         },
@@ -84,7 +99,7 @@ export default defineConfig({
             { text: 'Introduction', link: '/guide/introduction' },
             { text: 'Quick Start', link: '/guide/quick-start' }
           ]
-        }
+        },
       ],
     },
 
