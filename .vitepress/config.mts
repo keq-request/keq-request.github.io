@@ -101,8 +101,23 @@ export default defineConfig({
           text: 'Getting Started',
           items: [
             { text: 'Introduction', link: '/guide/introduction' },
-            { text: 'Quick Start', link: '/guide/quick-start' }
-          ]
+            { text: 'Quick Start', link: '/guide/quick-start' },
+            { text: 'Middleware' },
+          ],
+        },
+        {
+          text: 'Built-in Middleware',
+          items: [
+            { text: 'Timeout Control' },
+            { text: 'Retry' },
+            { text: 'Concurrency Control' },
+            { text: 'Auto Serialize Response Body' },
+            { text: 'Error Handling' },
+            { text: 'Cache' },
+          ],
+        },
+        {
+          text: 'CLI',
         },
       ],
     },
