@@ -13,17 +13,26 @@ hero:
     - theme: brand
       text: Get Started
       link: /guide/introduction
-    # - theme: alt
-    #   text: API Examples
-    #   link: /api-examples
 
 features:
   - title: Chain calls
-    details: Lorem ipsum dolor sit amet, consectetur adipiscing elit
+    details: The code is clear and readable
+    icon:
+      src: /images/chain-calls.svg
+      width: 28px
   - title: Middleware
-    details: Lorem ipsum dolor sit amet, consectetur adipiscing elit
+    details: Add any features you need
+    icon:
+      src: /images/middleware.svg
+      width: 28px
   - title: Type-Safe
-    details: Lorem ipsum dolor sit amet, consectetur adipiscing elit
+    details: Full Typescript support
+    icon:
+      src: /images/type-safe.svg
+      width: 28px
   - title: Isomorphic
-    details: it can run in the browser and nodejs with the same codebase
+    details: Run in the Browser and Nodejs
+    icon:
+      src: /images/isomorphic.svg
+      width: 28px
 ---
