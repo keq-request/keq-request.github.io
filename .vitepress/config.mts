@@ -7,6 +7,10 @@ export default defineConfig({
   cleanUrls: true,
   lastUpdated: true,
 
+  sitemap: {
+    hostname: 'https://keq-request.github.io',
+  },
+
   locales: {
     root: {
       label: 'English',
