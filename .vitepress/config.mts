@@ -61,7 +61,7 @@ export default defineConfig({
               items: [
                 { text: '介绍', link: '/zh/guide/introduction' },
                 { text: '快速上手', link: '/zh/guide/quick-start' },
-                { text: '中间件' },
+                { text: '中间件', link: '/zh/guide/middleware' },
               ]
             },
             {

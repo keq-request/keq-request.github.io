@@ -18,21 +18,21 @@ features:
   - title: Chain calls
     details: The code is clear and readable
     icon:
-      src: /images/chain-calls.svg
+      src: /images/icons/chain-calls.svg
       width: 28px
   - title: Middleware
     details: Add any features you need
     icon:
-      src: /images/middleware.svg
+      src: /images/icons/middleware.svg
       width: 28px
   - title: Type-Safe
     details: Full Typescript support
     icon:
-      src: /images/type-safe.svg
+      src: /images/icons/type-safe.svg
       width: 28px
   - title: Isomorphic
     details: Run in the Browser and Nodejs
     icon:
-      src: /images/isomorphic.svg
+      src: /images/icons/isomorphic.svg
       width: 28px
 ---

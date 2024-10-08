@@ -18,21 +18,21 @@ features:
   - title: 链式调用
     details: 让代码阅读起来像散文一样轻松
     icon:
-      src: /images/chain-calls.svg
+      src: /images/icons/chain-calls.svg
       width: 28px
   - title: 中间件
     details: 依照你的需求增加请求库的功能
     icon:
-      src: /images/middleware.svg
+      src: /images/icons/middleware.svg
       width: 28px
   - title: 类型安全
     details: 支持完善的接口类型提示
     icon:
-      src: /images/type-safe.svg
+      src: /images/icons/type-safe.svg
       width: 28px
   - title: 同构
     details: 可以同时运行在浏览器和NodeJS
     icon:
-      src: /images/isomorphic.svg
+      src: /images/icons/isomorphic.svg
       width: 28px
 ---
