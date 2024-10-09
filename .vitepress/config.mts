@@ -71,12 +71,19 @@ export default defineConfig({
                 { text: '重试' },
                 { text: '并发控制' },
                 { text: '自动序列化响应体' },
-                { text: '错误处理' },
-                { text: '缓存' },
               ],
             },
             {
               text: 'CLI',
+            },
+            {
+              'text': '生态',
+              items: [
+                { text: 'keq-url' },
+                { text: 'keq-headers' },
+                { text: 'keq-exception' },
+                { text: 'keq-cache' },
+              ]
             }
           ],
         },
@@ -119,6 +126,15 @@ export default defineConfig({
         {
           text: 'CLI',
         },
+        {
+          'text': 'More Middlewares',
+          items: [
+            { text: 'keq-url' },
+            { text: 'keq-headers' },
+            { text: 'keq-exception' },
+            { text: 'keq-cache' },
+          ]
+        }
       ],
     },
 
