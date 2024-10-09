@@ -38,7 +38,7 @@ import { request } from "keq"
 
 request
   .use(async (ctx, next) => {
-    await next()
+    await next() // 调用下一层 middleware 直至 fetch
 
     if (ctx.response) {
       if (!ctx.response.status !== 200) {
@@ -74,7 +74,7 @@ request
     await next()
 
     if (ctx.response) {
-      if (!ctx.response.status !== 200) {
+      if (ctx.response.status !== 200) {
         throw new Error("The Response is not 200.")
       }
     }
@@ -100,7 +100,7 @@ function responseValidator(): KeqMiddleware {
     await next()
 
     if (ctx.response) {
-      if (!ctx.response.status !== 200) {
+      if (ctx.response.status !== 200) {
         throw new Error("The Response is not 200.")
       }
     }
