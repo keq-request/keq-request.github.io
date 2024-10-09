@@ -27,3 +27,107 @@
 > - `proxyResponseMiddleware`: 根据 `context.res` 构造 `context.response` 属性。
 > - `fetchArgumentsMiddleware`: 根据 `context.request` 构造 `context.fetchArguments` 属性。
 > - `fetchMiddleware`: 根据 `content.fetchArguments` 参数发送请求，并将 `Response` 写入 `context.res`。
+
+## 自定义 Middleware
+
+接下来，让我们添加一个简单的、用于处理请求错误的 `Middleware`，借此了解如何自定义 `Middleware`。
+
+<!-- prettier-ignore -->
+```typescript
+import { request } from "keq"
+
+request
+  .use(async (ctx, next) => {
+    await next()
+
+    if (ctx.response) {
+      if (!ctx.response.status !== 200) {
+        throw new Error("The Response is not 200.")
+      }
+    }
+  })
+
+try {
+  await request.get("http://example.com/cat")
+} catch (err) {
+  // 如果 /cat 接口响应状态码不等于 200，将会捕获到异常
+  console.log(err)
+}
+```
+
+上述代码通过调用 `request.use(middleware)` 添加了一个检测所有请求响应状态码的 `Middleware`。
+
+`Middleware` 只是一个接收了两个参数 `ctx` 和 `next` 的函数:
+
+- `ctx` 是请求上下文，其包含了所有的请求参数和响应结果。
+- `next` 会执行下一层 `Middleware`。在 `next` 执行前修改 `ctx.request` 会影响实际发送的请求，在 `next` 执行后可以访问 `ctx.response` 获取请求结果并作进一步处理。
+
+在实际工程中，我们将面对许多不同的接口提供方，需要针对性的应用 `Middleware`，让我们优化下上面的请求错误处理代码：
+
+<!-- prettier-ignore -->
+```typescript{4-5}
+import { request } from "keq"
+
+request
+  .useRouter()
+  .host('example.com', async (ctx, next) => {
+    await next()
+
+    if (ctx.response) {
+      if (!ctx.response.status !== 200) {
+        throw new Error("The Response is not 200.")
+      }
+    }
+  })
+
+try {
+  await request.get("http://example.com/cat")
+} catch (err) {
+  // 如果 /cat 接口响应状态码不等于 200，将会捕获到异常
+  console.log(err)
+}
+```
+
+通过 `request.useRouter().host(hostName, middleware)`，`Middleware` 将仅在请求域名为 `"example.com"`时生效。
+接下来，我们可以将 `Middleware` 代码封装成独立的函数，以便于将其多次应用在不同路由上：
+
+<!-- prettier-ignore -->
+```typescript
+import { KeqMiddleware, request } from 'keq'
+
+function responseValidator(): KeqMiddleware {
+  return async (ctx, next) => {
+    await next()
+
+    if (ctx.response) {
+      if (!ctx.response.status !== 200) {
+        throw new Error("The Response is not 200.")
+      }
+    }
+  }
+}
+
+request
+  .useRouter()
+  .host('example.com', responseValidator())
+  .pathname('/api/*', responseValidator())
+```
+
+除了处理响应，我们还可以在请求发送前修改请求参数，让我们实现一个在请求头中添加 `x-site: us` 的中间件：
+
+<!-- prettier-ignore -->
+```typescript
+import { KeqMiddleware } from 'keq'
+
+function appendSiteHeader(site: string = 'us'): KeqMiddleware {
+  return async (ctx, next) => {
+    ctx.request.headers.append('x-site', site)
+
+    await next()
+  }
+}
+
+request
+  .useRouter()
+  .host('example.com', appendSiteHeader('cn'))
+```
