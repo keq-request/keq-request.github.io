@@ -249,7 +249,7 @@ request
 | **方法**                                                 | **描述**                                                                                         |
 | :------------------------------------------------------- | :----------------------------------------------------------------------------------------------- |
 | `.location(...middlewares)`                              | 在浏览器中会将 `window.location.origin` 的请求路由至 `middlewares`。在 NodeJS 中则是 `127.0.0.1` |
-| `.method(method: string[, ...middlewares])`              | 将匹配 `method` 的请求路由至 `middlewares` 处理。
+| `.method(method: string[, ...middlewares])`              | 将匹配 `method` 的请求路由至 `middlewares` 处理。                                                |
 | `.pathname(matcher: string \| Regexp[, ...middlewares])` | `matcher` 可以是一个 `glob` 表达式或者正则表达式，并将匹配到的请求路由至 `middlewares`处理。     |
 | `.host(host: string[, ...middlewares])`                  | 将发送给 `host` 域 的请求路由至 `middlewares` 处理。                                             |
 | `.module(moduleName: string[, ...middlewares])`          | 将`moduleName`模块的请求路由至 `middlewares` 处理。                                              |

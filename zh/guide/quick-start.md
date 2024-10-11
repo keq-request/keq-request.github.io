@@ -4,11 +4,21 @@
 
 如果在 NodeJS 中运行，NodeJS 版本必须大于 18。
 
-```bash
+::: code-group
+
+```bash [npm]
 npm install keq
-yarn install keq
+```
+
+```bash [pnpm]
 pnpm install keq
 ```
+
+```bash [yarn]
+yarn install keq
+```
+
+:::
 
 ## 发送请求
 

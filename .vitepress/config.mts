@@ -67,22 +67,23 @@ export default defineConfig({
             {
               text: '功能',
               items: [
-                { text: '超时', link: '/zh/guide/features/timeout' },
-                { text: '重试', link: '/zh/guide/features/retry' },
-                { text: '并发' },
-                { text: '序列化响应体' },
+                { text: '超时控制', link: '/zh/guide/features/timeout' },
+                { text: '请求重试', link: '/zh/guide/features/retry' },
+                { text: '并发控制', link: '/zh/guide/features/flow-control' },
+                { text: '序列化响应体', link: '/zh/guide/features/serialize' },
               ],
             },
             {
               text: 'CLI',
+              link: '/zh/guide/cli'
             },
             {
               'text': '生态',
               items: [
-                { text: 'keq-url' },
-                { text: 'keq-headers' },
-                { text: 'keq-exception' },
-                { text: 'keq-cache' },
+                { text: 'keq-url', link: '/zh/guide/libraries/keq-url' },
+                { text: 'keq-headers', link: '/zh/guide/libraries/keq-headers' },
+                { text: 'keq-exception', link: '/zh/guide/libraries/keq-exception' },
+                // { text: 'keq-cache', link: '/zh/guide/libraries/keq-cache' },
               ]
             }
           ],
