@@ -65,12 +65,12 @@ export default defineConfig({
               ]
             },
             {
-              text: '内置中间件',
+              text: '功能',
               items: [
-                { text: '超时控制' },
-                { text: '重试' },
-                { text: '并发控制' },
-                { text: '自动序列化响应体' },
+                { text: '超时', link: '/zh/guide/features/timeout' },
+                { text: '重试', link: '/zh/guide/features/retry' },
+                { text: '并发' },
+                { text: '序列化响应体' },
               ],
             },
             {
