@@ -131,8 +131,8 @@ await request
   .attach("avatar", new Blob(/* image */))
 ```
 
-<!-- prettier-ignore -->
 > [!TIP]
+>
 > 调用`.field()`/`.attach()` 时，会自动的将 `Content-Type` 设置为 `multipart/form-data`。
 
 你也可以直接使用`FormData`:
@@ -150,8 +150,8 @@ await request
   .send(form)
 ```
 
-<!-- prettier-ignore -->
 > [!TIP]
+>
 > 当调用`.send()` 的参数是 `FormData` 时，会自动的将 `Content-Type` 设置为 `multipart/form-data`。
 
 ### x-www-form-urlencoded Request
@@ -168,3 +168,7 @@ await request
   .send({ name: "sweet" })
   .send("age=8")
 ```
+
+> [!TIP]
+>
+> `.type()` 显式设置的 `Content-Type` 优先级高于 `.send()`/`.filed()`/`.attach()`隐式推导的 `Content-Type`。与调用先后顺序无关。
