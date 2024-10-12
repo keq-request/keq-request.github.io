@@ -82,7 +82,7 @@ await request
 `Keq` 提供了便捷的填充接口路由参数的方法：
 
 <!-- prettier-ignore -->
-```typescript{6-7,9-12}
+```typescript{5-11}
 import { request } from "keq"
 
 await request
