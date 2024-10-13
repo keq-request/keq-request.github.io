@@ -110,18 +110,16 @@ export default defineConfig({
           items: [
             { text: 'Introduction', link: '/guide/introduction' },
             { text: 'Quick Start', link: '/guide/quick-start' },
-            { text: 'Middleware' },
+            { text: 'Middleware', link: '/guide/middleware' },
           ],
         },
         {
           text: 'Built-in Middleware',
           items: [
-            { text: 'Timeout Control' },
-            { text: 'Retry' },
-            { text: 'Concurrency Control' },
-            { text: 'Auto Serialize Response Body' },
-            { text: 'Error Handling' },
-            { text: 'Cache' },
+            { text: 'Timeout Control', link: '/guide/features/timeout' },
+            { text: 'Retry', link: '/guide/features/retry' },
+            { text: 'Concurrency', link: '/guide/features/flow-control' },
+            { text: 'Serialize Response Body', link: '/guide/features/serialize' },
           ],
         },
         {

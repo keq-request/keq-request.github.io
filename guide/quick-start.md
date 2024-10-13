@@ -2,13 +2,23 @@
 
 ## Install
 
-The nodejs version must be at least 18 when using in nodejs.
+The Nodejs version must be at least 18 when using in Nodejs.
 
-```bash
+::: code-group
+
+```bash [npm]
 npm install keq
-yarn install keq
+```
+
+```bash [pnpm]
 pnpm install keq
 ```
+
+```bash [yarn]
+yarn install keq
+```
+
+:::
 
 ## Send Request
 
@@ -28,7 +38,7 @@ The `ResponseBody` will be automatically serialized according to the `Content-Ty
 
 <!-- prettier-ignore -->
 > [!TIP]
-> When calling `.get()` with just `pathname`, `window.location.origin` will be set as base URL in browsers and `http://127.0.0.1` in nodejs.
+> When calling `.get()` with `pathname`, `window.location.origin` will be set as base URL in browsers and `http://127.0.0.1` in nodejs.
 
 _DELETE_, _HEAD_, _PATCH_, _POST_, and _PUT_ requests can also be used, simply change the method name:
 
@@ -44,8 +54,8 @@ await request.post("https://example.com/cat")
 await request.put("https://example.com/cat")
 ```
 
-<!-- prettier-ignore -->
 > [!TIP]
+>
 > `.del()` is the alias of `.delete()`.
 
 ## Setting Headers/Query
@@ -72,7 +82,7 @@ await request
 The `.params()` method is useful when the url of request has route parameters.
 
 <!-- prettier-ignore -->
-```typescript{6-7,9-12}
+```typescript{6-12}
 import { request } from "keq"
 
 await request
@@ -91,7 +101,7 @@ await request
 
 ### JSON
 
-A typical JSON POST request might look a little like the following:
+A typical JSON POST request look like the following:
 
 <!-- prettier-ignore -->
 ```typescript{5-8}
@@ -105,8 +115,8 @@ await request
   })
 ```
 
-<!-- prettier-ignore -->
 > [!TIP]
+>
 > The `Content-Type` will be set as `application/json` automatically, when you invoke `.send()` with object.
 
 ### FormData
@@ -122,8 +132,8 @@ await request
   .attach("avatar", new Blob(/* image */))
 ```
 
-<!-- prettier-ignore -->
 > [!TIP]
+>
 > The `Content-Type` will be set as `multipart/form-data` automatically, when you invoke `.field()`/`.attach()`.
 
 And you can also use `FormData` manually:
@@ -141,8 +151,8 @@ await request
   .send(form)
 ```
 
-<!-- prettier-ignore -->
 > [!TIP]
+>
 > `.send()` is smart! `Content-Type` will be set as `multipart/form-data` automatically, when you invoke `.send()` with `FormData`.
 
 ### x-www-form-urlencoded Request
@@ -159,3 +169,8 @@ await request
   .send({ name: "sweet" })
   .send("age=8")
 ```
+
+> [!TIP]
+>
+> The `Content-Type` explicitly set by `.type()` takes precedence over the `Content-Type` implicitly deduced by `.send()`/`.filed()`/`.attach()`.
+> The order of calls is irrelevant.
