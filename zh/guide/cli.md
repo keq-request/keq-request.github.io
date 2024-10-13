@@ -209,7 +209,7 @@ request
 
 ### FileNamingStyle
 
-| enum                           | example       |
+| **枚举**                       | **示例**      |
 | :----------------------------- | :------------ |
 | `FileNamingStyle.camelCase`    | `"twoWords"`  |
 | `FileNamingStyle.capitalCase`  | `"Two Words"` |

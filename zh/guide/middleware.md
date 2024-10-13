@@ -152,7 +152,7 @@ function responseValidator(): KeqMiddleware {
 
 request.use(responseValidator)
 
-// This Request won't show alert
+// 这个请求即便出错，也不会触发`alert`
 await request
   .get('/cat')
   .option('silent', true)   // [!code ++]
@@ -216,7 +216,7 @@ request
 
 **`context.options` 使得请求调用方可以随时随地的调整 `Middleware` 的运行逻辑**。也允许了外层的 `Middleware` 通过修改 `context.options` 改变内层 `Middleware` 的运行逻辑。
 
-| **属性**                      | 默认值          | **描述**                                                                                                                                                        |
+| **属性**                      | **默认值**      | **描述**                                                                                                                                                        |
 | :---------------------------- | :-------------- | :-------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `context.options.fetchAPI`    | `global.fetch`  | `fetchMiddleware` 发起 Http 请求使用的 [Fetch API][Fetch MDN]。可以更换成 [`node-fetch`](https://www.npmjs.com/package/node-fetch)等与 NodeFetch 兼容的三方包。 |
 | `context.options.resolveWith` | `"intelligent"` | 如何解析 `Response` 的响应体。设置后 `content.output` 将失效。                                                                                                  |
@@ -229,7 +229,7 @@ request
 
 ### `context.global`
 
-| **属性**                           | 默认值      | **描述**                                         |
+| **属性**                           | **默认值**  | **描述**                                         |
 | :--------------------------------- | :---------- | :----------------------------------------------- |
 | `context.global.serialFlowControl` | `undefined` | 用于实现 `.flowControl('serial')` 模式相关功能。 |
 | `context.global.abortFlowControl`  | `undefined` | 用于实现 `.flowControl('abort')` 模式相关功能    |

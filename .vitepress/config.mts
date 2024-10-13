@@ -124,14 +124,14 @@ export default defineConfig({
         },
         {
           text: 'CLI',
+          link: '/guide/cli'
         },
         {
           'text': 'More Middlewares',
           items: [
-            { text: 'keq-url' },
-            { text: 'keq-headers' },
-            { text: 'keq-exception' },
-            { text: 'keq-cache' },
+            { text: 'keq-url', link: '/guide/libraries/keq-url' },
+            { text: 'keq-headers', link: '/guide/libraries/keq-headers' },
+            { text: 'keq-exception', link: '/guide/libraries/keq-exception' },
           ]
         }
       ],
