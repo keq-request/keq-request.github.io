@@ -116,7 +116,7 @@ export default defineConfig({
         {
           text: 'Built-in Middleware',
           items: [
-            { text: 'Timeout Control', link: '/guide/features/timeout' },
+            { text: 'Timeout', link: '/guide/features/timeout' },
             { text: 'Retry', link: '/guide/features/retry' },
             { text: 'Concurrency', link: '/guide/features/flow-control' },
             { text: 'Serialize Response Body', link: '/guide/features/serialize' },
