@@ -255,3 +255,25 @@ By read or write `context`, `Middleware` can control the request behavior. The F
 | `.host(host: string[, ...middlewares])`                  | Route requests sent to `host` to middlewares.                                                                  |
 | `.module(moduleName: string[, ...middlewares])`          | Route requests for `moduleName` module to `Middleware`.                                                        |
 | `.route(...middlewares)`                                 | Custom route policy.                                                                                           |
+
+## `createRequest`
+
+If you want to create a request instance, you can invoke `request.create()`:
+
+```typescript
+import { createRequest } from "keq";
+
+const customRequest = createRequest();
+
+// Middleware only takes effect on customRequests
+customRequest.use(/** some middleware */);
+
+const body = await customRequest.get("http://test.com");
+```
+
+> The `request` import from `'keq'` is created by `request.create()` too.
+
+| option          | description                                                                                                                                  |
+| :-------------- | :------------------------------------------------------------------------------------------------------------------------------------------- |
+| initMiddlewares | Change the default internal `Middleware`.                                                                                                    |
+| baseOrigin      | When sending a request without an `origin`, `origin` will set to `window.location.origin` in the browser and `"http://127.0.0.1"` in NodeJS. |

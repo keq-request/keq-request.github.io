@@ -254,3 +254,26 @@ request
 | `.host(host: string[, ...middlewares])`                  | 将发送给 `host` 域 的请求路由至 `middlewares` 处理。                                             |
 | `.module(moduleName: string[, ...middlewares])`          | 将`moduleName`模块的请求路由至 `middlewares` 处理。                                              |
 | `.route(...middlewares)`                                 | 自定义路由策略                                                                                   |
+
+## `createRequest`
+
+调用 `createRequest()` 创建一个独立的 `request` 实例。
+多个 `request` 实例间的 `Middleware` 和 `context.global` 不会共享。
+
+```typescript
+import { createRequest } from "keq";
+
+const customRequest = createRequest();
+
+// Middleware 只会在 customRequests 中生效
+customRequest.use(/** some middleware */);
+
+const body = await customRequest.get("http://test.com");
+```
+
+> 你从 `'keq'` 中引用的 `request` 实例 也是通过 `createRequest()` 创建的。
+
+| option          | description                                                                                                     |
+| :-------------- | :-------------------------------------------------------------------------------------------------------------- |
+| initMiddlewares | 修改 `Keq` 内置的中间件。                                                                                       |
+| baseOrigin      | 如果发送的请求未设置 `origin`，在浏览器中默认使用 `window.location.origin`；在 NodeJS 中则是 `http://127.0.0.1` |
