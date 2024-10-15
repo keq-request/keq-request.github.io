@@ -7,6 +7,12 @@ export default defineConfig({
   cleanUrls: true,
   lastUpdated: true,
 
+  markdown: {
+    image: {
+      lazyLoading: true,
+    }
+  },
+
   sitemap: {
     hostname: 'https://keq-request.github.io',
   },
