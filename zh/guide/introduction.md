@@ -24,4 +24,4 @@ Keq 是一个可以同时运行在浏览器和 NodeJS 的 Http 客户端。你�
   - [并发控制](/zh/guide/features/flow-control)
   - [自动序列化响应体](/zh/guide/features/serialize)
   - [错误处理](/zh/guide/libraries/keq-exception)
-  - [缓存](https://github.com/keq-request/keq-cache)
+  - [<Icon src="/images/icons/test.svg" tip="实验特性" /> 缓存](https://github.com/keq-request/keq-cache)

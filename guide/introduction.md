@@ -21,3 +21,4 @@ Keq is a HTTP Clint for nodejs and the browser. **It can give your request incre
   - [Concurrency control](/guide/features/flow-control)
   - [Error handle](/guide/libraries/keq-exception)
   - [Response body serialization](/guide/features/serialize) handle
+  - [<Icon src="/images/icons/test.svg" tip="Experimental Feature" /> Cache](https://github.com/keq-request/keq-cache)
