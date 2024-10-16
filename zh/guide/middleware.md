@@ -260,15 +260,16 @@ request
 调用 `createRequest()` 创建一个独立的 `request` 实例。
 多个 `request` 实例间的 `Middleware` 和 `context.global` 不会共享。
 
+<!-- prettier-ignore -->
 ```typescript
-import { createRequest } from "keq";
+import { createRequest } from "keq"
 
-const customRequest = createRequest();
+const customRequest = createRequest()
 
 // Middleware 只会在 customRequests 中生效
-customRequest.use(/** some middleware */);
+customRequest.use(/** some middleware */)
 
-const body = await customRequest.get("http://test.com");
+const body = await customRequest.get("http://test.com")
 ```
 
 > 你从 `'keq'` 中引用的 `request` 实例 也是通过 `createRequest()` 创建的。

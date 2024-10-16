@@ -260,15 +260,16 @@ By read or write `context`, `Middleware` can control the request behavior. The F
 
 If you want to create a request instance, you can invoke `request.create()`:
 
+<!-- prettier-ignore -->
 ```typescript
-import { createRequest } from "keq";
+import { createRequest } from "keq"
 
-const customRequest = createRequest();
+const customRequest = createRequest()
 
 // Middleware only takes effect on customRequests
-customRequest.use(/** some middleware */);
+customRequest.use(/** some middleware */)
 
-const body = await customRequest.get("http://test.com");
+const body = await customRequest.get("http://test.com")
 ```
 
 > The `request` import from `'keq'` is created by `request.create()` too.
