@@ -7,6 +7,27 @@ export default defineConfig({
   cleanUrls: true,
   lastUpdated: true,
 
+  head: [
+    [
+      'script',
+      {
+        async: '',
+        src: 'https://www.googletagmanager.com/gtag/js?id=G-1MTTYSM10V',
+      },
+    ],
+    [
+      'script',
+      {},
+      `
+        window.dataLayer = window.dataLayer || [];
+        function gtag(){dataLayer.push(arguments);}
+        gtag('js', new Date());
+
+        gtag('config', 'G-1MTTYSM10V');
+      `
+    ],
+  ],
+
   markdown: {
     image: {
       lazyLoading: true,
