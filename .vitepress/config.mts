@@ -11,20 +11,10 @@ export default defineConfig({
     [
       'script',
       {
-        async: '',
-        src: 'https://www.googletagmanager.com/gtag/js?id=G-1MTTYSM10V',
+        defer: '',
+        src: '//analytics.nas.val-istar-guo.com/script.js',
+        'data-website-id': '7d522440-47a3-4164-86c4-d7abb0299cfd'
       },
-    ],
-    [
-      'script',
-      {},
-      `
-        window.dataLayer = window.dataLayer || [];
-        function gtag(){dataLayer.push(arguments);}
-        gtag('js', new Date());
-
-        gtag('config', 'G-1MTTYSM10V');
-      `
     ],
   ],
 
