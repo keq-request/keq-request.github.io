@@ -16,6 +16,13 @@ export default defineConfig({
         'data-website-id': '7d522440-47a3-4164-86c4-d7abb0299cfd'
       },
     ],
+    [
+      'link',
+      {
+        rel: 'icon',
+        href: '/images/logo.svg'
+      }
+    ]
   ],
 
   markdown: {
