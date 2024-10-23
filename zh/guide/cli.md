@@ -20,6 +20,11 @@ yarn install keq-cli
 
 :::
 
+> [!IMPORTANT]
+>
+> 建议在 package.json 锁定 keq-cli 的版本。
+> keq-cli 的小版本升级为了修复 Bug 可能会修改代码模板。这有一定概率导致代码不向前兼容。
+
 ## 使用方法
 
 我们需要在项目中添加 `swagger` 文件 和 `.keqrc.ts` 配置文件：

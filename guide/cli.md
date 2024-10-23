@@ -20,6 +20,11 @@ yarn install keq-cli
 
 :::
 
+> [!IMPORTANT]
+>
+> It is recommended to lock the version of keq-cli in package.json.
+> Minor version of keq-cli may modify code template to fix bugs. This may cause code incompatibility.
+
 ## Usage
 
 Add a `swagger` file and `.keqrc.ts` file to project:
