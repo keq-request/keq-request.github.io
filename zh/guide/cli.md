@@ -87,7 +87,7 @@ export default defineKeqConfig({
 
 :::
 
-在项目目录下运行 `npx keq-cli build` 生成 `typescript` 代码：
+在项目目录下运行 `npx keq-cli build` 生成 `typescript` 代码，生成结果如下：
 
 ::: code-group
 
