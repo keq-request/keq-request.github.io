@@ -54,15 +54,28 @@ export default defineKeqConfig({
     "version": "0.0.1"
   },
   "paths": {
-    "/cat": {
+    "/cats": {
       "get": {
-        "operationId": "getCat",
+        "operationId": "getCats",
+        "parameters": [
+          {
+            "name": "breed",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/Cat"
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Cat"
+                  }
                 }
               }
             }
@@ -92,25 +105,34 @@ export default defineKeqConfig({
 ::: code-group
 
 <!-- prettier-ignore -->
-```typescript [./src/api/cat_service/get_cat.ts]
+```typescript [./src/api/cat_service/get_cats.ts]
 import { Keq } from "keq"
 import { request } from "keq"
-import type {
-  RequestParameters,
-  ResponseMap,
-  Operation,
-} from "./types/get_cat"
+import type { RequestParameters, ResponseMap, Operation, QueryParameters, HeaderParameters, BodyParameters } from "./types/get_cats"
 
-export function getCat<STATUS extends keyof ResponseMap>(
-  arg?: RequestParameters
-): Keq<ResponseMap[STATUS], Operation<STATUS>> {
-  const req = request.get<ResponseMap[STATUS]>("/cat").option("module", {
-    name: "catService",
-    pathname: "/cat",
-  })
+
+export type GetCatsRequestQuery = QueryParameters
+export type GetCatsRequestBody = BodyParameters
+export type GetCatsRequestHeaders = HeaderParameters
+
+
+const pathname = "/cats"
+
+export function getCats<STATUS extends keyof ResponseMap>(arg?: RequestParameters): Keq<ResponseMap[STATUS], Operation<STATUS>> {
+  const req = request.get<ResponseMap[STATUS]>("/cats")
+    .option('module', {
+      name: "catService",
+      pathname,
+    })
+
+  const queryWrap = (value: any) => typeof value === 'boolean' ? String(value) : value
+
+  if (arg && "breed" in arg) req.query("breed", queryWrap(arg["breed"]))
 
   return req as unknown as Keq<ResponseMap[STATUS], Operation<STATUS>>
 }
+
+getCats.pathname = pathname
 ```
 
 <!-- prettier-ignore -->
@@ -126,17 +148,18 @@ export interface Cat {
 ```
 
 <!-- prettier-ignore -->
-```typescript [./src/api/cat_service/types/get_cat.ts]
+```typescript [./src/api/cat_service/types/get_cats.ts]
 import type { KeqOperation } from 'keq'
 import type { Cat } from "../components/schemas/cat"
 
 
 export interface ResponseMap {
-  "200": Cat
+  "200": (Cat)[]
 }
 
 
 export type QueryParameters = {
+  "breed"?: string
 }
 
 export type RouteParameters = {
@@ -162,16 +185,52 @@ export interface Operation<STATUS extends keyof ResponseMap> extends KeqOperatio
 
 使用生成的 `typescript` 函数发送 HTTP 请求：
 
-<!-- prettier-ignore -->
-```typescript
-import { getCat } from "./src/api/cat_service/get_cat"
+::: code-group
 
-const cat = await getCat()
+<!-- prettier-ignore -->
+```typescript [示例 1]
+import { getCats } from "./src/api/cat_service/get_cats"
+
+/**
+ * 调用函数并设置 Query 参数
+ * swagger未定义的参数将被丢弃
+ *
+ * 实际请求地址：/cats?breed=siamese
+ */
+const cats = await getCats({ breed: "siamese", unknownKey: 'value' })
   .retry(3, 1000)
   .timeout(1000)
 
-console.log(`Cat name is ${cat.name}`)
+console.log(`My cats: ${cats.map(cat => cat.name).join(',')}`)
+console.log(`The request pathname is ${getCats.pathname}`)
 ```
+
+<!-- prettier-ignore -->
+```typescript [示例 2]
+import { getCats } from "./src/api/cat_service/get_cats"
+// 按需要引入 getCats 相关的 Typescript 类型定义
+import type {
+  GetCatsRequestBody,
+  GetCatsRequestQuery,
+  GetCatsRequestHeaders,
+} from "./src/api/cat_service/get_cats"
+
+const filter: GetCatRequestQuery = {
+  breed: "siamese",
+}
+
+/**
+ * 实际请求地址：/cats?bread=siamese&unknownKey=value
+ */
+const cats = await getCats()
+  .query(filter)
+  // 使用 `.query` 可以添加 swagger 中未定义的参数
+  .query({ unknownKey: 'value' })
+
+console.log(`My cats: ${cats.map((cat) => cat.name).join(",")}`)
+```
+
+:::
 
 我们可以为 `catService` 模块的所有接口添加统一的错误处理逻辑：
 
