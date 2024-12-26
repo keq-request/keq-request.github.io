@@ -98,6 +98,10 @@ export default defineConfig({
               ],
             },
             {
+              text: 'Typescript',
+              link: '/zh/guide/typescript'
+            },
+            {
               text: 'CLI',
               link: '/zh/guide/cli'
             },
