@@ -234,7 +234,7 @@ request
 | `[moduleName]`                   | Only generate the specified module.                                                                                |
 | `-c --config <config_file_path>` | Configuration file address.                                                                                        |
 | `-i --interactive`               | Interactively specify the HTTP interface to be generated.                                                          |
-| `--method <method>`              | Only generate function matching method (`'get' \| 'post' \| 'put' \| 'patch' \| 'head' \| 'options' \| 'delete'`). |
-| `--pathname <pathname>`          | Only generate function matching pathname.                                                                          |
+| `--method <method...>`           | Only generate function matching method (`'get' \| 'post' \| 'put' \| 'patch' \| 'head' \| 'options' \| 'delete'`). |
+| `--pathname <pathname...>`       | Only generate function matching pathname.                                                                          |
 | `--no-append`                    | Do not generate newly added functions (compared with the last generation).                                         |
 | `--no-update`                    | Do not update the last generated functions.                                                                        |

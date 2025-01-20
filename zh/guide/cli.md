@@ -294,7 +294,7 @@ request
 | `[moduleName]`                   | 仅生成指定的模块                                                                                         |
 | `-c --config <config_file_path>` | 配置文件的地址                                                                                           |
 | `-i --interactive`               | 通过命令行交互，指定需要生成的 HTTP 接口                                                                 |
-| `--method <method>`              | 仅生成匹配 method(`'get' \| 'post' \| 'put' \| 'patch' \| 'head' \| 'options' \| 'delete'`) 的 HTTP 接口 |
-| `--pathname <pathname>`          | 仅生成匹配 pathname 的 HTTP 接口                                                                         |
+| `--method <method...>`           | 仅生成匹配 method(`'get' \| 'post' \| 'put' \| 'patch' \| 'head' \| 'options' \| 'delete'`) 的 HTTP 接口 |
+| `--pathname <pathname...>`       | 仅生成匹配 pathname 的 HTTP 接口                                                                         |
 | `--no-append`                    | 不生成新添加的 HTTP 接口（与上次生成做对比）                                                             |
 | `--no-update`                    | 不更新上次已生成的 HTTP 接口                                                                             |
