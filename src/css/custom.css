@@ -1,0 +1,48 @@
+@import "tailwindcss";
+@custom-variant dark (&:is([data-theme="dark"] *));
+
+
+/**
+ * Any CSS included here will be global. The classic template
+ * bundles Infima by default. Infima is a CSS framework designed to
+ * work well for content-centric websites.
+ */
+
+/* You can override the default Infima variables here. */
+:root {
+  --ifm-color-primary: #1e6db6;
+  --ifm-color-primary-dark: #1a61a3;
+  --ifm-color-primary-darker: #185b9a;
+  --ifm-color-primary-darkest: #144b7f;
+  --ifm-color-primary-light: #2279c9;
+  --ifm-color-primary-lighter: #297fd2;
+  --ifm-color-primary-lightest: #3d91de;
+  --ifm-code-font-size: 95%;
+  --docusaurus-highlighted-code-line-bg: rgba(0, 0, 0, 0.1);
+  --ifm-card-background-color: #ffffff;
+}
+
+/* For readability concerns, you should choose a lighter palette in dark mode. */
+[data-theme='dark'] {
+  --ifm-color-primary: #4fa3ff;
+  --ifm-color-primary-dark: #3693ff;
+  --ifm-color-primary-darker: #2889ff;
+  --ifm-color-primary-darkest: #0069ff;
+  --ifm-color-primary-light: #68b3ff;
+  --ifm-color-primary-lighter: #76baff;
+  --ifm-color-primary-lightest: #9dcfff;
+  --docusaurus-highlighted-code-line-bg: rgba(0, 0, 0, 0.3);
+  --ifm-background-surface-color: #1e1e1e;
+}
+
+/* Smooth scrolling */
+html {
+  scroll-behavior: smooth;
+}
+
+/* Fix navbar GitHub link wrapping issue */
+.navbar__link {
+  display: inline-flex;
+  align-items: center;
+  white-space: nowrap;
+}

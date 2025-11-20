@@ -1,0 +1,303 @@
+# keq-cli
+
+`Keq` 提供的命令行工具可以将 `swagger` 文档编译为 `typescript` 代码。从而能像调用函数一样发送 HTTP 请求。
+
+## 安装
+
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+
+<Tabs>
+  <TabItem value="npm" label="npm" default>
+    ```bash
+    npm install keq-cli
+    ```
+  </TabItem>
+  <TabItem value="pnpm" label="pnpm">
+    ```bash
+    pnpm install keq-cli
+    ```
+  </TabItem>
+  <TabItem value="yarn" label="yarn">
+    ```bash
+    yarn install keq-cli
+    ```
+  </TabItem>
+</Tabs>
+
+:::caution
+建议在 package.json 锁定 keq-cli 的版本。
+keq-cli 的小版本升级为了修复 Bug 可能会修改代码模板。这有一定概率导致代码不向前兼容。
+:::
+
+## 使用方法
+
+我们需要在项目中添加 `swagger` 文件 和 `.keqrc.ts` 配置文件：
+
+<Tabs>
+  <TabItem value="keqrc" label=".keqrc.ts" default>
+    <!-- prettier-ignore -->
+    ```typescript
+import { defineKeqConfig, FileNamingStyle } from "keq-cli"
+
+export default defineKeqConfig({
+outdir: "./src/api", // 编译结果的输出目录
+fileNamingStyle: FileNamingStyle.snakeCase,
+modules: {
+catService: "./cat-service-swagger.json",
+// 也可以从网络上获取 swagger 文档，例如：
+// dogService: "http://dog.example.com/swagger.json"
+},
+})
+`  </TabItem>
+  <TabItem value="swagger" label="cat-service-swagger.json">
+   `json
+{
+"openapi": "3.0.0",
+"info": {
+"title": "Cat Service",
+"version": "0.0.1"
+},
+"paths": {
+"/cats": {
+"get": {
+"operationId": "getCats",
+"parameters": [
+{
+"name": "breed",
+"required": false,
+"in": "query",
+"schema": {
+"type": "string"
+}
+}
+],
+"responses": {
+"200": {
+"content": {
+"application/json": {
+"schema": {
+"type": "array",
+"items": {
+"$ref": "#/components/schemas/Cat"
+}
+}
+}
+}
+}
+}
+}
+}
+},
+"components": {
+"schemas": {
+"Cat": {
+"type": "object",
+"properties": {
+"name": { "type": "string" },
+"age": { "type": "number" }
+}
+}
+}
+}
+}
+```
+</TabItem>
+</Tabs>
+
+在项目目录下运行 `npx keq-cli build` 生成 `typescript` 代码，生成结果如下：
+
+<Tabs>
+  <TabItem value="get_cats" label="./src/api/cat_service/get_cats.ts" default>
+    <!-- prettier-ignore -->
+    ```typescript
+import { Keq } from "keq"
+import { request } from "keq"
+import type { RequestParameters, ResponseMap, Operation, QueryParameters, HeaderParameters, BodyParameters } from "./types/get_cats"
+
+export type GetCatsRequestQuery = QueryParameters
+export type GetCatsRequestBody = BodyParameters
+export type GetCatsRequestHeaders = HeaderParameters
+
+const pathname = "/cats"
+
+export function getCats<STATUS extends keyof ResponseMap>(arg?: RequestParameters): Keq<ResponseMap[STATUS], Operation<STATUS>> {
+const req = request.get<ResponseMap[STATUS]>("/cats")
+.option('module', {
+name: "catService",
+pathname,
+})
+
+const queryWrap = (value: any) => typeof value === 'boolean' ? String(value) : value
+
+if (arg && "breed" in arg) req.query("breed", queryWrap(arg["breed"]))
+
+return req as unknown as Keq<ResponseMap[STATUS], Operation<STATUS>>
+}
+
+getCats.pathname = pathname
+`  </TabItem>
+  <TabItem value="cat" label="./src/api/cat_service/components/schemas/cat.ts">
+    <!-- prettier-ignore -->
+   `typescript
+/\*\*
+
+- @interface Cat
+- @export
+  \*/
+  export interface Cat {
+  "name"?: string
+  "age"?: number
+  }
+  `  </TabItem>
+  <TabItem value="types" label="./src/api/cat_service/types/get_cats.ts">
+    <!-- prettier-ignore -->
+   `typescript
+  import type { KeqOperation } from 'keq'
+  import type { Cat } from "../components/schemas/cat"
+
+export interface ResponseMap {
+"200": (Cat)[]
+}
+
+export type QueryParameters = {
+"breed"?: string
+}
+
+export type RouteParameters = {
+}
+
+export type HeaderParameters = {
+}
+
+export type BodyParameters ={}
+export type RequestParameters = QueryParameters & RouteParameters & HeaderParameters & BodyParameters
+
+export interface Operation<STATUS extends keyof ResponseMap> extends KeqOperation {
+requestParams: RouteParameters
+requestQuery: QueryParameters
+requestHeaders: HeaderParameters
+requestBody: BodyParameters
+responseBody: ResponseMap[STATUS]
+}
+```
+</TabItem>
+</Tabs>
+
+使用生成的 `typescript` 函数发送 HTTP 请求：
+
+<Tabs>
+  <TabItem value="example1" label="示例 1" default>
+    <!-- prettier-ignore -->
+    ```typescript
+import { getCats } from "./src/api/cat_service/get_cats"
+
+/\*\*
+
+- 调用函数并设置 Query 参数
+- swagger 未定义的参数将被丢弃
+-
+- 实际请求地址：/cats?breed=siamese
+  \*/
+  const cats = await getCats({ breed: "siamese", unknownKey: 'value' })
+  .retry(3, 1000)
+  .timeout(1000)
+
+console.log(`My cats: ${cats.map(cat => cat.name).join(',')}`)
+console.log(`The request pathname is ${getCats.pathname}`)
+`  </TabItem>
+  <TabItem value="example2" label="示例 2">
+    <!-- prettier-ignore -->
+   `typescript
+import { getCats } from "./src/api/cat_service/get_cats"
+// 按需要引入 getCats 相关的 Typescript 类型定义
+import type {
+GetCatsRequestBody,
+GetCatsRequestQuery,
+GetCatsRequestHeaders,
+} from "./src/api/cat_service/get_cats"
+
+const filter: GetCatRequestQuery = {
+breed: "siamese",
+}
+
+/\*\*
+
+- 实际请求地址：/cats?bread=siamese&unknownKey=value
+  \*/
+  const cats = await getCats()
+  .query(filter)
+  // 使用 `.query` 可以添加 swagger 中未定义的参数
+  .query({ unknownKey: 'value' })
+
+console.log(`My cats: ${cats.map((cat) => cat.name).join(",")}`)
+```
+</TabItem>
+</Tabs>
+
+我们可以为 `catService` 模块的所有接口添加统一的错误处理逻辑：
+
+<!-- prettier-ignore -->
+```typescript
+import { request } from 'keq'
+import { throwException, RequestException } from 'keq-exception'
+
+
+request
+  .useRouter()
+  .module('catService', throwException(context => {
+    if (context.response) {
+      if (context.response.status >= 400 && context.response.status < 500) {
+        throw new RequestException(context.response.status, context.response.statusText, false)
+      } else if (context.response.status >= 500) {
+        throw new RequestException(context.response.status, context.response.statusText)
+      }
+    }
+  }))
+```
+
+:::tip
+得益于*链式调用*和*中间件*的能力，我们可以在不需要手动修改 `keq-cli` 编译结果的情况下，优雅的调整每个 Http 请求的行为。
+:::
+
+## 配置文件
+
+`keq-cli` 会自动查找名为 `.keqrc.yml`、`.keqrc.json`、`.keqrc.js`、`.keqrc.ts`的配置文件。
+你可以通过 `-c --config <config_file_path>` 设置配置文件地址。
+
+| **配置参数**       | **是否必填** | **默认值**                                 | **描述**                                                          |
+| :----------------- | :----------- | :----------------------------------------- | :---------------------------------------------------------------- |
+| outdir             | true         | -                                          | 编译结果的输出目录                                                |
+| fileNamingStyle    | false        | -                                          | 文件名风格                                                        |
+| modules            | true         | -                                          | Swagger 文件地址和模块名称                                        |
+| operationIdFactory | false        | `({ operation }) => operation.operationId` | 自定义函数名的生成规则，默认使用 `swagger` 文件中的 `operationId` |
+| strict             | false        | `false`                                    | 是否清空输出目录                                                  |
+| esm                | false        | `false`                                    | 是否生成 ESM 风格的代码                                           |
+
+### FileNamingStyle
+
+| **枚举**                       | **示例**      |
+| :----------------------------- | :------------ |
+| `FileNamingStyle.camelCase`    | `"twoWords"`  |
+| `FileNamingStyle.capitalCase`  | `"Two Words"` |
+| `FileNamingStyle.constantCase` | `"TWO_WORDS"` |
+| `FileNamingStyle.dotCase`      | `"two.words"` |
+| `FileNamingStyle.headerCase`   | `"Tow-Words"` |
+| `FileNamingStyle.noCase`       | `"two words"` |
+| `FileNamingStyle.paramCase`    | `"two-words"` |
+| `FileNamingStyle.pascalCase`   | `"TwoWords"`  |
+| `FileNamingStyle.pathCase`     | `"two/words"` |
+| `FileNamingStyle.sentenceCase` | `"Two words"` |
+| `FileNamingStyle.snakeCase`    | `"two_words"` |
+
+## 命令行选项
+
+| **选项**                         | **描述**                                                                                                 |
+| :------------------------------- | :------------------------------------------------------------------------------------------------------- |
+| `[moduleName]`                   | 仅生成指定的模块                                                                                         |
+| `-c --config <config_file_path>` | 配置文件的地址                                                                                           |
+| `-i --interactive`               | 通过命令行交互，指定需要生成的 HTTP 接口                                                                 |
+| `--method <method...>`           | 仅生成匹配 method(`'get' \| 'post' \| 'put' \| 'patch' \| 'head' \| 'options' \| 'delete'`) 的 HTTP 接口 |
+| `--pathname <pathname...>`       | 仅生成匹配 pathname 的 HTTP 接口                                                                         |
+| `--no-append`                    | 不生成新添加的 HTTP 接口（与上次生成做对比）                                                             |
+| `--no-update`                    | 不更新上次已生成的 HTTP 接口                                                                             |

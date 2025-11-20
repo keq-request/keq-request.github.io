@@ -1,0 +1,25 @@
+import buka from '@buka/eslint-config'
+import { defineConfig } from 'eslint/config'
+import globals from 'globals'
+
+
+export default defineConfig([
+  {
+    ignores: ['**/node_modules/**', '**/dist/**'],
+  },
+  {
+    files: ['**/*.js', '**/*.cjs', '**/*.mjs'],
+    extends: [buka.javascript.recommended],
+  },
+  {
+    files: ['**/*.ts', '**/*.cts', '**/*.mts'],
+    extends: [buka.typescript.recommended],
+  },
+  {
+    languageOptions: {
+      globals: {
+        ...globals.node,
+      },
+    },
+  },
+])

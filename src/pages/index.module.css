@@ -1,0 +1,193 @@
+/**
+ * CSS files with the .module.css suffix will be treated as CSS modules
+ * and scoped locally.
+ */
+
+.heroBanner {
+  padding: 4rem 0 6rem;
+  position: relative;
+  overflow: hidden;
+  background: linear-gradient(135deg, var(--ifm-color-primary) 0%, var(--ifm-color-primary-dark) 100%);
+}
+
+[data-theme='dark'] .heroBanner {
+  background: linear-gradient(135deg, var(--ifm-color-primary-darker) 0%, #1a1a2e 100%);
+}
+
+.heroContent {
+  display: flex;
+  align-items: center;
+  gap: 4rem;
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+.heroLeft {
+  flex: 1;
+  text-align: left;
+  min-width: 0;
+}
+
+/* 更醒目的 tagline 样式 */
+.tagline {
+  font-size: 1.6rem;
+  font-weight: 600;
+  margin-top: 0.6rem;
+  color: rgba(255, 255, 255, 0.95);
+  line-height: 1.2;
+}
+
+.heroRight {
+  flex: 1;
+  min-width: 0;
+}
+
+@media screen and (max-width: 996px) {
+  .heroBanner {
+    padding: 3rem 1rem;
+  }
+
+  .heroContent {
+    flex-direction: column;
+    gap: 2rem;
+  }
+
+  .heroLeft {
+    text-align: center;
+  }
+
+  .tagline {
+    font-size: 1.15rem;
+    font-weight: 600;
+  }
+}
+
+.featureTags {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-top: 1.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.tag {
+  background: rgba(255, 255, 255, 0.2);
+  padding: 0.4rem 1rem;
+  border-radius: 20px;
+  font-size: 0.9rem;
+  font-weight: 500;
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  transition: all 0.3s ease;
+}
+
+.tag:hover {
+  background: rgba(255, 255, 255, 0.3);
+  transform: translateY(-2px);
+}
+
+[data-theme='dark'] .tag {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+[data-theme='dark'] .tag:hover {
+  background: rgba(255, 255, 255, 0.15);
+}
+
+.buttons {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  flex-wrap: wrap;
+  gap: 1rem;
+  margin-top: 2rem;
+}
+
+@media screen and (max-width: 996px) {
+  .featureTags {
+    justify-content: center;
+  }
+
+  .buttons {
+    justify-content: center;
+  }
+}
+
+.codeExample {
+  background: rgba(0, 0, 0, 0.3);
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.4);
+  backdrop-filter: blur(10px);
+  animation: fadeInRight 0.6s ease-out;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.codeHeader {
+  background: rgba(0, 0, 0, 0.2);
+  padding: 0.75rem 1rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.codeDot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.3);
+}
+
+.codeDot:nth-child(1) {
+  background: #ff5f56;
+}
+
+.codeDot:nth-child(2) {
+  background: #ffbd2e;
+}
+
+.codeDot:nth-child(3) {
+  background: #27c93f;
+}
+
+.codeTitle {
+  margin-left: auto;
+  font-size: 0.85rem;
+  color: rgba(255, 255, 255, 0.7);
+  font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+}
+
+.codeExample pre {
+  margin: 0;
+  background: transparent;
+  padding: 1.5rem;
+  overflow-x: auto;
+}
+
+.codeExample code {
+  color: #e6edf3;
+  font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+  font-size: 0.9rem;
+  line-height: 1.7;
+}
+
+@keyframes fadeInRight {
+  from {
+    opacity: 0;
+    transform: translateX(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@media screen and (max-width: 996px) {
+  .codeExample code {
+    font-size: 0.8rem;
+  }
+}
