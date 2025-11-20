@@ -1,5 +1,7 @@
 @import "tailwindcss";
+@plugin "@tailwindcss/typography";
 @custom-variant dark (&:is([data-theme="dark"] *));
+
 
 
 /**
@@ -45,4 +47,15 @@ html {
   display: inline-flex;
   align-items: center;
   white-space: nowrap;
+}
+
+
+/* TailwindCSS 将 svg 元素的 display 设置为了 block，导致 docusaurus 图标位置偏移 */
+svg {
+  display: inline-block;
+}
+
+article {
+  @apply prose dark:prose-invert;
+  max-width: none;
 }

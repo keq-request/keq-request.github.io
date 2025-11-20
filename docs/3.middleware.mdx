@@ -44,7 +44,6 @@
 
 接下来，让我们添加一个简单的、用于处理请求错误的 `Middleware`，借此熟悉 `Middleware`。
 
-<!-- prettier-ignore -->
 ```typescript
 import { request } from "keq"
 
@@ -71,7 +70,6 @@ try {
 上述代码通过调用 `request.use(middleware)` 添加了一个检测所有请求响应状态码的 `Middleware`。
 不过，在实际工程中，我们将面对许多不同的接口提供方，并需针对性的应用 `Middleware`，`Keq` 为此提供了灵活的路由方法：
 
-<!-- prettier-ignore -->
 ```typescript {4-5}
 import { request } from "keq"
 
@@ -99,7 +97,6 @@ try {
 通过 `request.useRouter().host(hostName, middleware)`，`Middleware` 将仅在请求域名为 `"example.com"`时生效。
 接下来，我们可以将 `Middleware` 代码封装成独立的函数，以便于将其多次应用在不同路由上：
 
-<!-- prettier-ignore -->
 ```typescript
 import { KeqMiddleware, request } from 'keq'
 
@@ -124,7 +121,6 @@ request
 
 `.useRouter()` 会匹配所有符合规则的请求，如果我们希望个别的请求不运行`alert`。可以给 `Middleware` 添加 `option`：
 
-<!-- prettier-ignore -->
 ```typescript
 import { KeqMiddleware, request } from 'keq'
 
@@ -160,7 +156,6 @@ await request
 
 除了处理响应，我们还可以在请求发送前修改请求参数，让我们再实现一个向请求头中添加 `x-site: us` 的中间件：
 
-<!-- prettier-ignore -->
 ```typescript
 import { KeqMiddleware } from 'keq'
 
@@ -260,7 +255,6 @@ request
 调用 `createRequest()` 创建一个独立的 `request` 实例。
 多个 `request` 实例间的 `Middleware` 和 `context.global` 不会共享。
 
-<!-- prettier-ignore -->
 ```typescript
 import { createRequest } from "keq"
 

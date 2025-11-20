@@ -36,208 +36,217 @@ keq-cli 的小版本升级为了修复 Bug 可能会修改代码模板。这有�
 
 <Tabs>
   <TabItem value="keqrc" label=".keqrc.ts" default>
-    <!-- prettier-ignore -->
     ```typescript
-import { defineKeqConfig, FileNamingStyle } from "keq-cli"
+    import { defineKeqConfig, FileNamingStyle } from "keq-cli"
 
-export default defineKeqConfig({
-outdir: "./src/api", // 编译结果的输出目录
-fileNamingStyle: FileNamingStyle.snakeCase,
-modules: {
-catService: "./cat-service-swagger.json",
-// 也可以从网络上获取 swagger 文档，例如：
-// dogService: "http://dog.example.com/swagger.json"
-},
-})
-`  </TabItem>
+    export default defineKeqConfig({
+    outdir: "./src/api", // 编译结果的输出目录
+    fileNamingStyle: FileNamingStyle.snakeCase,
+    modules: {
+    catService: "./cat-service-swagger.json",
+    // 也可以从网络上获取 swagger 文档，例如：
+    // dogService: "http://dog.example.com/swagger.json"
+    },
+    })
+    ```
+
+  </TabItem>
   <TabItem value="swagger" label="cat-service-swagger.json">
-   `json
-{
-"openapi": "3.0.0",
-"info": {
-"title": "Cat Service",
-"version": "0.0.1"
-},
-"paths": {
-"/cats": {
-"get": {
-"operationId": "getCats",
-"parameters": [
-{
-"name": "breed",
-"required": false,
-"in": "query",
-"schema": {
-"type": "string"
-}
-}
-],
-"responses": {
-"200": {
-"content": {
-"application/json": {
-"schema": {
-"type": "array",
-"items": {
-"$ref": "#/components/schemas/Cat"
-}
-}
-}
-}
-}
-}
-}
-}
-},
-"components": {
-"schemas": {
-"Cat": {
-"type": "object",
-"properties": {
-"name": { "type": "string" },
-"age": { "type": "number" }
-}
-}
-}
-}
-}
-```
-</TabItem>
+    ```json
+    {
+      "openapi": "3.0.0",
+      "info": {
+        "title": "Cat Service",
+        "version": "0.0.1"
+      },
+      "paths": {
+        "/cats": {
+          "get": {
+            "operationId": "getCats",
+            "parameters": [
+              {
+                "name": "breed",
+                "required": false,
+                "in": "query",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            ],
+            "responses": {
+              "200": {
+                "content": {
+                  "application/json": {
+                    "schema": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/Cat"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "components": {
+        "schemas": {
+          "Cat": {
+            "type": "object",
+            "properties": {
+              "name": {
+                "type": "string"
+              },
+              "age": {
+                "type": "number"
+              }
+            }
+          }
+        }
+      }
+    }
+    ```
+  </TabItem>
 </Tabs>
 
 在项目目录下运行 `npx keq-cli build` 生成 `typescript` 代码，生成结果如下：
 
 <Tabs>
-  <TabItem value="get_cats" label="./src/api/cat_service/get_cats.ts" default>
-    <!-- prettier-ignore -->
+  <TabItem value="services_get_cats" label="./src/api/cat_service/get_cats.ts" default>
     ```typescript
-import { Keq } from "keq"
-import { request } from "keq"
-import type { RequestParameters, ResponseMap, Operation, QueryParameters, HeaderParameters, BodyParameters } from "./types/get_cats"
+    import { Keq } from "keq"
+    import { request } from "keq"
+    import type { RequestParameters, ResponseMap, Operation, QueryParameters, HeaderParameters, BodyParameters } from "./types/get_cats"
 
-export type GetCatsRequestQuery = QueryParameters
-export type GetCatsRequestBody = BodyParameters
-export type GetCatsRequestHeaders = HeaderParameters
+    export type GetCatsRequestQuery = QueryParameters
+    export type GetCatsRequestBody = BodyParameters
+    export type GetCatsRequestHeaders = HeaderParameters
 
-const pathname = "/cats"
 
-export function getCats<STATUS extends keyof ResponseMap>(arg?: RequestParameters): Keq<ResponseMap[STATUS], Operation<STATUS>> {
-const req = request.get<ResponseMap[STATUS]>("/cats")
-.option('module', {
-name: "catService",
-pathname,
-})
+    const pathname = "/cats"
 
-const queryWrap = (value: any) => typeof value === 'boolean' ? String(value) : value
+    export function getCats<STATUS extends keyof ResponseMap>(arg?: RequestParameters): Keq<ResponseMap[STATUS], Operation<STATUS>> {
+      const req = request.get<ResponseMap[STATUS]>("/cats")
+        .option('module', {
+          name: "catService",
+          pathname,
+        })
 
-if (arg && "breed" in arg) req.query("breed", queryWrap(arg["breed"]))
+      const queryWrap = (value: any) => typeof value === 'boolean' ? String(value) : value
 
-return req as unknown as Keq<ResponseMap[STATUS], Operation<STATUS>>
-}
+      if (arg && "breed" in arg) req.query("breed", queryWrap(arg["breed"]))
 
-getCats.pathname = pathname
-`  </TabItem>
-  <TabItem value="cat" label="./src/api/cat_service/components/schemas/cat.ts">
-    <!-- prettier-ignore -->
-   `typescript
-/\*\*
+      return req as unknown as Keq<ResponseMap[STATUS], Operation<STATUS>>
+    }
 
-- @interface Cat
-- @export
-  \*/
-  export interface Cat {
-  "name"?: string
-  "age"?: number
-  }
-  `  </TabItem>
-  <TabItem value="types" label="./src/api/cat_service/types/get_cats.ts">
-    <!-- prettier-ignore -->
-   `typescript
-  import type { KeqOperation } from 'keq'
-  import type { Cat } from "../components/schemas/cat"
+    getCats.pathname = pathname
+    ```
 
-export interface ResponseMap {
-"200": (Cat)[]
-}
+  </TabItem>
 
-export type QueryParameters = {
-"breed"?: string
-}
+  <TabItem value="schema_cat" label="./src/api/cat_service/components/schemas/cat.ts">
+    ```typescript
+    /**
+    * @interface Cat
+    * @export
+    */
+    export interface Cat {
+      "name"?: string
+      "age"?: number
+    }
+    ```
+  </TabItem>
 
-export type RouteParameters = {
-}
+  <TabItem value="type_cat" label="./src/api/cat_service/types/get_cats.ts">
+    ```typescript
+    import type { KeqOperation } from 'keq'
+    import type { Cat } from "../components/schemas/cat"
 
-export type HeaderParameters = {
-}
+    export interface ResponseMap {
+      "200": (Cat)[]
+    }
 
-export type BodyParameters ={}
-export type RequestParameters = QueryParameters & RouteParameters & HeaderParameters & BodyParameters
 
-export interface Operation<STATUS extends keyof ResponseMap> extends KeqOperation {
-requestParams: RouteParameters
-requestQuery: QueryParameters
-requestHeaders: HeaderParameters
-requestBody: BodyParameters
-responseBody: ResponseMap[STATUS]
-}
-```
-</TabItem>
+    export type QueryParameters = {
+      "breed"?: string
+    }
+
+    export type RouteParameters = {
+    }
+
+    export type HeaderParameters = {
+    }
+
+    export type BodyParameters ={}
+    export type RequestParameters = QueryParameters & RouteParameters & HeaderParameters & BodyParameters
+
+
+    export interface Operation<STATUS extends keyof ResponseMap> extends KeqOperation {
+      requestParams: RouteParameters
+      requestQuery: QueryParameters
+      requestHeaders: HeaderParameters
+      requestBody: BodyParameters
+      responseBody: ResponseMap[STATUS]
+    }
+    ```
+
+  </TabItem>
 </Tabs>
 
 使用生成的 `typescript` 函数发送 HTTP 请求：
 
 <Tabs>
   <TabItem value="example1" label="示例 1" default>
-    <!-- prettier-ignore -->
     ```typescript
-import { getCats } from "./src/api/cat_service/get_cats"
+    import { getCats } from "./src/api/cat_service/get_cats"
 
-/\*\*
+    /**
+    * 调用函数并设置 Query 参数
+    * swagger未定义的参数将被丢弃
+    *
+    * 实际请求地址：/cats?breed=siamese
+    */
+    const cats = await getCats({ breed: "siamese", unknownKey: 'value' })
+      .retry(3, 1000)
+      .timeout(1000)
 
-- 调用函数并设置 Query 参数
-- swagger 未定义的参数将被丢弃
--
-- 实际请求地址：/cats?breed=siamese
-  \*/
-  const cats = await getCats({ breed: "siamese", unknownKey: 'value' })
-  .retry(3, 1000)
-  .timeout(1000)
+    console.log(`My cats: ${cats.map(cat => cat.name).join(',')}`)
+    console.log(`The request pathname is ${getCats.pathname}`)
+    ```
 
-console.log(`My cats: ${cats.map(cat => cat.name).join(',')}`)
-console.log(`The request pathname is ${getCats.pathname}`)
-`  </TabItem>
+  </TabItem>
+
   <TabItem value="example2" label="示例 2">
-    <!-- prettier-ignore -->
-   `typescript
-import { getCats } from "./src/api/cat_service/get_cats"
-// 按需要引入 getCats 相关的 Typescript 类型定义
-import type {
-GetCatsRequestBody,
-GetCatsRequestQuery,
-GetCatsRequestHeaders,
-} from "./src/api/cat_service/get_cats"
+    ```typescript [示例 2]
+    import { getCats } from "./src/api/cat_service/get_cats"
+    // 按需要引入 getCats 相关的 Typescript 类型定义
+    import type {
+      GetCatsRequestBody,
+      GetCatsRequestQuery,
+      GetCatsRequestHeaders,
+    } from "./src/api/cat_service/get_cats"
 
-const filter: GetCatRequestQuery = {
-breed: "siamese",
-}
+    const filter: GetCatRequestQuery = {
+      breed: "siamese",
+    }
 
-/\*\*
+    /**
+    * 实际请求地址：/cats?bread=siamese&unknownKey=value
+    */
+    const cats = await getCats()
+      .query(filter)
+      // 使用 `.query` 可以添加 swagger 中未定义的参数
+      .query({ unknownKey: 'value' })
 
-- 实际请求地址：/cats?bread=siamese&unknownKey=value
-  \*/
-  const cats = await getCats()
-  .query(filter)
-  // 使用 `.query` 可以添加 swagger 中未定义的参数
-  .query({ unknownKey: 'value' })
+    console.log(`My cats: ${cats.map((cat) => cat.name).join(",")}`)
+    ```
 
-console.log(`My cats: ${cats.map((cat) => cat.name).join(",")}`)
-```
-</TabItem>
+  </TabItem>
 </Tabs>
 
 我们可以为 `catService` 模块的所有接口添加统一的错误处理逻辑：
 
-<!-- prettier-ignore -->
 ```typescript
 import { request } from 'keq'
 import { throwException, RequestException } from 'keq-exception'
