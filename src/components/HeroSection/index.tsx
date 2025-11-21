@@ -2,9 +2,9 @@ import Link from "@docusaurus/Link";
 import useDocusaurusContext from "@docusaurus/useDocusaurusContext";
 import { IconBrandGithub } from "@tabler/icons-react";
 import type { ReactNode } from "react";
-import CodeExample from "./code-example";
-import FeatureTag from "./feature-tag";
-import HeroBackground from "./hero-background";
+import CodeExample from "./CodeExample";
+import FeatureTag from "./FeatureTag";
+import HeroBackground from "./HeroBackground";
 
 export default function HeroSection(): ReactNode {
   const { siteConfig } = useDocusaurusContext();

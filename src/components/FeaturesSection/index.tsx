@@ -1,6 +1,6 @@
 import { IconBrandTypescript, IconLayersLinked, IconLink, IconSparkles, IconTarget, IconWorld } from '@tabler/icons-react';
 import type { ReactNode } from 'react';
-import FeatureCard from './feature-card';
+import FeatureCard from './FeatureCard';
 
 export default function FeaturesSection(): ReactNode {
   return (

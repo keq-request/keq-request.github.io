@@ -2,7 +2,7 @@ import Link from '@docusaurus/Link'
 import { useKeqStats } from '@site/src/hooks/useKeqStats'
 import { IconBrandGithub, IconFileDescription } from '@tabler/icons-react'
 import type { ReactNode } from 'react'
-import CTABackground from './cta-background'
+import CTABackground from './CtaBackground'
 
 function formatNumber(num: number): string {
   if (num >= 1000) {

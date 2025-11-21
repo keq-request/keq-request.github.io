@@ -2,9 +2,14 @@
 
 提供了修改 HTTP 请求地址的 `Middleware`。
 
+## 安装
+
+import InstallPackagesCode from '@site/docs/components/_install-packages-code.mdx'
+
+<InstallPackagesCode packages="keq-headers" />
+
 ## `setBaseUrl(baseUrl)`
 
-<!-- prettier-ignore -->
 ```typescript
 import { request } from "keq"
 import { setBaseUrl, setHost } from "keq-url"
@@ -18,7 +23,6 @@ await request.get("/test")
 
 ## `setOrigin(origin)`
 
-<!-- prettier-ignore -->
 ```typescript
 import { request } from "keq"
 import { setOrigin } from "keq-url"
@@ -32,7 +36,6 @@ await request.get("http://test.com/test")
 
 ## `setHost(host)`
 
-<!-- prettier-ignore -->
 ```typescript
 import { request } from "keq"
 import { setHost } from "keq-url"

@@ -1,0 +1,24 @@
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+import CodeBlock from '@theme/CodeBlock';
+
+<Tabs groupId="install-packages-code">
+  <TabItem value="npm" label="npm" default>
+    <CodeBlock language="bash">{`npm install ${props.packages}`}</CodeBlock>
+  </TabItem>
+  <TabItem value="pnpm" label="pnpm">
+    <CodeBlock language="bash">
+    {`pnpm install ${props.packages}`}
+    </CodeBlock>
+  </TabItem>
+  <TabItem value="yarn" label="yarn">
+    <CodeBlock language="bash">
+    {`yarn install ${props.packages}`}
+    </CodeBlock>
+  </TabItem>
+  <TabItem value="long" label="long">
+    <CodeBlock language="bash">
+    {`long long long long long long long long long long long long long long long long long long long long long long long long long long long long long \nlong long long long`}
+    </CodeBlock>
+  </TabItem>
+</Tabs>

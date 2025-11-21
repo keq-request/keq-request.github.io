@@ -4,26 +4,13 @@
 
 如果在 NodeJS 中运行,NodeJS 版本必须大于 18。
 
-import Tabs from '@theme/Tabs';
-import TabItem from '@theme/TabItem';
+import InstallPackagesCode from '@site/docs/components/_install-packages-code.mdx'
 
-<Tabs>
-  <TabItem value="npm" label="npm" default>
-    ```bash
-    npm install keq
-    ```
-  </TabItem>
-  <TabItem value="pnpm" label="pnpm">
-    ```bash
-    pnpm install keq
-    ```
-  </TabItem>
-  <TabItem value="yarn" label="yarn">
-    ```bash
-    yarn install keq
-    ```
-  </TabItem>
-</Tabs>
+<InstallPackagesCode packages="keq" />
+
+```typescript title="src/example.ts"
+export default '123'
+```
 
 ## 发送请求
 
@@ -156,7 +143,7 @@ await request
 
 要发送 `application/x-www-form-urlencoded` 格式的请求体, 你必须调用 `.type("form")` 来确保设置正确的 `Content-Type`:
 
-```typescript {5-7}
+```typescript title="example.ts"
 import { request } from "keq"
 
 await request

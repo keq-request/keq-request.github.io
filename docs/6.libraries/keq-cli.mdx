@@ -1,29 +1,14 @@
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+import InstallPackagesCode from '@site/docs/components/_install-packages-code.mdx'
+
 # keq-cli
 
 `Keq` 提供的命令行工具可以将 `swagger` 文档编译为 `typescript` 代码。从而能像调用函数一样发送 HTTP 请求。
 
 ## 安装
 
-import Tabs from '@theme/Tabs';
-import TabItem from '@theme/TabItem';
-
-<Tabs>
-  <TabItem value="npm" label="npm" default>
-    ```bash
-    npm install keq-cli
-    ```
-  </TabItem>
-  <TabItem value="pnpm" label="pnpm">
-    ```bash
-    pnpm install keq-cli
-    ```
-  </TabItem>
-  <TabItem value="yarn" label="yarn">
-    ```bash
-    yarn install keq-cli
-    ```
-  </TabItem>
-</Tabs>
+<InstallPackagesCode packages="keq-cli" />
 
 :::caution
 建议在 package.json 锁定 keq-cli 的版本。

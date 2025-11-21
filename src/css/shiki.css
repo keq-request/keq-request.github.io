@@ -1,0 +1,124 @@
+[data-theme="dark"] pre {
+  color: var(--shiki-dark) !important;
+  background-color: var(--shiki-dark-bg) !important;
+}
+[data-theme="dark"] pre span {
+  color: var(--shiki-dark) !important;
+}
+
+/* Line Numbers */
+.shiki {
+  position: relative;
+  padding: 0.75rem;
+  margin: 0;
+  border-radius: initial;
+}
+
+.shiki code {
+  z-index: 1;
+  display: block;
+  width: max-content;
+  position: relative;
+  min-width: 100%;
+  counter-reset: step;
+  counter-increment: step 0;
+}
+
+.shiki code .line {
+  position: relative;
+}
+
+.shiki code .line::before {
+  content: counter(step);
+  counter-increment: step;
+  width: 0.6rem;
+  margin-right: 1.1rem;
+  display: inline-block;
+  text-align: right;
+  color: rgba(115, 138, 148, 0.5);
+  user-select: none;
+}
+
+.shiki code .line:last-child:empty::before {
+  content: none;
+  counter-increment: none;
+}
+
+/* transformerNotationHighlight */
+.shiki code .highlighted {
+  width: 100%;
+  display: inline-block;
+  position: relative;
+}
+
+.shiki code .highlighted::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: -0.75rem;
+  right: -0.75rem;
+  background: rgba(101, 117, 133, 0.16);
+  border-left: 1px solid rgba(34, 197, 94, 0.8);
+  z-index: 0;
+}
+
+/* transformerNotationErrorLevel */
+.shiki code .highlighted.error::after {
+  background: rgba(244, 63, 94, 0.16) !important;
+}
+
+.shiki code .highlighted.warning::after {
+  background: rgba(234, 179, 8, 0.16) !important;
+}
+
+/* transformerNotationFocus */
+.shiki.has-focused .line:not(.focused) {
+  opacity: 0.7;
+  filter: blur(0.095rem);
+  transition: filter 0.35s, opacity 0.35s;
+}
+
+.shiki.has-focused:hover .line:not(.focused) {
+  opacity: 1;
+  filter: blur(0);
+}
+
+/* transformerNotationDiff */
+.shiki.has-diff .diff {
+  width: 100%;
+  display: inline-block;
+  position: relative;
+}
+
+.shiki.has-diff .diff.remove::before {
+  content: "-";
+}
+
+.shiki.has-diff .diff.add::before {
+  content: "+";
+}
+
+.shiki.has-diff .diff.remove::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: -0.75rem;
+  right: -0.75rem;
+  background: rgb(239 68 68 / 0.15);
+  border-left: 1px solid rgb(239 68 68 / 0.8);
+  z-index: -1;
+}
+
+.shiki.has-diff .diff.add::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: -0.75rem;
+  right: -0.75rem;
+  background: rgb(34 197 94 / 0.15);
+  border-left: 1px solid rgb(34 197 94 / 0.8);
+  z-index: -1;
+}
