@@ -8,10 +8,6 @@ import InstallPackagesCode from '@site/docs/components/_install-packages-code.md
 
 <InstallPackagesCode packages="keq" />
 
-```typescript title="src/example.ts"
-export default '123'
-```
-
 ## 发送请求
 
 通过`request`构造请求，然后调用`.then()`(或`.end()`) 发送。下面发送一个简单的 GET 请求：
@@ -31,22 +27,18 @@ console.log(`我可爱的 ${cat.name} 今年 ${cat.age} 岁啦。`)
 如果调用`.get(url)`的`url`地址仅包含请求路径(`pathname`)。那么在浏览器中会默认使用 `window.location.origin`作为 Http 请求域名；在 NodeJS 中则是 `http://127.0.0.1`.
 :::
 
-构造 _DELETE_, _HEAD_, _PATCH_, _POST_, and _PUT_ 请求只需要调用`request`不同的方法：
+构造 _DELETE_, _HEAD_, _PATCH_, _POST_, _PUT_ 请求只需要调用`request`不同的方法：
 
 ```typescript
 import { request } from "keq"
 
 await request.delete("https://example.com/cat")
-await request.del("https://example.com/cat")
+await request.del("https://example.com/cat") // .del() 是 .delete() 的别名
 await request.head("https://example.com/cat")
 await request.patch("https://example.com/cat")
 await request.post("https://example.com/cat")
 await request.put("https://example.com/cat")
 ```
-
-:::tip
-`.del()` 是 `.delete()` 的别名.
-:::
 
 ## 设置 Headers/Query
 
