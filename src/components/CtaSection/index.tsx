@@ -1,21 +1,11 @@
 import Link from '@docusaurus/Link'
-import { useKeqStats } from '@site/src/hooks/useKeqStats'
 import { IconBrandGithub, IconFileDescription } from '@tabler/icons-react'
 import type { ReactNode } from 'react'
 import CTABackground from './CtaBackground'
-
-function formatNumber(num: number): string {
-  if (num >= 1000) {
-    return `${(num / 1000).toFixed(1)}k+`
-  }
-  if (num > 100) {
-    return `${Math.floor(num / 100) * 100}+`
-  }
-  return num.toString()
-}
+import StatsSection from './StatsSection'
 
 export default function CTASection(): ReactNode {
-  const { stats, loading } = useKeqStats()
+
   return (
     <section className="relative py-20 sm:py-32 overflow-hidden">
       <CTABackground />
@@ -54,22 +44,7 @@ export default function CTASection(): ReactNode {
           </div>
 
           {/* 统计数据 */}
-          <div className="grid grid-cols-3 gap-8 mt-16 max-w-2xl mx-auto">
-            {[
-              { label: 'GitHub Stars', value: loading ? '-' : formatNumber(stats.stars) },
-              { label: '每周下载', value: loading ? '-' : formatNumber(stats.weeklyDownloads) },
-              { label: '贡献者', value: loading ? '-' : stats.contributors.toString() },
-            ].map((stat) => (
-              <div key={stat.label} className="text-center">
-                <div className="text-3xl sm:text-4xl font-black text-white mb-2">
-                  {stat.value}
-                </div>
-                <div className="text-sm text-white/80 font-medium">
-                  {stat.label}
-                </div>
-              </div>
-            ))}
-          </div>
+          <StatsSection />
         </div>
       </div>
     </section>

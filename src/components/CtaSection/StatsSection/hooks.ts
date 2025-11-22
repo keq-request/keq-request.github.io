@@ -14,8 +14,8 @@ interface NpmApiResponse {
   downloads: number
 }
 
-const CACHE_KEY = 'keq_github_stats'
-const CACHE_DURATION = 1000 * 60 * 60 // 1 hour
+const CACHE_KEY = 'keq_stats'
+const CACHE_DURATION = 1000 * 60 * 60 * 24 * 7 // 7 days
 
 export function useKeqStats(): {
   stats: KeqStats
@@ -78,6 +78,17 @@ export function useKeqStats(): {
       } catch (err) {
         console.error('Error fetching GitHub stats:', err)
         setError(err instanceof Error ? err.message : 'Unknown error')
+
+        // If fetch fails, try to use stale cache as fallback
+        const cached = localStorage.getItem(CACHE_KEY)
+        if (cached) {
+          try {
+            const { data } = JSON.parse(cached)
+            setStats(data)
+          } catch (parseErr) {
+            console.error('Error parsing cached stats:', parseErr)
+          }
+        }
       } finally {
         setLoading(false)
       }
