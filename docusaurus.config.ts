@@ -110,6 +110,14 @@ const config: Config = {
   plugins: [
     './src/plugins/tailwind.plugin.ts',
   ],
+
+  scripts: [
+    {
+      defer: true,
+      src: '//analytics.nas.val-istar-guo.com/script.js',
+      'data-website-id': '7d522440-47a3-4164-86c4-d7abb0299cfd',
+    },
+  ],
 }
 
 export default config
