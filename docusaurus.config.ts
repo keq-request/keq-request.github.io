@@ -18,7 +18,7 @@ const config: Config = {
   },
 
   // Set the production url of your site here
-  url: 'https://your-docusaurus-site.example.com',
+  url: 'https://keq-request.github.io',
   // Set the /<baseUrl>/ pathname under which your site is served
   // For GitHub pages deployment, it is often '/<projectName>/'
   baseUrl: '/',
@@ -26,7 +26,9 @@ const config: Config = {
   // GitHub pages deployment config.
   // If you aren't using GitHub pages, you don't need these.
   organizationName: 'keq-request', // Usually your GitHub org/user name.
-  projectName: 'keq', // Usually your repo name.
+  projectName: 'keq-request.github.io', // Usually your repo name.
+  deploymentBranch: 'master',
+  trailingSlash: false,
 
   onBrokenLinks: 'throw',
 
