@@ -1,6 +1,7 @@
 import Tabs from '@theme/Tabs';
 import TabItem from '@theme/TabItem';
 import InstallPackagesCode from '@site/docs/components/_install-packages-code.mdx'
+import PackageManager from '@site/docs/components/_package-manager.mdx';
 
 # keq-cli
 
@@ -132,25 +133,7 @@ keq-cli 的小版本升级为了修复 Bug 可能会修改代码模板。这有�
 
 接下来，在终端执行以下命令：
 
-<Tabs>
-  <TabItem value="npm" label="npm" default>
-    ```bash
-    npx keq-cli build
-    ```
-  </TabItem>
-
-  <TabItem value="yarn" label="yarn">
-    ```bash
-    yarn keq-cli build
-    ```
-  </TabItem>
-
-  <TabItem value="pnpm" label="pnpm">
-    ```bash
-    pnpm keq-cli build
-    ```
-  </TabItem>
-</Tabs>
+<PackageManager command="keq-cli build" />
 
 执行完成后，`keq-cli` 会在 `./src/api/cat_service/` 目录下生成如下文件：
 

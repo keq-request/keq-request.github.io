@@ -1,0 +1,14 @@
+{
+  "version.label": {
+    "message": "Next",
+    "description": "The label for version current"
+  },
+  "sidebar.tutorialSidebar.category.功能": {
+    "message": "Features",
+    "description": "The label for category '功能' in sidebar 'tutorialSidebar'"
+  },
+  "sidebar.tutorialSidebar.category.生态": {
+    "message": "Libraries",
+    "description": "The label for category '生态' in sidebar 'tutorialSidebar'"
+  }
+}

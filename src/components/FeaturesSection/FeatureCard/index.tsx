@@ -2,8 +2,8 @@ import type { Icon } from '@tabler/icons-react';
 import type { ReactNode } from 'react';
 
 interface FeatureCardProps {
-  name: string;
-  description: string;
+  name: ReactNode;
+  description: ReactNode;
   Icon: Icon;
   gradient: string;
 }

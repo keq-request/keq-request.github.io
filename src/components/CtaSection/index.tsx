@@ -1,4 +1,5 @@
 import Link from '@docusaurus/Link'
+import Translate from '@docusaurus/Translate'
 import { IconBrandGithub, IconFileDescription } from '@tabler/icons-react'
 import type { ReactNode } from 'react'
 import CTABackground from './CtaBackground'
@@ -13,10 +14,10 @@ export default function CTASection(): ReactNode {
       <div className="relative mx-auto max-w-7xl px-6 lg:px-8">
         <div className="max-w-3xl mx-auto text-center">
           <h2 className="text-4xl sm:text-5xl font-black text-white mb-6">
-            准备好开始了吗？
+            <Translate id="cta.title">准备好开始了吗？</Translate>
           </h2>
           <p className="text-xl text-white/90 mb-10 leading-relaxed">
-            立即开始使用 Keq，体验更优雅的 HTTP 请求方式
+            <Translate id="cta.description">立即开始使用 Keq，体验更优雅的 HTTP 请求方式</Translate>
           </p>
 
           <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
@@ -26,7 +27,7 @@ export default function CTASection(): ReactNode {
               style={{ textDecoration: 'none' }}
             >
               <span className="flex items-center gap-2">
-                阅读文档
+                <Translate id="cta.button.readDocs">阅读文档</Translate>
                 <IconFileDescription className="w-5 h-5 group-hover:translate-x-1 transition-transform" viewBox="0 0 24 24" />
               </span>
             </Link>
@@ -38,7 +39,7 @@ export default function CTASection(): ReactNode {
             >
               <span className="flex items-center gap-2">
                 <IconBrandGithub className="w-5 h-5 group-hover:rotate-12 transition-transform" />
-                查看源码
+                <Translate id="cta.button.viewSource">查看源码</Translate>
               </span>
             </Link>
           </div>

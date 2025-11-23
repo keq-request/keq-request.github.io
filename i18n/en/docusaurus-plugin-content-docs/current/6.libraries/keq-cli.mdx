@@ -1,0 +1,334 @@
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+import InstallPackagesCode from '@site/docs/components/_install-packages-code.mdx'
+import PackageManager from '@site/docs/components/_package-manager.mdx';
+
+# keq-cli
+
+The command-line tool provided by `Keq` can compile `swagger` documents into `typescript` code, allowing you to send HTTP requests as if calling functions.
+
+## Installation
+
+<InstallPackagesCode packages="keq-cli" />
+
+:::caution
+It is recommended to lock the version of keq-cli in package.json.
+Minor version upgrades of keq-cli may modify code templates to fix bugs, which has a certain probability of causing code incompatibility with previous versions.
+:::
+
+## Usage
+
+First, we need a `swagger` document. For example, the following `cat-service-swagger.json` file describes an HTTP interface for retrieving cat information.
+
+<details>
+  <summary> cat-service-swagger.json </summary>
+
+  ```json title="cat-service-swagger.json"
+  {
+    "openapi": "3.0.0",
+    "info": {
+      "title": "Cat Service",
+      "version": "0.0.1"
+    },
+    "paths": {
+      "/cats": {
+        "get": {
+          "operationId": "getCats",
+          "parameters": [
+            {
+              "name": "breed",
+              "required": false,
+              "in": "query",
+              "schema": {
+                "type": "string"
+              }
+            }
+          ],
+          "responses": {
+            "200": {
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "type": "array",
+                    "items": {
+                      "$ref": "#/components/schemas/Cat"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "components": {
+      "schemas": {
+        "Cat": {
+          "type": "object",
+          "properties": {
+            "name": {
+              "type": "string"
+            },
+            "age": {
+              "type": "number"
+            }
+          }
+        }
+      }
+    }
+  }
+  ```
+</details>
+
+Then, we create a configuration file for `keq-cli`, specifying the location of the `swagger` document and compilation parameters:
+
+<Tabs>
+  <TabItem value="ts" label="Typescript" default>
+    ```typescript title=".keqrc.ts"
+    import { defineKeqConfig, FileNamingStyle } from "keq-cli"
+
+    export default defineKeqConfig({
+      outdir: "./src/api", // Output directory for compilation results
+      fileNamingStyle: FileNamingStyle.snakeCase,
+      modules: {
+        catService: "./cat-service-swagger.json",
+        // You can also fetch swagger documents from the network, for example:
+        // dogService: "http://dog.example.com/swagger.json"
+      },
+    })
+    ```
+  </TabItem>
+
+  <TabItem value="js" label="Javascript">
+    ```javascript title=".keqrc.js"
+    const { defineKeqConfig, FileNamingStyle } = require("keq-cli")
+
+    module.exports = defineKeqConfig({
+      outdir: "./src/api", // Output directory for compilation results
+      fileNamingStyle: FileNamingStyle.snakeCase,
+      modules: {
+        catService: "./cat-service-swagger.json",
+        // You can also fetch swagger documents from the network, for example:
+        // dogService: "http://dog.example.com/swagger.json"
+      },
+    })
+    ```
+  </TabItem>
+
+  <TabItem value="yml" label="YAML">
+    ```yaml title=".keqrc.yml"
+    outdir: ./src/api # Output directory for compilation results
+    fileNamingStyle: snake_case
+    modules:
+      catService: ./cat-service-swagger.json
+      # You can also fetch swagger documents from the network, for example:
+      # dogService: http://dog.example.com/swagger.json
+    ```
+  </TabItem>
+</Tabs>
+
+:::tip Recommendation
+Prefer using `typescript` or `javascript` format for configuration files. Some advanced features (such as `operationIdFactory`) can only be implemented through code.
+:::
+
+Next, execute the following command in the terminal:
+
+<PackageManager command="keq-cli build" />
+
+After execution, `keq-cli` will generate the following files in the `./src/api/cat_service/` directory:
+
+<Tabs>
+  <TabItem value="services_get_cats" label="Request Function" default>
+    ```typescript title="./src/api/cat_service/get_cats.ts"
+    import { Keq } from "keq"
+    import { request } from "keq"
+    import type { RequestParameters, ResponseMap, Operation, QueryParameters, HeaderParameters, BodyParameters } from "./types/get_cats"
+
+    export type GetCatsRequestQuery = QueryParameters
+    export type GetCatsRequestBody = BodyParameters
+    export type GetCatsRequestHeaders = HeaderParameters
+
+
+    const pathname = "/cats"
+
+    export function getCats<STATUS extends keyof ResponseMap>(arg?: RequestParameters): Keq<ResponseMap[STATUS], Operation<STATUS>> {
+      const req = request.get<ResponseMap[STATUS]>("/cats")
+        .option('module', {
+          name: "catService",
+          pathname,
+        })
+
+      const queryWrap = (value: any) => typeof value === 'boolean' ? String(value) : value
+
+      if (arg && "breed" in arg) req.query("breed", queryWrap(arg["breed"]))
+
+      return req as unknown as Keq<ResponseMap[STATUS], Operation<STATUS>>
+    }
+
+    getCats.pathname = pathname
+    ```
+
+  </TabItem>
+
+  <TabItem value="type_cat" label="Interface Type Definitions">
+
+    ```typescript title="./src/api/cat_service/types/get_cats.ts"
+    import type { KeqOperation } from 'keq'
+    import type { Cat } from "../components/schemas/cat"
+
+    export interface ResponseMap {
+      "200": (Cat)[]
+    }
+
+    export type QueryParameters = {
+      "breed"?: string
+    }
+
+    export type RouteParameters = {
+    }
+
+    export type HeaderParameters = {
+    }
+
+    export type BodyParameters ={}
+    export type RequestParameters = QueryParameters & RouteParameters & HeaderParameters & BodyParameters
+
+
+    export interface Operation<STATUS extends keyof ResponseMap> extends KeqOperation {
+      requestParams: RouteParameters
+      requestQuery: QueryParameters
+      requestHeaders: HeaderParameters
+      requestBody: BodyParameters
+      responseBody: ResponseMap[STATUS]
+    }
+    ```
+
+  </TabItem>
+
+  <TabItem value="schema_cat" label="Data Model Definitions">
+    ```typescript title="./src/api/cat_service/components/schemas/cat.ts"
+    /**
+    * @interface Cat
+    * @export
+    */
+    export interface Cat {
+      "name"?: string
+      "age"?: number
+    }
+    ```
+  </TabItem>
+</Tabs>
+
+Now, we can call the `getCats` function to send HTTP requests:
+
+<Tabs>
+  <TabItem value="example1" label="Example" default>
+    ```typescript
+    import { getCats } from "./src/api/cat_service/get_cats"
+
+    const cats = await getCats({ breed: "siamese", unknownKey: 'value' }) // unknownKey is not defined in swagger and will be discarded
+      .retry(3, 1000)
+      .timeout(1000)
+
+    // Actual request URL: /cats?breed=siamese
+
+    console.log(`My cats: ${cats.map(cat => cat.name).join(',')}`)
+    console.log(`The request pathname is ${getCats.pathname}`)
+    ```
+
+  </TabItem>
+
+  <TabItem value="example2" label="Adding Parameters Not Defined in Swagger">
+    ```typescript
+    import { getCats } from "./src/api/cat_service/get_cats"
+
+    const cats = await getCats({ breed: "siamese", unknownKey: 'value' }) // unknownKey is not defined in swagger and will be discarded
+      .query('extraParam', 'extraValue') // Parameters added through chaining will not be discarded [!code ++]
+      .retry(3, 1000)
+      .timeout(1000)
+
+    // Actual request URL: /cats?breed=siamese&extraParam=extraValue
+
+    console.log(`My cats: ${cats.map(cat => cat.name).join(',')}`)
+    console.log(`The request pathname is ${getCats.pathname}`)
+    ```
+
+  </TabItem>
+</Tabs>
+
+Finally, we can add unified error handling logic for all interfaces in the `catService` module:
+
+```typescript
+import { request } from 'keq'
+import { throwException, RequestException } from 'keq-exception'
+
+
+request
+  .useRouter()
+  .module('catService', throwException(context => {
+    if (context.response) {
+      if (context.response.status >= 400 && context.response.status < 500) {
+        throw new RequestException(context.response.status, context.response.statusText, false) // Client error, no retry needed
+      } else if (context.response.status >= 500) {
+        throw new RequestException(context.response.status, context.response.statusText)
+      }
+    }
+  }))
+```
+
+:::note Why does `Keq` adopt the design pattern of *chaining* + *middleware*?
+`Keq` was originally designed to generate request functions from `swagger` documents. However, relying solely on `cli` to generate code cannot solve many problems:
+
+1. The HTTP interface information defined in the `swagger` document may be incomplete or even incorrect, such as missing authentication information, cache policies, and other parameters.
+   Sometimes external factors prevent us from completing this information by modifying the `swagger` document.
+2. When the client calls the same HTTP interface in different scenarios, there may be different requirements. For example, retries may be needed in some scenarios but not in others.
+   `Statically Generated` code cannot meet these dynamically changing requirements.
+3. Interfaces from the same `swagger` document often have similar requirements for authentication, error handling, logging, etc. If these highly customized features were generated using `cli`, they would be very difficult to maintain.
+
+`Keq` is an HTTP client designed to provide more powerful runtime APIs for statically generated code:
+
+- *Chaining* allows us to dynamically modify request parameters when calling `request functions`, and even set parameters that violate the `swagger` definition. It also perfectly avoids bloated configuration options.
+- *Middleware* provides an elegant way to add unified functionality to all interfaces of the same module. Middleware can be flexibly enabled or disabled in different scenarios through *chaining*.
+:::
+
+## Configuration File
+
+`keq-cli` will automatically search for configuration files named `.keqrc.yml`, `.keqrc.json`, `.keqrc.js`, `.keqrc.ts`.
+You can specify the configuration file location with `-c --config <config_file_path>`.
+
+| **Configuration**  | **Required** | **Default**                                | **Description**                                                                              |
+| :----------------- | :----------- | :----------------------------------------- | :------------------------------------------------------------------------------------------- |
+| outdir             | true         | -                                          | Output directory for compilation results                                                     |
+| fileNamingStyle    | false        | -                                          | File naming style                                                                            |
+| modules            | true         | -                                          | Swagger file locations and module names                                                      |
+| operationIdFactory | false        | `({ operation }) => operation.operationId` | Custom function name generation rules, defaults to using `operationId` from swagger document |
+| strict             | false        | `false`                                    | Whether to clear the output directory                                                        |
+| esm                | false        | `false`                                    | Whether to generate ESM-style code                                                           |
+
+### FileNamingStyle
+
+| **Enum**                       | **Example**   |
+| :----------------------------- | :------------ |
+| `FileNamingStyle.camelCase`    | `"twoWords"`  |
+| `FileNamingStyle.capitalCase`  | `"Two Words"` |
+| `FileNamingStyle.constantCase` | `"TWO_WORDS"` |
+| `FileNamingStyle.dotCase`      | `"two.words"` |
+| `FileNamingStyle.headerCase`   | `"Tow-Words"` |
+| `FileNamingStyle.noCase`       | `"two words"` |
+| `FileNamingStyle.paramCase`    | `"two-words"` |
+| `FileNamingStyle.pascalCase`   | `"TwoWords"`  |
+| `FileNamingStyle.pathCase`     | `"two/words"` |
+| `FileNamingStyle.sentenceCase` | `"Two words"` |
+| `FileNamingStyle.snakeCase`    | `"two_words"` |
+
+## Command Line Options
+
+| **Option**                       | **Description**                                                                                                 |
+| :------------------------------- | :-------------------------------------------------------------------------------------------------------------- |
+| `[moduleName]`                   | Generate only the specified module                                                                              |
+| `-c --config <config_file_path>` | Location of the configuration file                                                                              |
+| `-i --interactive`               | Interactively specify which HTTP interfaces to generate via command line                                        |
+| `--method <method...>`           | Generate only HTTP interfaces matching method (`'get' \| 'post' \| 'put' \| 'patch' \| 'head' \| 'options' \| 'delete'`) |
+| `--pathname <pathname...>`       | Generate only HTTP interfaces matching pathname                                                                 |
+| `--no-append`                    | Do not generate newly added HTTP interfaces (compared to the last generation)                                   |
+| `--no-update`                    | Do not update previously generated HTTP interfaces                                                              |

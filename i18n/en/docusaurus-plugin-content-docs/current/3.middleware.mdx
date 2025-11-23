@@ -1,0 +1,269 @@
+# Middleware
+
+[Fetch MDN]: https://developer.mozilla.org/en-US/docs/Web/API/Fetch
+[Headers MDN]: https://developer.mozilla.org/en-US/docs/Web/API/Headers
+[Response MDN]: https://developer.mozilla.org/en-US/docs/Web/API/Response
+[FormData MDN]: https://developer.mozilla.org/en-US/docs/Web/API/FormData
+[URL MDN]: https://developer.mozilla.org/en-US/docs/Web/API/URL
+
+`Keq` adopts a middleware model similar to [`koa`](https://github.com/koajs/koa).
+This gives `Keq` powerful custom extension capabilities.
+
+> Many third-party libraries that extend the `Fetch API` can be found on NPM. These libraries often provide APIs like `wrap(fetch)`.
+> For example: [`fetch-retry`](https://www.npmjs.com/package/fetch-retry), [`node-fetch-har`](https://www.npmjs.com/package/node-fetch-har), [`fetch-enhanced`](https://www.npmjs.com/package/fetch-enhanced).
+>
+> This leads us to maintain messy code like `wrapX(wrapY(wrapZ(fetch)))`. And it's difficult to precisely control each `wrapper` to give different default parameters for different routes.
+
+## Onion Model
+
+![Keq Middleware](/img/keq_middleware.png)
+
+`Keq`'s core functionality is also implemented through layers of composed `Middleware`, and the `Fetch API` used to send requests is also a `Middleware`.
+
+When calling `Keq`'s API to send a request, the `Request` parameters are processed layer by layer through `Middleware`, finally reaching the `Fetch API Middleware`.
+The `Fetch API Middleware` will send the request and return a `Response`. Finally, the `Response` is processed again through layers of `Middleware` before being returned to the caller.
+
+:::tip
+`Keq` is composed of 5 layers of built-in `Middleware`. The diagram only labels 4 layers for clarity. The 5 layers from outer to inner are:
+
+- `retryMiddleware`: Provides retry functionality on failure
+- `flowControlMiddleware`: Provides concurrency control functionality
+- `timeoutMiddleware`: Provides request timeout control functionality
+- `proxyResponseMiddleware`: Constructs the `context.response` property based on `context.res`.
+- `fetchMiddleware`: Sends requests based on `context.request` parameters and writes the `Response` to `context.res`.
+:::
+
+## Custom Middleware
+
+`Middleware` is actually an async function that receives two parameters `context` and `next`:
+
+| **Parameter**          | **Description**                                                                                                                                                                                    |
+| :--------------------- | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `context` (1st param)  | Request context, which contains all request parameters and response results.                                                                                                                       |
+| `next` (2nd param)     | Execute the next layer of `Middleware`. Modifying `context.request` before `next` executes will affect the actual request sent. After `next` executes, you can access `context.response` to get the request result for further processing. |
+
+Next, let's add a simple `Middleware` for handling request errors to familiarize ourselves with `Middleware`.
+
+```typescript
+import { request } from "keq"
+
+request
+  .use(async (context, next) => {
+    await next() // Call next layer middleware until fetch
+
+    if (context.response) {
+      if (!context.response.status !== 200) {
+        alert(`${ctx.request.url.href} is not 200`)
+        throw new Error("The Response is not 200.")
+      }
+    }
+  })
+
+try {
+  await request.get("http://example.com/cat")
+} catch (err) {
+  // If the /cat API response status code is not 200, an exception will be caught
+  console.log(err)
+}
+```
+
+The above code adds a `Middleware` that checks all request response status codes by calling `request.use(middleware)`.
+However, in actual projects, we will face many different API providers and need to apply `Middleware` accordingly. `Keq` provides flexible routing methods for this:
+
+```typescript {4-5}
+import { request } from "keq"
+
+request
+  .useRouter()
+  .host('example.com', async (context, next) => {
+    await next()
+
+    if (context.response) {
+      if (context.response.status !== 200) {
+        alert(`${ctx.request.url.href} is not 200`)
+        throw new Error("The Response is not 200.")
+      }
+    }
+  })
+
+try {
+  await request.get("http://example.com/cat")
+} catch (err) {
+  // If the /cat API response status code is not 200, an exception will be caught
+  console.log(err)
+}
+```
+
+Through `request.useRouter().host(hostName, middleware)`, the `Middleware` will only take effect when the request domain is `"example.com"`.
+Next, we can encapsulate the `Middleware` code into an independent function for easy reuse on different routes:
+
+```typescript
+import { KeqMiddleware, request } from 'keq'
+
+function responseValidator(): KeqMiddleware {
+  return async (context, next) => {
+    await next()
+
+    if (context.response) {
+      if (context.response.status !== 200) {
+        alert(`${ctx.request.url.href} is not 200`)
+        throw new Error("The Response is not 200.")
+      }
+    }
+  }
+}
+
+request
+  .useRouter()
+  .host('example.com', responseValidator())
+  .pathname('/api/**', responseValidator())
+```
+
+`.useRouter()` will match all requests that meet the rules. If we want individual requests not to run `alert`, we can add `option` to `Middleware`:
+
+```typescript
+import { KeqMiddleware, request } from 'keq'
+
+declare module 'keq' {                // [!code ++]
+  interface KeqOptions<T> {           // [!code ++]
+    silent(value: boolean): Keq<T>    // [!code ++]
+  }                                   // [!code ++]
+}                                     // [!code ++]
+
+function responseValidator(): KeqMiddleware {
+  return async (context, next) => {
+    await next()
+
+    if (context.response) {
+      if (context.response.status !== 200) {
+        if (!context.options.silent) {                 // [!code ++]
+          alert(`${ctx.request.url.href} is not 200`)  // [!code ++]
+        }                                              // [!code ++]
+
+        throw new Error("The Response is not 200.")
+      }
+    }
+  }
+}
+
+request.use(responseValidator)
+
+// This request won't trigger `alert` even if it fails
+await request
+  .get('/cat')
+  .option('silent', true)   // [!code ++]
+```
+
+In addition to handling responses, we can also modify request parameters before sending the request. Let's implement another middleware that adds `x-site: us` to the request headers:
+
+```typescript
+import { KeqMiddleware } from 'keq'
+
+function appendSiteHeader(site: string = 'us'): KeqMiddleware {
+  return async (context, next) => {
+    context.request.headers.append('x-site', site)
+
+    await next()
+  }
+}
+
+request
+  .useRouter()
+  .host('example.com', appendSiteHeader('cn'))
+```
+
+## Context
+
+By interacting with `context`, `Middleware` can completely control request behavior. The table below lists all built-in properties of `context` and their functions:
+
+| **Property**         | **Description**                                                                                                                                                                 |
+| :------------------- | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `context.request`    | HTTP request parameters                                                                                                                                                         |
+| `context.abort()`    | **ReadOnly** Abort the current request                                                                                                                                          |
+| `context.global`     | Data stored in `context.global` will not be destroyed with `context` after `request` completed. Please be aware of memory overflow issues when using it.                    |
+| `context.res`        | Original [`Response`][Response MDN] object. Added to `context` by `fetchMiddleware` after the request is successfully sent. Use `context.response` whenever possible unless you really need the raw `Response`. |
+| `context.response`   | Proxy of `context.res`, solving the problem that [`Response`][Response MDN]'s `.json()`, `.text()` and other methods cannot be called multiple times, which would cause errors when multiple `Middleware` repeatedly get the response body. |
+| `context.output`     | **WriteOnly** Change the return content of `await request.get('xxx')`. (This property is invalid when calling `.resolveWith()`).                                                |
+| `context.identifier` | **ReadOnly** Unique key that marks the request code location.                                                                                                                   |
+| `context.metadata`   | Context information of the current middleware. Often used to check the execution status of middleware.                                                                          |
+| `context.options`    | Custom options set by `request.get('xxx').option(key, value)`. `Middleware` can add its own `options`.                                                                          |
+
+### `context.request`
+
+| **Property**                     | **Description**                                                               |
+| :------------------------------- | :---------------------------------------------------------------------------- |
+| `context.request.url`            | HTTP request URL                                                              |
+| `context.request.__url__`        | **Readonly** HTTP request URL with merged route parameters (`routeParams`)   |
+| `context.request.method`         | HTTP request method ('get', 'post', 'put', 'patch', 'head', 'delete')        |
+| `context.request.body`           | HTTP request body                                                             |
+| `context.request.headers`        | HTTP request headers                                                          |
+| `context.request.routeParams`    | Route parameters in the HTTP request URL                                      |
+| `context.request.catch`          | [Fetch API][Fetch MDN] `catch` parameter                                     |
+| `context.request.credentials`    | [Fetch API][Fetch MDN] `credentials` parameter                                |
+| `context.request.integrity`      | [Fetch API][Fetch MDN] `integrity` parameter                                  |
+| `context.request.keepalive`      | [Fetch API][Fetch MDN] `keepalive` parameter                                  |
+| `context.request.mode`           | [Fetch API][Fetch MDN] `mode` parameter                                       |
+| `context.request.redirect`       | [Fetch API][Fetch MDN] `redirect` parameter                                   |
+| `context.request.referrer`       | [Fetch API][Fetch MDN] `referrer` parameter                                   |
+| `context.request.referrerPolicy` | [Fetch API][Fetch MDN] `referrerPolicy` parameter                             |
+
+### `context.options`
+
+**`context.options` allows the request caller to adjust the runtime logic of `Middleware` at any time and anywhere**. It also allows outer `Middleware` to change the runtime logic of inner `Middleware` by modifying `context.options`.
+
+| **Property**                  | **Default**     | **Description**                                                                                                                                                    |
+| :---------------------------- | :-------------- | :----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `context.options.fetchAPI`    | `global.fetch`  | The [Fetch API][Fetch MDN] used by `fetchMiddleware` to send HTTP requests. Can be replaced with [`node-fetch`](https://www.npmjs.com/package/node-fetch) or other NodeFetch-compatible packages. |
+| `context.options.resolveWith` | `"intelligent"` | How to parse the `Response` body. When set, `context.output` will be invalidated.                                                                                 |
+| `context.options.retryTimes`  | `undefined`     | Number of retry attempts.                                                                                                                                          |
+| `context.options.retryDelay`  | `undefined`     | Retry interval time.                                                                                                                                               |
+| `context.options.retryOn`     | `undefined`     | Custom retry condition.                                                                                                                                            |
+| `context.options.module`      | `undefined`     | The module to which the request belongs.                                                                                                                           |
+| `context.options.flowControl` | `undefined`     | Adjust the concurrent execution behavior pattern of the request. When modified, it will adjust the runtime behavior of `flowControlMiddleware`.                    |
+| `context.options.timeout`     | `undefined`     | Modify the request timeout. When modified, it will adjust the runtime behavior of `timeoutControlMiddleware`.                                                      |
+
+### `context.global`
+
+| **Property**                       | **Default** | **Description**                                                    |
+| :--------------------------------- | :---------- | :----------------------------------------------------------------- |
+| `context.global.serialFlowControl` | `undefined` | Used to implement `.flowControl('serial')` mode.  |
+| `context.global.abortFlowControl`  | `undefined` | Used to implement `.flowControl('abort')` mode.   |
+
+### `context.metadata`
+
+`Middleware` only needs to operate `context.metadata` in very rare scenarios.
+
+| **Property**                      | **Description**                                                    |
+| :-------------------------------- | :----------------------------------------------------------------- |
+| `context.metadata.finished`       | Whether the current middleware has finished executing.             |
+| `context.metadata.entryNextTimes` | How many times `next` was called before the current middleware ended. |
+| `context.metadata.outNextTimes`   | How many times `next` completed execution before the current middleware ended. |
+
+## Router (`.useRouter()`)
+
+| **Method**                                               | **Description**                                                                                                                              |
+| :------------------------------------------------------- | :------------------------------------------------------------------------------------------------------------------------------------------- |
+| `.location(...middlewares)`                              | In browsers, routes requests to `window.location.origin` to `middlewares`. In Node.js, routes to `127.0.0.1`                                |
+| `.method(method: string[, ...middlewares])`              | Routes requests matching `method` to `middlewares`.                                                                                          |
+| `.pathname(matcher: string \| Regexp[, ...middlewares])` | `matcher` can be a `glob` expression or regular expression, and routes matching requests to `middlewares`.                                  |
+| `.host(host: string[, ...middlewares])`                  | Routes requests sent to `host` domain to `middlewares`.                                                                                      |
+| `.module(moduleName: string[, ...middlewares])`          | Routes requests of `moduleName` module to `middlewares`.                                                                                     |
+| `.route(...middlewares)`                                 | Custom routing strategy                                                                                                                      |
+
+## `createRequest`
+
+Call `createRequest()` to create an independent `request` instance.
+`Middleware` and `context.global` between multiple `request` instances will not be shared.
+
+```typescript
+import { createRequest } from "keq"
+
+const customRequest = createRequest()
+
+// Middleware will only take effect in customRequests
+customRequest.use(/** some middleware */)
+
+const body = await customRequest.get("http://test.com")
+```
+
+> The `request` instance you reference from `'keq'` is also created through `createRequest()`.

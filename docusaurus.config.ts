@@ -35,7 +35,7 @@ const config: Config = {
   // may want to replace "en" with "zh-Hans".
   i18n: {
     defaultLocale: 'zh-Hans',
-    locales: ['zh-Hans'],
+    locales: ['zh-Hans', 'en'],
   },
 
   presets: [
@@ -94,13 +94,12 @@ const config: Config = {
           label: '文档',
         },
         {
-          to: '/blog',
-          label: 'Blog',
-          position: 'left',
-        },
-        {
           href: 'https://github.com/keq-request/keq',
           label: 'GitHub',
+          position: 'right',
+        },
+        {
+          type: 'localeDropdown',
           position: 'right',
         },
       ],

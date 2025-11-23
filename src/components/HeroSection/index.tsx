@@ -1,6 +1,7 @@
 import Link from "@docusaurus/Link";
+import Translate from "@docusaurus/Translate";
 import useDocusaurusContext from "@docusaurus/useDocusaurusContext";
-import { IconBrandGithub } from "@tabler/icons-react";
+import { IconBrandGithub, IconBrandTypescript, IconLink, IconRefresh, IconWorld } from "@tabler/icons-react";
 import type { ReactNode } from "react";
 import CodeExample from "./CodeExample";
 import FeatureTag from "./FeatureTag";
@@ -26,23 +27,25 @@ export default function HeroSection(): ReactNode {
             <div>
               <h1 className="text-5xl sm:text-6xl lg:text-7xl font-black tracking-tight text-gray-900 dark:text-white">
                 <span className="block">{siteConfig.title}</span>
-                <span className="block mt-2 bg-gradient-to-r from-orange-500 via-amber-500 to-yellow-500 bg-clip-text text-transparent">
-                  让请求更简单
+                <span className="block mt-2 bg-linear-to-r from-orange-500 via-amber-500 to-yellow-500 bg-clip-text text-transparent">
+                  <Translate id="hero.tagline">让请求更简单</Translate>
                 </span>
               </h1>
             </div>
 
             {/* 描述 */}
             <p className="text-xl text-gray-600 dark:text-gray-300 leading-relaxed max-w-xl">
-              {siteConfig.tagline}
+              <Translate id="hero.description">
+                {siteConfig.tagline}
+              </Translate>
             </p>
 
             {/* 特性标签云 */}
             <div className="flex flex-wrap gap-3">
-              <FeatureTag text="链式调用" icon="link" />
-              <FeatureTag text="中间件驱动" icon="refresh" />
-              <FeatureTag text="TypeScript" icon="typescript" />
-              <FeatureTag text="跨平台" icon="world" />
+              <FeatureTag text={<Translate id="hero.feature.chaining">链式调用</Translate>} icon={IconLink} />
+              <FeatureTag text={<Translate id="hero.feature.middleware">中间件驱动</Translate>} icon={IconRefresh} />
+              <FeatureTag text={<Translate id="hero.feature.typescript">TypeScript</Translate>} icon={IconBrandTypescript} />
+              <FeatureTag text={<Translate id="hero.feature.crossPlatform">跨平台</Translate>} icon={IconWorld} />
             </div>
 
             {/* 按钮组 */}
@@ -54,7 +57,7 @@ export default function HeroSection(): ReactNode {
               >
                 <span className="absolute inset-0 w-full h-full bg-linear-to-r from-orange-50 to-yellow-50 opacity-0 group-hover:opacity-100 transition-opacity"></span>
                 <span className="relative flex items-center gap-2">
-                  快速开始
+                  <Translate id="hero.button.getStarted">快速开始</Translate>
                   <svg
                     className="w-5 h-5 group-hover:translate-x-1 transition-transform"
                     fill="none"

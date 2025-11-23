@@ -1,0 +1,48 @@
+# keq-url
+
+URL manipulation utilities for Keq.
+
+## Installation
+
+import InstallPackagesCode from '@site/docs/components/_install-packages-code.mdx'
+
+<InstallPackagesCode packages="keq-headers" />
+
+## `setBaseUrl(baseUrl)`
+
+```typescript
+import { request } from "keq"
+import { setBaseUrl, setHost } from "keq-url"
+
+request
+  .use(setBaseUrl("http://example.com/api"))
+
+await request.get("/test")
+// Request will be sent to 'http://example.com/api/test'
+```
+
+## `setOrigin(origin)`
+
+```typescript
+import { request } from "keq"
+import { setOrigin } from "keq-url"
+
+request
+  .use(setOrigin("http://example.com:8080"))
+
+await request.get("http://test.com/test")
+// Request will be sent to 'http://example.com:8080/test'
+```
+
+## `setHost(host)`
+
+```typescript
+import { request } from "keq"
+import { setHost } from "keq-url"
+
+request
+  .use(setHost("example.com"))
+
+await request.get("http://test.com/test")
+// Request will be sent to 'http://example.com/test'
+```

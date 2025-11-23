@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react'
 
 interface StatItemProps {
-  label: string
+  label: ReactNode
   value: number
   isLoading: boolean
   format?: 'number' | 'string'
