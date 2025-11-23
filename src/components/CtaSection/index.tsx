@@ -13,7 +13,7 @@ export default function CTASection(): ReactNode {
 
       <div className="relative mx-auto max-w-7xl px-6 lg:px-8">
         <div className="max-w-3xl mx-auto text-center">
-          <h2 className="text-4xl sm:text-5xl font-black text-white mb-6">
+          <h2 className="font-black text-white mb-6">
             <Translate id="cta.title">准备好开始了吗？</Translate>
           </h2>
           <p className="text-xl text-white/90 mb-10 leading-relaxed">
