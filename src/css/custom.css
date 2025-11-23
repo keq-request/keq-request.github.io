@@ -58,12 +58,6 @@ html {
   white-space: nowrap;
 }
 
-
-/* TailwindCSS 将 svg 元素的 display 设置为了 block，导致 docusaurus 图标位置偏移 */
-svg {
-  display: inline-block;
-}
-
 article {
   @apply prose dark:prose-invert;
   max-width: none;
