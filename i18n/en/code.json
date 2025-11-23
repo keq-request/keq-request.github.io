@@ -44,6 +44,9 @@
   "hero.feature.crossPlatform": {
     "message": "Cross-Platform"
   },
+  "hero.codeExample": {
+    "message": "import { request } from 'keq'\n\n// Simple GET request\nconst user = await request\n  .get('/api/users/123')\n\n// Chainable API, elegant and powerful\nconst data = await request\n  .post('/api/cats')\n  .set('Authorization', token)\n  .send({ name: 'Mimi', age: 2 })\n  .retry(3)        // Retry on failure\n  .timeout(5000)   // Timeout control\n  .flowControl('serial') // Concurrency control"
+  },
   "features.card.middleware.name": {
     "message": "Powerful Middleware System"
   },
