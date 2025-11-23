@@ -1,7 +1,6 @@
 import { themes as prismThemes } from 'prism-react-renderer'
 import type { Config } from '@docusaurus/types'
 import type * as Preset from '@docusaurus/preset-classic'
-import { bundledLanguages } from 'shiki'
 import rehypeShiki from '@shikijs/rehype'
 import rehypeShikiOptions from './src/shiki/options'
 
@@ -12,29 +11,21 @@ const config: Config = {
   tagline: '基于中间件与链式调用的现代 HTTP 客户端。',
   favicon: 'img/logo.svg',
 
-  // Future flags, see https://docusaurus.io/docs/api/docusaurus-config#future
   future: {
-    v4: true, // Improve compatibility with the upcoming Docusaurus v4
+    // Tailwind CSS 引入的 PostCSS 插件会导致 Docusaurus 4 构建 CSS 时 Minify 失败
+    v4: false,
   },
 
-  // Set the production url of your site here
   url: 'https://keq-request.github.io',
-  // Set the /<baseUrl>/ pathname under which your site is served
-  // For GitHub pages deployment, it is often '/<projectName>/'
   baseUrl: '/',
 
-  // GitHub pages deployment config.
-  // If you aren't using GitHub pages, you don't need these.
-  organizationName: 'keq-request', // Usually your GitHub org/user name.
-  projectName: 'keq-request.github.io', // Usually your repo name.
+  organizationName: 'keq-request',
+  projectName: 'keq-request.github.io',
   deploymentBranch: 'master',
   trailingSlash: false,
 
   onBrokenLinks: 'throw',
 
-  // Even if you don't use internationalization, you can use this field to set
-  // useful metadata like html lang. For example, if your site is Chinese, you
-  // may want to replace "en" with "zh-Hans".
   i18n: {
     defaultLocale: 'zh-Hans',
     locales: ['zh-Hans', 'en'],
