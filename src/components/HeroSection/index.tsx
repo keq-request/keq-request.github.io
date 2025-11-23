@@ -1,15 +1,13 @@
 import Link from "@docusaurus/Link";
 import Translate from "@docusaurus/Translate";
-import useDocusaurusContext from "@docusaurus/useDocusaurusContext";
 import { IconBrandGithub, IconBrandTypescript, IconLink, IconRefresh, IconWorld } from "@tabler/icons-react";
 import type { ReactNode } from "react";
 import CodeExample from "./CodeExample";
 import FeatureTag from "./FeatureTag";
 import HeroBackground from "./HeroBackground";
+import HeroTitle from "./HeroTitle";
 
 export default function HeroSection(): ReactNode {
-  const { siteConfig } = useDocusaurusContext();
-
   return (
     <section className="relative min-h-screen bg-white dark:bg-slate-950 overflow-hidden">
       {/* 静态背景装饰 */}
@@ -23,22 +21,8 @@ export default function HeroSection(): ReactNode {
             {/* 顶部标签 */}
             {/* <HeroBadge /> */}
 
-            {/* 大标题 */}
-            <div>
-              <h1 className="text-5xl sm:text-6xl lg:text-7xl font-black tracking-tight text-gray-900 dark:text-white">
-                <span className="block">{siteConfig.title}</span>
-                <span className="block mt-2 bg-linear-to-r from-orange-500 via-amber-500 to-yellow-500 bg-clip-text text-transparent">
-                  <Translate id="hero.tagline">让请求更简单</Translate>
-                </span>
-              </h1>
-            </div>
-
-            {/* 描述 */}
-            <p className="text-xl text-gray-600 dark:text-gray-300 leading-relaxed max-w-xl">
-              <Translate id="hero.description">
-                {siteConfig.tagline}
-              </Translate>
-            </p>
+            {/* 标题和描述 */}
+            <HeroTitle />
 
             {/* 特性标签云 */}
             <div className="flex flex-wrap gap-3">

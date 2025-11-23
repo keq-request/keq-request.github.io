@@ -5,16 +5,16 @@ import FeatureCard from './FeatureCard';
 
 export default function FeaturesSection(): ReactNode {
   return (
-    <section className="relative py-20 sm:py-32 bg-gradient-to-b from-white via-orange-50/30 to-white dark:from-slate-950 dark:via-slate-900 dark:to-slate-950">
+    <section className="relative py-20 sm:py-32 bg-linear-to-b from-white via-orange-50/30 to-white dark:from-slate-950 dark:via-slate-900 dark:to-slate-950">
       <div className="relative mx-auto max-w-7xl px-6 lg:px-8">
         {/* 标题区域 */}
         <div className="text-center max-w-3xl mx-auto mb-16">
-          <div className="inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-orange-100 to-yellow-100 dark:from-orange-950/50 dark:to-yellow-950/50 px-4 py-2 text-sm font-bold text-orange-600 dark:text-orange-400 mb-6">
+          <div className="inline-flex items-center gap-2 rounded-full bg-linear-to-r from-orange-100 to-yellow-100 dark:from-orange-950/50 dark:to-yellow-950/50 px-4 py-2 text-sm font-bold text-orange-600 dark:text-orange-400 mb-6">
             <Translate id="features.badge">核心特性</Translate>
           </div>
-          <h2 className="text-4xl sm:text-5xl font-black text-gray-900 dark:text-white mb-6">
+          <h2 className="font-black text-gray-900 dark:text-white mb-6">
             <Translate id="features.title.line1">为现代 Web 开发</Translate>
-            <span className="block mt-2 bg-gradient-to-r from-orange-500 via-amber-500 to-yellow-500 bg-clip-text text-transparent">
+            <span className="block mt-2 bg-linear-to-r from-orange-500 via-amber-500 to-yellow-500 bg-clip-text text-transparent">
               <Translate id="features.title.line2">量身打造</Translate>
             </span>
           </h2>
