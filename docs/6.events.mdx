@@ -1,0 +1,352 @@
+# 生命周期事件
+
+Keq 提供了事件机制，允许你监听请求生命周期中的各个阶段，实现日志记录、性能监控、调试等功能。
+
+## 基本用法
+
+使用 `.on()` 方法监听事件：
+
+```typescript
+import { request } from 'keq'
+
+await request
+  .get('/cats')
+  .on('fetch:before', ({ context }) => {
+    console.log('即将发起请求:', context.request.url)
+  })
+  .on('fetch:after', ({ context }) => {
+    console.log('请求完成:', context.response?.status)
+  })
+```
+
+## 内置事件
+
+### fetch:before
+
+在发起 fetch 请求之前触发。
+
+**事件参数：**
+
+| 参数    | 类型                 | 描述           |
+| :------ | :------------------- | :------------- |
+| context | `KeqExecutionContext` | 请求执行上下文 |
+
+```typescript
+import { request } from 'keq'
+
+await request
+  .get('/cats')
+  .on('fetch:before', ({ context }) => {
+    console.log('请求 URL:', context.request.url)
+    console.log('请求方法:', context.request.method)
+  })
+```
+
+### fetch:after
+
+在 fetch 请求完成之后触发。
+
+**事件参数：**
+
+| 参数    | 类型                 | 描述           |
+| :------ | :------------------- | :------------- |
+| context | `KeqExecutionContext` | 请求执行上下文 |
+
+```typescript
+import { request } from 'keq'
+
+await request
+  .get('/cats')
+  .on('fetch:after', ({ context }) => {
+    console.log('响应状态:', context.response?.status)
+  })
+```
+
+### middleware:before
+
+在中间件执行之前触发。
+
+**事件参数：**
+
+| 参数    | 类型                 | 描述           |
+| :------ | :------------------- | :------------- |
+| context | `KeqExecutionContext` | 请求执行上下文 |
+
+```typescript
+import { request } from 'keq'
+
+await request
+  .get('/cats')
+  .on('middleware:before', ({ context }) => {
+    console.log('即将执行中间件')
+  })
+```
+
+### middleware:after
+
+在中间件执行之后触发。
+
+**事件参数：**
+
+| 参数    | 类型                 | 描述           |
+| :------ | :------------------- | :------------- |
+| context | `KeqExecutionContext` | 请求执行上下文 |
+
+```typescript
+import { request } from 'keq'
+
+await request
+  .get('/cats')
+  .on('middleware:after', ({ context }) => {
+    console.log('中间件执行完成')
+  })
+```
+
+### retry
+
+在重试请求时触发。
+
+**事件参数：**
+
+| 参数    | 类型               | 描述           |
+| :------ | :----------------- | :------------- |
+| context | `KeqSharedContext` | 请求共享上下文 |
+
+```typescript
+import { request } from 'keq'
+
+await request
+  .get('/cats')
+  .retry(3, 1000)
+  .on('retry', ({ context }) => {
+    console.log('正在重试请求:', context.request.url)
+  })
+```
+
+### timeout
+
+在请求超时时触发。
+
+**事件参数：**
+
+| 参数    | 类型                 | 描述           |
+| :------ | :------------------- | :------------- |
+| context | `KeqExecutionContext` | 请求执行上下文 |
+
+```typescript
+import { request, TimeoutException } from 'keq'
+
+try {
+  await request
+    .get('/cats')
+    .timeout(3000)
+    .on('timeout', ({ context }) => {
+      console.log('请求超时:', context.request.url)
+    })
+} catch (err) {
+  if (err instanceof TimeoutException) {
+    console.error('请求已超时')
+  }
+}
+```
+
+### abort
+
+在请求被中止时触发。
+
+**事件参数：**
+
+| 参数    | 类型               | 描述           |
+| :------ | :----------------- | :------------- |
+| context | `KeqSharedContext` | 请求共享上下文 |
+| reason  | `any`              | 中止原因       |
+
+```typescript
+import { request, AbortException, KeqMiddleware } from 'keq'
+
+function autoAbort(): KeqMiddleware {
+  return async (context, next) => {
+    setTimeout(() => {
+      context.request.abort(new AbortException('手动中止请求'))
+    }, 3000)
+    await next()
+  }
+}
+
+try {
+  await request
+    .get('/cats')
+    .use(autoAbort())
+    .on('abort', ({ context, reason }) => {
+      if (reason instanceof AbortException) {
+        console.log('请求被中止:', reason.message)
+      } else {
+        console.log('请求被中止:', reason)
+      }
+    })
+} catch (err) {
+  if (err instanceof AbortException) {
+    console.error('请求已中止:', err.message)
+  }
+}
+```
+
+### error
+
+在请求过程中发生错误时触发。
+
+**事件参数：**
+
+| 参数    | 类型               | 描述           |
+| :------ | :----------------- | :------------- |
+| context | `KeqSharedContext` | 请求共享上下文 |
+
+```typescript
+import { request } from 'keq'
+
+try {
+  await request
+    .get('/cats')
+    .on('error', ({ context }) => {
+      console.error('请求发生错误:', context.request.url)
+    })
+} catch (err) {
+  console.error('捕获到错误:', err)
+}
+```
+
+## 实际应用场景
+
+### 性能监控
+
+```typescript
+import { request, KeqMiddleware } from 'keq'
+
+function metricsMiddleware(): KeqMiddleware {
+  return async (context, next) => {
+    context.emitter.on('fetch:before', ({ context }) => {
+      context.data.metrics = { fetchStartAt: Date.now() }
+    })
+
+    context.emitter.on('fetch:after', ({ context }) => {
+      const startTime = context.data.metrics?.fetchStartAt
+      if (!startTime) return
+
+      const duration = Date.now() - startTime
+      console.log(`请求耗时: ${duration}ms`)
+
+      // 上报性能数据
+      if (duration > 3000) {
+        console.warn('请求耗时过长:', context.request.url)
+      }
+
+      // 可以在这里将性能数据上报到监控系统
+      reportMetrics({
+        url: context.request.url,
+        method: context.request.method,
+        duration,
+        status: context.response?.status
+      })
+    })
+
+    await next()
+  }
+}
+
+// 全局应用性能监控中间件
+request.use(metricsMiddleware())
+
+await request.get('/cats')
+```
+
+### 请求日志
+
+```typescript
+import { request, KeqMiddleware } from 'keq'
+
+function requestLogger(): KeqMiddleware {
+  return async (context, next) => {
+    context.emitter.on('fetch:before', ({ context }) => {
+      console.log(`[${new Date().toISOString()}] ${context.request.method} ${context.request.url}`)
+    })
+
+    context.emitter.on('fetch:after', ({ context }) => {
+      const status = context.response?.status || 'N/A'
+      console.log(`[${new Date().toISOString()}] ${context.request.method} ${context.request.url} - ${status}`)
+    })
+
+    await next()
+  }
+}
+
+request.use(requestLogger())
+
+await request.get('/cats')
+```
+
+## 自定义事件
+
+你可以定义和触发自定义事件，实现更灵活的功能扩展。
+
+### 定义自定义事件类型
+
+```typescript
+import { KeqContext } from 'keq'
+
+declare module 'keq' {
+  interface KeqEvents {
+    'custom:event': { context: KeqContext; data: string }
+  }
+}
+```
+
+### 触发自定义事件
+
+```typescript
+import { request, KeqMiddleware } from 'keq'
+
+function emitCustomEvent(): KeqMiddleware {
+  return async (context, next) => {
+    // 在请求前触发自定义事件
+    context.emitter.emit('custom:event', {
+      context,
+      data: 'custom data'
+    })
+
+    await next()
+  }
+}
+
+await request
+  .get('/cats')
+  .use(emitCustomEvent())
+  .on('custom:event', ({ context, data }) => {
+    console.log('自定义事件触发:', data)
+  })
+```
+
+### 事件监听器的清理
+
+```typescript
+import { request, KeqMiddleware } from 'keq'
+
+function eventListenerMiddleware(): KeqMiddleware {
+  return async (context, next) => {
+    function onCustomEvent({ context, data }) {
+      console.log('收到自定义事件:', data)
+    }
+
+    // 监听事件
+    context.emitter.on('custom:event', onCustomEvent)
+
+    await next()
+
+    // 手动清理事件监听器（可选，请求结束后会自动移除）
+    context.emitter.off('custom:event', onCustomEvent)
+  }
+}
+```
+
+:::tip
+事件监听器在请求结束后会自动清理，通常不需要手动调用 `.off()` 方法。但在某些场景下（如需要提前停止监听），可以手动清理。
+:::

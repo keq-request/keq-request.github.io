@@ -1,0 +1,250 @@
+# 错误处理
+
+Keq 提供了一套内置的异常类型，用于处理不同场景下的请求错误。这些异常类继承自标准的 JavaScript 错误类，提供了更精确的错误分类和处理能力。
+
+## 内置异常类型
+
+### RequestException
+
+请求异常的基类，用于表示 HTTP 请求过程中发生的错误。
+
+```typescript
+class RequestException extends Error {
+  constructor(
+    statusCode: number,
+    message?: string,
+    retry: boolean = true
+  )
+}
+```
+
+**参数说明：**
+
+| 参数       | 类型      | 默认值 | 描述                                   |
+| :--------- | :-------- | :----- | :------------------------------------- |
+| statusCode | `number`  | -      | HTTP 状态码                            |
+| message    | `string`  | -      | 错误消息                               |
+| retry      | `boolean` | `true` | 标记该错误是否应该重试                 |
+
+**使用示例：**
+
+```typescript
+import { request, RequestException } from 'keq'
+
+// 在中间件中抛出请求异常
+request.use(async (context, next) => {
+  await next()
+
+  if (context.response?.status === 404) {
+    throw new RequestException(404, context.response.statusText, false)
+  }
+
+  if (context.response?.status >= 500) {
+    // 使用响应体内容作为错误消息
+    const message = await context.response.text()
+    throw new RequestException(context.response.status, message, true)
+  }
+})
+```
+
+### AbortException
+
+继承自 `DOMException`，当请求被主动中止时抛出。
+
+```typescript
+class AbortException extends DOMException {
+  constructor(message?: string)
+}
+```
+
+**参数说明：**
+
+| 参数    | 类型     | 默认值 | 描述         |
+| :------ | :------- | :----- | :----------- |
+| message | `string` | -      | 错误消息     |
+
+**使用示例：**
+
+```typescript
+import { request, AbortException, KeqMiddleware } from 'keq'
+
+// 创建一个 3 秒后自动中止请求的中间件
+function autoAbortMiddleware(): KeqMiddleware {
+  return async (context, next) => {
+    // 3 秒后中止请求
+    const timer = setTimeout(() => {
+      context.request.abort('请求执行时间过长')
+    }, 3000)
+
+    try {
+      await next()
+    } finally {
+      clearTimeout(timer)
+    }
+  }
+}
+
+try {
+  await request
+    .get('/cats')
+    .use(autoAbortMiddleware())
+} catch (err) {
+  if (err instanceof AbortException) {
+    console.error('请求被中止:', err.message)
+  }
+}
+```
+
+### TimeoutException
+
+继承自 `AbortException`，当请求超时时抛出。通常由 `.timeout()` 方法触发。
+
+```typescript
+class TimeoutException extends AbortException {
+  constructor(message?: string)
+}
+```
+
+**参数说明：**
+
+| 参数    | 类型     | 默认值 | 描述         |
+| :------ | :------- | :----- | :----------- |
+| message | `string` | -      | 错误消息     |
+
+**使用示例：**
+
+```typescript
+import { request, TimeoutException } from 'keq'
+
+try {
+  await request
+    .get('/cats')
+    .timeout(3000)
+} catch (err) {
+  if (err instanceof TimeoutException) {
+    console.error('请求超时:', err.message)
+  }
+}
+```
+
+### TypeException
+
+参数类型错误异常，类似于标准的 `TypeError`，用于标识参数传递错误。
+
+```typescript
+class TypeException extends TypeError {}
+```
+
+:::info
+在 TypeScript 项目中，通常不会遇到此异常，因为 TypeScript 编译器会在编译时捕获类型错误。此异常主要用于运行时类型检查或纯 JavaScript 项目。
+:::
+
+**使用示例：**
+
+```typescript
+import { request, TypeException } from 'keq'
+
+try {
+  // 错误：attach 方法期望第二个参数是 File、Blob 或 Buffer
+  await request
+    .post('/cats')
+    .attach('cat.json', 123) // 传入了 number 类型
+} catch (err) {
+  if (err instanceof TypeException) {
+    console.error('参数类型错误:', err.message)
+    // 输出: 参数类型错误: Invalid file type for .attach()
+  }
+}
+```
+
+## 错误处理最佳实践
+
+### 使用 instanceof 判断错误类型
+
+```typescript
+import { request, RequestException, TimeoutException } from 'keq'
+
+try {
+  await request.get('/cats').timeout(5000)
+} catch (err) {
+  if (err instanceof TimeoutException) {
+    console.error('请求超时，请稍后重试')
+  } else if (err instanceof RequestException) {
+    console.error(`请求失败: ${err.statusCode} ${err.message}`)
+  } else {
+    console.error('未知错误:', err)
+  }
+}
+```
+
+### 在中间件中统一处理错误
+
+```typescript
+import { request, KeqMiddleware, RequestException } from 'keq'
+
+// 自定义异常类
+export class UnauthorizedException extends RequestException {
+  constructor(message?: string) {
+    super(401, message || 'Unauthorized', false)
+    this.name = 'UnauthorizedException'
+  }
+}
+
+export class ForbiddenException extends RequestException {
+  constructor(message?: string) {
+    super(403, message || 'Forbidden', false)
+    this.name = 'ForbiddenException'
+  }
+}
+
+export class NotFoundException extends RequestException {
+  constructor(message?: string) {
+    super(404, message || 'Not Found', false)
+    this.name = 'NotFoundException'
+  }
+}
+
+function errorHandler(): KeqMiddleware {
+  return async (context, next) => {
+    await next()
+
+    if (context.response) {
+      const { status, statusText } = context.response
+
+      // 根据不同的状态码抛出特定的异常
+      if (status === 401) {
+        throw new UnauthorizedException(statusText)
+      } else if (status === 403) {
+        throw new ForbiddenException(statusText)
+      } else if (status === 404) {
+        throw new NotFoundException(statusText)
+      } else if (status >= 400 && status < 500) {
+        // 其他客户端错误不重试
+        throw new RequestException(status, statusText, false)
+      } else if (status >= 500) {
+        // 服务器错误可重试
+        const message = await context.response.text()
+        throw new RequestException(status, message, true)
+      }
+    }
+  }
+}
+
+request.use(errorHandler())
+
+// 使用时可以精确捕获不同类型的错误
+try {
+  await request.get('/cats')
+} catch (err) {
+  if (err instanceof UnauthorizedException) {
+    console.error('未授权，请先登录')
+    // 跳转到登录页
+  } else if (err instanceof ForbiddenException) {
+    console.error('没有权限访问该资源')
+  } else if (err instanceof NotFoundException) {
+    console.error('资源不存在')
+  } else if (err instanceof RequestException) {
+    console.error(`请求失败: ${err.statusCode} ${err.message}`)
+  }
+}
+```

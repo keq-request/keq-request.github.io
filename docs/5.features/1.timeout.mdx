@@ -1,0 +1,74 @@
+# 超时控制
+
+超时控制用于限制请求的最长等待时间，避免因网络故障或服务无响应导致的请求挂起。
+
+## 基本用法
+
+使用 `.timeout()` 方法设置请求的超时时间（单位：毫秒）：
+
+```typescript
+import { request } from 'keq'
+
+// 设置 5 秒超时
+await request
+  .get('/api/data')
+  .timeout(5000)
+```
+
+## 参数说明
+
+| 参数         | 类型     | 默认值     | 描述                       |
+| :----------- | :------- | :--------- | :------------------------- |
+| milliseconds | `number` | `Infinity` | 超时时间（毫秒），超过此时间请求将被中断 |
+
+## 错误处理
+
+当请求超时时，Keq 会抛出 `TimeoutException` 错误。你需要使用 `try-catch` 来捕获并处理超时错误：
+
+```typescript
+import { request, TimeoutException } from 'keq'
+
+try {
+  const data = await request
+    .get('/api/slow-endpoint')
+    .timeout(3000)
+
+  console.log('请求成功:', data)
+} catch (err) {
+  if (err instanceof TimeoutException) {
+    console.error('请求超时')
+  } else {
+    console.error('请求失败:', err)
+  }
+}
+```
+
+## 全局超时配置
+
+你可以通过中间件为所有请求设置默认超时时间：
+
+```typescript
+import { request, KeqMiddleware } from 'keq'
+
+// 创建超时中间件
+function withTimeout(milliseconds: number): KeqMiddleware {
+  return async (context, next) => {
+    // 如果未设置超时，使用默认值
+    if (!context.request.timeout || context.request.timeout === Infinity) {
+      context.request.timeout = milliseconds
+    }
+    await next()
+  }
+}
+
+// 添加中间件，设置默认 10 秒超时
+request.use(withTimeout(10000))
+
+// 使用默认超时（10秒）
+await request.get('/api/data')
+
+// 覆盖默认超时
+await request
+  .get('/api/slow-data')
+  .timeout(20000)
+```

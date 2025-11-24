@@ -216,8 +216,9 @@ request
 | `context.res` | 原始 Fetch Response 对象 |
 | `context.options` | 通过 `.option()` 设置的自定义选项 |
 | `context.output` | 设置请求的返回值（当未使用 `.resolveWith()` 时） |
+| `context.data` | 请求级别的共享数据，在请求完成后自动清理 |
 | `context.global` | 全局共享数据，不会随请求结束而销毁 |
-| `context.metadata` | 中间件执行状态元数据 |
+| `context.orchestration` | 中间件编排器，提供中间件执行状态和 fork 能力，详见[进阶 - Context 类型体系](/docs/advanced/context-types#orchestration-属性) |
 | `context.locationId` | **只读** 请求代码的位置标识（文件路径+行号） |
 
 ### context.request
@@ -270,6 +271,46 @@ const middleware: KeqMiddleware = async (context, next) => {
   console.log(data)
 }
 ```
+
+### context.data
+
+`context.data` 是一个对象，用于在同一请求的多个中间件之间共享数据。与 `context.global` 不同，`context.data` 会在请求完成后自动清理，无需手动管理。
+
+**使用场景：**
+
+- 在中间件之间传递临时数据（如计时、追踪信息等）
+- 存储请求处理过程中的中间状态
+- 由中间件内部使用，对调用者透明
+
+```typescript
+import { KeqMiddleware, KeqContext } from 'keq'
+
+// 在一个中间件中设置数据
+const setDataMiddleware: KeqMiddleware = async (context: KeqContext, next) => {
+  context.data.startTime = Date.now()
+  context.data.userId = '12345'
+  await next()
+}
+
+// 在另一个中间件中读取数据
+const readDataMiddleware: KeqMiddleware = async (context: KeqContext, next) => {
+  await next()
+
+  const duration = Date.now() - context.data.startTime
+  console.log(`用户 ${context.data.userId} 的请求耗时: ${duration}ms`)
+}
+```
+
+:::tip context.data vs context.options
+- **context.data**：中间件内部使用，用于中间件之间传递数据，调用者无需关心
+- **context.options**：调用者控制，通过 `.option()` 方法设置，用于向中间件传递配置
+
+推荐使用 `context.data` 而不是 `context.global` 来存储请求级别的临时数据，避免内存泄漏。
+:::
+
+:::tip
+关于 Context 的类型体系（`KeqContext`、`KeqSharedContext`、`KeqExecutionContext`）和 `context.orchestration` 的详细说明，请参考[进阶 - Context 类型体系](/docs/advanced/context-types)。
+:::
 
 ## 创建独立实例
 

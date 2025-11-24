@@ -1,0 +1,159 @@
+# 请求重试
+
+请求重试用于处理网络波动或临时性服务异常，通过自动重新发起失败的请求来提高应用的可靠性。
+
+## 基本用法
+
+使用 `.retry()` 方法配置请求重试策略：
+
+```typescript
+import { request } from 'keq'
+
+// 重试 3 次，每次间隔 1 秒
+await request
+  .get('/cats')
+  .retry(3, 1000)
+```
+
+:::tip
+实际请求次数为 `retryTimes + 1`。例如 `.retry(3, 1000)` 表示最多会发起 4 次请求（1 次原始请求 + 3 次重试）。
+:::
+
+## 参数说明
+
+| 参数       | 类型                           | 默认值                        | 描述                           |
+| :--------- | :----------------------------- | :---------------------------- | :----------------------------- |
+| retryTimes | `number`                       | `0`                           | 最大重试次数                   |
+| retryDelay | `number \| function`           | `0`                           | 两次重试之间的间隔时间（毫秒），或返回间隔时间的函数 |
+| retryOn    | `function`                     | `(attempt, error) => !!error` | 判断是否继续重试的函数         |
+
+### retryDelay 函数签名
+
+当 `retryDelay` 为函数时，其签名为：
+
+```typescript
+(attempt: number, error: Error | null, context: KeqSharedContext) => number | Promise<number>
+```
+
+| 参数    | 类型                | 描述                                       |
+| :------ | :------------------ | :----------------------------------------- |
+| attempt | `number`            | 当前是第几次重试（从 1 开始）              |
+| error   | `Error \| null`     | 请求过程中抛出的错误，若无错误则为 `null`  |
+| context | `KeqSharedContext`  | Keq 请求上下文，包含 `request` 和 `response` 等信息 |
+
+这允许你实现动态延迟策略，例如指数退避：
+
+```typescript
+import { request } from 'keq'
+
+await request
+  .get('/cats')
+  .retry(
+    5,
+    // 指数退避：1s, 2s, 4s, 8s, 16s
+    (attempt) => Math.pow(2, attempt - 1) * 1000,
+  )
+```
+
+### retryOn 函数签名
+
+`retryOn` 函数签名为：
+
+```typescript
+(attempt: number, error: Error | null, context: KeqSharedContext) => boolean | Promise<boolean>
+```
+
+| 参数    | 类型                | 描述                                       |
+| :------ | :------------------ | :----------------------------------------- |
+| attempt | `number`            | 当前是第几次重试（从 1 开始）              |
+| error   | `Error \| null`     | 请求过程中抛出的错误，若无错误则为 `null`  |
+| context | `KeqSharedContext`  | Keq 请求上下文，包含 `request` 和 `response` 等信息 |
+
+返回 `true` 表示继续重试，`false` 表示停止重试。
+
+## 自定义重试条件
+
+通过 `retryOn` 参数，你可以精确控制哪些情况下需要重试：
+
+```typescript
+import { request, RequestException } from 'keq'
+
+await request
+  .get('/cats')
+  .retry(3, 1000, (attempt, err, context) => {
+    // 如果错误明确标记为不可重试，则不重试
+    if (err instanceof RequestException && err.retry === false) return false
+
+    // 请求过程中发生错误（如网络异常、fetch 失败、中间件抛出异常等）
+    if (err) return true
+
+    if (context.response) {
+      const status = context.response.status
+
+      // 4xx 客户端错误不重试
+      if (status >= 400 && status < 500) {
+        return false
+      }
+
+      // 5xx 服务器错误需要重试
+      if (status >= 500) {
+        return true
+      }
+    }
+
+    return false
+  })
+```
+
+## 全局重试配置
+
+你可以通过中间件为所有请求设置默认重试策略：
+
+```typescript
+import { request, KeqMiddleware, RequestException } from 'keq'
+
+// 创建重试中间件
+function withRetry(
+  retryTimes: number,
+  retryDelay: number
+): KeqMiddleware {
+  return async (context, next) => {
+    // 如果请求未明确设置重试选项，则应用自定义重试策略
+    if (!context.options.retry) {
+      context.options.retry = {
+        times: retryTimes,
+        delay: retryDelay,
+        on: (attempt, err, ctx) => {
+          // 错误明确标记为不可重试
+          if (err instanceof RequestException && err.retry === false) {
+            return false
+          }
+
+          // 有错误时重试
+          if (err) return true
+
+          // 5xx 服务器错误重试
+          if (ctx.response && ctx.response.status >= 500) {
+            return true
+          }
+
+          return false
+        }
+      }
+    }
+
+    await next()
+  }
+}
+
+// 添加中间件，全局设置自定义重试策略
+request.use(withRetry(3, 1000))
+
+// 使用中间件全局设置的自定义重试策略
+await request.get('/cats')
+
+// 覆盖中间件全局设置的自定义重试策略
+await request
+  .get('/cats')
+  .retry(5, 2000)
+```

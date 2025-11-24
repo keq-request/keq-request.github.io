@@ -2,7 +2,7 @@
 
 Keq 提供了完善的 TypeScript 支持，让你在编写代码时获得完整的类型提示和类型安全保障。
 
-## 泛型支持
+## 指定响应类型
 
 Keq 支持通过泛型参数指定响应类型：
 
@@ -23,7 +23,7 @@ const cats = await request.get<Cat[]>("/api/cats")
 // cats 的类型为 Cat[]
 ```
 
-## 自定义请求类型
+## API 类型约束
 
 ### 使用 KeqApiSchema 接口
 
