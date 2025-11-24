@@ -218,7 +218,7 @@ request
 | `context.output` | 设置请求的返回值（当未使用 `.resolveWith()` 时） |
 | `context.data` | 请求级别的共享数据，在请求完成后自动清理 |
 | `context.global` | 全局共享数据，不会随请求结束而销毁 |
-| `context.orchestration` | 中间件编排器，提供中间件执行状态和 fork 能力，详见[进阶 - Context 类型体系](/docs/advanced/context-types#orchestration-属性) |
+| `context.orchestration` | 中间件编排器，提供中间件执行状态和 fork 能力，详见[进阶 - 中间件编排器](./advanced/middleware-orchestrator#contextorchestration-属性详解) |
 | `context.locationId` | **只读** 请求代码的位置标识（文件路径+行号） |
 
 ### context.request
@@ -309,7 +309,7 @@ const readDataMiddleware: KeqMiddleware = async (context: KeqContext, next) => {
 :::
 
 :::tip
-关于 Context 的类型体系（`KeqContext`、`KeqSharedContext`、`KeqExecutionContext`）和 `context.orchestration` 的详细说明，请参考[进阶 - Context 类型体系](/docs/advanced/context-types)。
+关于 Context 的类型体系（`KeqContext`、`KeqSharedContext`、`KeqExecutionContext`）和 `context.orchestration` 的详细说明，请参考[进阶 - 中间件编排器](./advanced/middleware-orchestrator)。
 :::
 
 ## 创建独立实例
