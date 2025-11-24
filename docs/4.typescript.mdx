@@ -1,122 +1,148 @@
-# Typescript
+# TypeScript
 
-Keq 支持扩展 Typescript Interface 带给用户完善的类型提示：
+Keq 提供了完善的 TypeScript 支持，让你在编写代码时获得完整的类型提示和类型安全保障。
+
+## 泛型支持
+
+Keq 支持通过泛型参数指定响应类型：
 
 ```typescript
-import type { KeqOperation } from "keq"
+import { request } from "keq"
 
-declare module keq {
-  export interface KeqOperations {
-    "/cats": {
-      get: {
-        requestParams: {}
-        requestQuery: {
-          breed: string
-        }
-        requestHeaders: {
-          Authorization: string
-        }
-        requestBody: {}
-        responseBody: {
-          id: string
-          breed: string
-          name: string
-        }
+interface Cat {
+  id: string
+  breed: string
+  name: string
+}
+
+// 使用泛型参数指定返回类型
+const cat = await request.get<Cat>("/api/cats/123")
+// cat 的类型为 Cat
+
+const cats = await request.get<Cat[]>("/api/cats")
+// cats 的类型为 Cat[]
+```
+
+## 自定义请求类型
+
+### 使用 KeqApiSchema 接口
+
+当你需要为特定的 API 定义类型时，可以扩展 `KeqApiSchema` 接口：
+
+```typescript
+import { KeqRequest, KeqApiSchema, KeqQueryValue, KeqParamValue } from "keq"
+
+// 定义 API 的类型结构
+export interface CatApiSchema extends KeqApiSchema {
+  "/cats": {
+    get: {
+      requestParams: {
+        [key: string]: KeqParamValue // 必须包含索引签名
       }
-
-      post: {
-        requestParams: {}
-        requestQuery: {}
-        requestHeaders: {
-          Authorization: string
-        }
-        requestBody: {
-          breed: string
-          name: string
-        }
-        responseBody: {
-          id: string
-          breed: string
-          name: string
-        }
+      requestQuery: {
+        breed: string
+        [key: string]: KeqQueryValue // 必须包含索引签名
+      }
+      requestHeaders: {
+        Authorization: string
+        [key: string]: string | number // 必须包含索引签名
+      }
+      requestBody: {}
+      responseBody: {
+        id: string
+        breed: string
+        name: string
+      }[]
+    }
+    post: {
+      requestParams: {
+        [key: string]: KeqParamValue
+      }
+      requestQuery: {
+        [key: string]: KeqQueryValue
+      }
+      requestHeaders: {
+        Authorization: string
+        [key: string]: string | number
+      }
+      requestBody: {
+        breed: string
+        name: string
+      }
+      responseBody: {
+        id: string
+        breed: string
+        name: string
       }
     }
-
-    "/cats/:id": {
-      put: {
-        requestParams: {
-          id: string
-        }
-        requestQuery: {}
-        requestHeaders: {
-          Authorization: string
-        }
-        requestBody: {
-          breed: string
-          name: string
-        }
-        responseBody: {
-          id: string
-          breed: string
-          name: string
-        }
+  }
+  "/cats/{id}": {
+    get: {
+      requestParams: {
+        id: string
+        [key: string]: KeqParamValue
+      }
+      requestQuery: {
+        [key: string]: KeqQueryValue
+      }
+      requestHeaders: {
+        [key: string]: string | number
+      }
+      requestBody: {}
+      responseBody: {
+        id: string
+        breed: string
+        name: string
       }
     }
   }
 }
+
+// 创建带类型的请求实例
+const catAPI = new KeqRequest<CatApiSchema>()
+
+// 现在你会获得完整的类型提示和检查
+const cats = await catAPI
+  .get("/cats")
+  .query("breed", "Persian") // ✅ 正确：breed 是 string 类型
+  .query("breed", 123)       // ❌ 错误：TypeScript 会提示类型不匹配
+  .set("Authorization", "Bearer token")
+
+const cat = await catAPI
+  .get("/cats/{id}")
+  .param("id", "123") // ✅ 正确：id 是 string 类型
 ```
 
-接下来使用 `request` 时，将具备更优雅的 Typescript 提示：
+## 扩展自定义选项
 
-```typescript
-import { request } from 'keq'
+通过模块扩展，你可以为 Keq 添加自定义选项并获得类型支持：
 
+```typescript {4-8,17,27}
+import { Keq, KeqMiddleware } from "keq"
 
-const casts = await request
-  .get('/cats')
-  .query('breed', 'siamese')
-
-console.log(`My Cats: ${cats.map(cat => cat.name).join(',')}`)
-
-await request
-  .put('/cats/:id')
-  .params<'strict'>({ id: 1 })
-  .send<'strict'>({
-    breed: 'siamese',
-    name: 'sweet'
-  })
-```
-
-:::note
-`<'strict'>` 将严格约束参数完全符合 KeqOperations 中的定义。
-:::
-
-## createRequest
-
-`createRequest` 也可以为自己创建的 `request` 并添加 Typescript：
-
-```typescript
-import { createRequest, KeqOperations } from "keq";
-
-export interface CatServiceOperations extends KeqOperations {
-  "/cats": {
-    get: {
-      requestParams: {};
-      requestQuery: {
-        breed: string;
-      };
-      requestHeaders: {
-        Authorization: string;
-      };
-      requestBody: {};
-      responseBody: {
-        id: string;
-        breed: string;
-        name: string;
-      };
-    };
-  };
+// 扩展 KeqOptions 接口
+declare module "keq" {
+  interface KeqOptions<T> {
+    silent(value: boolean): Keq<T>
+  }
 }
 
-const request = createRequest<CatServiceOperations>();
+// 实现对应的中间件
+function errorHandlerMiddleware(): KeqMiddleware {
+  return async (context, next) => {
+    await next()
+
+    if (context.response && context.response.status >= 400) {
+      const isSilent = context.options.silent || false
+      if (!isSilent) {
+        console.error(`Request failed: ${context.response.status}`)
+      }
+    }
+  }
+}
+
+// 现在可以使用自定义选项，并有类型提示
+await request
+  .get("/api/data")
+  .option("silent", true)  // ✅ 有类型提示
 ```

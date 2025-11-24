@@ -5,6 +5,7 @@ import type { ReactNode } from "react";
 import CodeExample from "./CodeExample";
 import FeatureTag from "./FeatureTag";
 import HeroBackground from "./HeroBackground";
+import HeroBadge from "./HeroBadge";
 import HeroTitle from "./HeroTitle";
 
 export default function HeroSection(): ReactNode {
@@ -19,7 +20,7 @@ export default function HeroSection(): ReactNode {
           {/* 左侧文本内容 */}
           <div className="space-y-8">
             {/* 顶部标签 */}
-            {/* <HeroBadge /> */}
+            <HeroBadge />
 
             {/* 标题和描述 */}
             <HeroTitle />

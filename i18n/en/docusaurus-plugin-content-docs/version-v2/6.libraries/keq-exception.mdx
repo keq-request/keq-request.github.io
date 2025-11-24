@@ -1,0 +1,51 @@
+# keq-exception
+
+`Middleware` for throwing/catching exceptions, with the ability to control whether thrown exceptions trigger `retry`.
+
+## Installation
+
+import InstallPackagesCode from '@site/docs/components/_install-packages-code.mdx'
+
+<InstallPackagesCode packages="keq-exception" />
+
+## Usage
+
+```typescript
+import { request } from "keq"
+import {
+  throwException,
+  catchException,
+  RequestException,
+} from "keq-exception"
+
+request
+  .use(
+    catchException((err) => {
+      if (err instanceof RequestException && err.code === 401) {
+        context.redirect("/login")
+        return
+      }
+
+      throw err
+    })
+  )
+
+  // The callback function of throwException will definitely run after `await next()`
+  // You can try to get Response in the callback function
+  .use(
+    throwException(async (ctx) => {
+      if (ctx.response && ctx.response.status >= 400) {
+        const body = await ctx.response.json()
+        throw new RequestException(ctx.response.status, body.message)
+      }
+    })
+  )
+```
+
+### RequestException(statusCode[, errorMessage[, retry]])
+
+| **Parameter** | **Default** | **Description**                          |
+| :------------ | :---------- | ---------------------------------------- |
+| statusCode    | -           | Error code                               |
+| message       | `''`        | Error message                            |
+| retry         | `true`      | Whether the exception will trigger `retry` |

@@ -11,6 +11,9 @@
   "cta.button.viewSource": {
     "message": "View Source Code"
   },
+  "hero.badge": {
+    "message": "Keq@5 Incoming"
+  },
   "hero.tagline": {
     "message": "Making Requests Simpler"
   },

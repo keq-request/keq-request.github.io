@@ -1,0 +1,337 @@
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+import InstallPackagesCode from '@site/docs/components/_install-packages-code.mdx'
+import PackageManager from '@site/docs/components/_package-manager.mdx';
+
+# @keq-request/cli
+
+`Keq` 提供的命令行工具可以将 `swagger` 文档编译为 `typescript` 代码。从而能像调用函数一样发送 HTTP 请求。
+
+## 安装
+
+<InstallPackagesCode packages="keq-cli" />
+
+:::caution
+建议在 package.json 锁定 keq-cli 的版本。
+keq-cli 的小版本升级为了修复 Bug 可能会修改代码模板。这有极小的概率导致代码不向前兼容。
+:::
+
+## 使用方法
+
+首先，我们需要一份 `swagger` 文档，例如下面的 `cat-service-swagger.json` 文件，描述了一个获取猫咪信息的 HTTP 接口。
+
+<details>
+  <summary> cat-service-swagger.json </summary>
+
+  ```json title="cat-service-swagger.json"
+  {
+    "openapi": "3.0.0",
+    "info": {
+      "title": "Cat Service",
+      "version": "0.0.1"
+    },
+    "paths": {
+      "/cats": {
+        "get": {
+          "operationId": "getCats",
+          "parameters": [
+            {
+              "name": "breed",
+              "required": false,
+              "in": "query",
+              "schema": {
+                "type": "string"
+              }
+            }
+          ],
+          "responses": {
+            "200": {
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "type": "array",
+                    "items": {
+                      "$ref": "#/components/schemas/Cat"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "components": {
+      "schemas": {
+        "Cat": {
+          "type": "object",
+          "properties": {
+            "name": {
+              "type": "string"
+            },
+            "age": {
+              "type": "number"
+            }
+          }
+        }
+      }
+    }
+  }
+  ```
+</details>
+
+然后，我们创建 `keq-cli` 的配置文件，指定 `swagger` 文档的位置和编译参数：
+
+<Tabs>
+  <TabItem value="ts" label="Typescript" default>
+    ```typescript title=".keqrc.ts"
+    import { defineKeqConfig, FileNamingStyle } from "keq-cli"
+
+    export default defineKeqConfig({
+      outdir: "./src/api", // 编译结果的输出目录
+      fileNamingStyle: FileNamingStyle.snakeCase,
+      modules: {
+        catService: "./cat-service-swagger.json",
+        // 也可以从网络上获取 swagger 文档，例如：
+        // dogService: "http://dog.example.com/swagger.json"
+      },
+    })
+    ```
+  </TabItem>
+
+  <TabItem value="js" label="Javascript">
+    ```javascript title=".keqrc.js"
+    const { defineKeqConfig, FileNamingStyle } = require("keq-cli")
+
+    module.exports = defineKeqConfig({
+      outdir: "./src/api", // 编译结果的输出目录
+      fileNamingStyle: FileNamingStyle.snakeCase,
+      modules: {
+        catService: "./cat-service-swagger.json",
+        // 也可以从网络上获取 swagger 文档，例如：
+        // dogService: "http://dog.example.com/swagger.json"
+      },
+    })
+    ```
+  </TabItem>
+
+  <TabItem value="yml" label="YAML">
+    ```yaml title=".keqrc.yml"
+    outdir: ./src/api # 编译结果的输出目录
+    fileNamingStyle: snake_case
+    modules:
+      catService: ./cat-service-swagger.json
+      # 也可以从网络上获取 swagger 文档，例如：
+      # dogService: http://dog.example.com/swagger.json
+    ```
+  </TabItem>
+</Tabs>
+
+:::tip 建议
+优先使用 `typescript` 或 `javascript` 格式的配置文件。一些高级功能（例如 `operationIdFactory`）只能通过代码实现。
+:::
+
+接下来，在终端执行以下命令：
+
+<PackageManager command="keq-cli build" />
+
+执行完成后，`keq-cli` 会在 `./src/api/cat_service/` 目录下生成如下文件：
+
+<Tabs>
+  <TabItem value="services_get_cats" label="请求函数" default>
+    ```typescript title="./src/api/cat_service/get_cats.ts"
+    import { Keq } from "keq"
+    import { request } from "keq"
+    import type { RequestParameters, ResponseMap, Operation, QueryParameters, HeaderParameters, BodyParameters } from "./types/get_cats"
+
+    export type GetCatsRequestQuery = QueryParameters
+    export type GetCatsRequestBody = BodyParameters
+    export type GetCatsRequestHeaders = HeaderParameters
+
+
+    const pathname = "/cats"
+
+    export function getCats<STATUS extends keyof ResponseMap>(arg?: RequestParameters): Keq<ResponseMap[STATUS], Operation<STATUS>> {
+      const req = request.get<ResponseMap[STATUS]>("/cats")
+        .option('module', {
+          name: "catService",
+          pathname,
+        })
+
+      const queryWrap = (value: any) => typeof value === 'boolean' ? String(value) : value
+
+      if (arg && "breed" in arg) req.query("breed", queryWrap(arg["breed"]))
+
+      return req as unknown as Keq<ResponseMap[STATUS], Operation<STATUS>>
+    }
+
+    getCats.pathname = pathname
+    ```
+
+  </TabItem>
+
+  <TabItem value="type_cat" label="接口类型定义">
+
+    ```typescript title="./src/api/cat_service/types/get_cats.ts"
+    import type { KeqOperation } from 'keq'
+    import type { Cat } from "../components/schemas/cat"
+
+    export interface ResponseMap {
+      "200": (Cat)[]
+    }
+
+
+    export type QueryParameters = {
+      "breed"?: string
+    }
+
+    export type RouteParameters = {
+    }
+
+    export type HeaderParameters = {
+    }
+
+    export type BodyParameters ={}
+    export type RequestParameters = QueryParameters & RouteParameters & HeaderParameters & BodyParameters
+
+
+    export interface Operation<STATUS extends keyof ResponseMap> extends KeqOperation {
+      requestParams: RouteParameters
+      requestQuery: QueryParameters
+      requestHeaders: HeaderParameters
+      requestBody: BodyParameters
+      responseBody: ResponseMap[STATUS]
+    }
+    ```
+
+  </TabItem>
+
+  <TabItem value="schema_cat" label="数据模型定义">
+    ```typescript title="./src/api/cat_service/components/schemas/cat.ts"
+    /**
+    * @interface Cat
+    * @export
+    */
+    export interface Cat {
+      "name"?: string
+      "age"?: number
+    }
+    ```
+  </TabItem>
+</Tabs>
+
+这样，我们就可以调用 `getCats` 函数来发送 HTTP 请求：
+
+<Tabs>
+  <TabItem value="example1" label="示例" default>
+    ```typescript
+    import { getCats } from "./src/api/cat_service/get_cats"
+
+    const cats = await getCats({ breed: "siamese", unknownKey: 'value' }) // unknownKey 未在 swagger 定义，将被丢弃
+      .retry(3, 1000)
+      .timeout(1000)
+
+    // 实际请求地址: /cats?breed=siamese
+
+    console.log(`My cats: ${cats.map(cat => cat.name).join(',')}`)
+    console.log(`The request pathname is ${getCats.pathname}`)
+    ```
+
+  </TabItem>
+
+  <TabItem value="example2" label="添加未定义在 Swagger 中的参数">
+    ```typescript
+    import { getCats } from "./src/api/cat_service/get_cats"
+
+    const cats = await getCats({ breed: "siamese", unknownKey: 'value' }) // unknownKey 未在 swagger 定义，将被丢弃
+      .query('extraParam', 'extraValue') // 链式调用添加的参数不会被丢弃 [!code ++]
+      .retry(3, 1000)
+      .timeout(1000)
+
+    // 实际请求地址: /cats?breed=siamese&extraParam=extraValue
+
+    console.log(`My cats: ${cats.map(cat => cat.name).join(',')}`)
+    console.log(`The request pathname is ${getCats.pathname}`)
+    ```
+
+  </TabItem>
+</Tabs>
+
+最后，我们可以为 `catService` 模块的所有接口添加统一的错误处理逻辑：
+
+```typescript
+import { request } from 'keq'
+import { throwException, RequestException } from 'keq-exception'
+
+
+request
+  .useRouter()
+  .module('catService', throwException(context => {
+    if (context.response) {
+      if (context.response.status >= 400 && context.response.status < 500) {
+        throw new RequestException(context.response.status, context.response.statusText, false) // 客户端错误，不需要重试
+      } else if (context.response.status >= 500) {
+        throw new RequestException(context.response.status, context.response.statusText)
+      }
+    }
+  }))
+```
+
+:::note 为什么 `Keq` 采用 *链式调用* + *中间件* 的设计模式？
+`Keq` 最初就是为了从 `swagger` 文档生成请求函数而设计的。然而，只依赖`cli` 生成代码，许多问题是无法解决的：
+
+1. `swagger` 文档中定义的 HTTP 接口信息可能是不完整的，甚至是错误的，例如缺少认证信息、缓存策略等参数。
+   可偏偏一些外部因素阻止我们通过修改 `swagger` 文档来补全这些信息。
+2. 客户端在不同场景下调用同一个 HTTP 接口时，可能会有不同的需求，例如在某些场景下需要重试，而在另一些场景下则不需要。
+   `静态生成` 的代码无法满足这些动态变化的需求。
+3. 同一个 `swagger` 文档的接口往往有着类似的鉴权、错误处理、日志记录等复杂的需求。这些高度定制化的功能如果使用 `cli` 的 `Plugin` 生成会非常难以维护。
+
+`Keq` 便是为给予静态生成代码提供更强大的运行时 API 而设计的 HTTP 客户端：
+
+- *链式调用* 让我们在调用`请求函数`时，可以动态的修改请求参数，甚至设置违背 `swagger` 定义的参数。并且它完美地避免了臃肿的配置选项。
+- *中间件* 则提供了一种优雅的方式来为同一模块的所有接口添加统一的功能。并可以通过 *链式调用* 在不同场景下灵活的启用或禁用 *中间件*。
+
+> 真是为了一块肉，做了一桌子菜啊！
+:::
+
+## 配置文件
+
+`keq-cli` 会自动查找名为 `.keqrc.yml`、`.keqrc.json`、`.keqrc.js`、`.keqrc.ts`的配置文件。
+你可以通过 `-c --config <config_file_path>` 设置配置文件地址。
+
+| **配置参数**       | **是否必填** | **默认值**                                 | **描述**                                                          |
+| :----------------- | :----------- | :----------------------------------------- | :---------------------------------------------------------------- |
+| outdir             | true         | -                                          | 编译结果的输出目录                                                |
+| fileNamingStyle    | false        | -                                          | 文件名风格                                                        |
+| modules            | true         | -                                          | Swagger 文件地址和模块名称                                        |
+| operationIdFactory | false        | `({ operation }) => operation.operationId` | 自定义函数名的生成规则，默认使用 `swagger` 文件中的 `operationId` |
+| strict             | false        | `false`                                    | 是否清空输出目录                                                  |
+| esm                | false        | `false`                                    | 是否生成 ESM 风格的代码                                           |
+
+### FileNamingStyle
+
+| **枚举**                       | **示例**      |
+| :----------------------------- | :------------ |
+| `FileNamingStyle.camelCase`    | `"twoWords"`  |
+| `FileNamingStyle.capitalCase`  | `"Two Words"` |
+| `FileNamingStyle.constantCase` | `"TWO_WORDS"` |
+| `FileNamingStyle.dotCase`      | `"two.words"` |
+| `FileNamingStyle.headerCase`   | `"Tow-Words"` |
+| `FileNamingStyle.noCase`       | `"two words"` |
+| `FileNamingStyle.paramCase`    | `"two-words"` |
+| `FileNamingStyle.pascalCase`   | `"TwoWords"`  |
+| `FileNamingStyle.pathCase`     | `"two/words"` |
+| `FileNamingStyle.sentenceCase` | `"Two words"` |
+| `FileNamingStyle.snakeCase`    | `"two_words"` |
+
+## 命令行选项
+
+| **选项**                         | **描述**                                                                                                 |
+| :------------------------------- | :------------------------------------------------------------------------------------------------------- |
+| `[moduleName]`                   | 仅生成指定的模块                                                                                         |
+| `-c --config <config_file_path>` | 配置文件的地址                                                                                           |
+| `-i --interactive`               | 通过命令行交互，指定需要生成的 HTTP 接口                                                                 |
+| `--method <method...>`           | 仅生成匹配 method(`'get' \| 'post' \| 'put' \| 'patch' \| 'head' \| 'options' \| 'delete'`) 的 HTTP 接口 |
+| `--pathname <pathname...>`       | 仅生成匹配 pathname 的 HTTP 接口                                                                         |
+| `--no-append`                    | 不生成新添加的 HTTP 接口（与上次生成做对比）                                                             |
+| `--no-update`                    | 不更新上次已生成的 HTTP 接口                                                                             |

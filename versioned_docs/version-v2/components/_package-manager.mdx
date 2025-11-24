@@ -1,0 +1,21 @@
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+import CodeBlock from '@theme/CodeBlock';
+
+<Tabs groupId="package-manager">
+  <TabItem value="npm" label="npm" default>
+    <CodeBlock language="bash">
+    {`npm ${props.command}`}
+    </CodeBlock>
+  </TabItem>
+  <TabItem value="pnpm" label="pnpm">
+    <CodeBlock language="bash">
+    {`pnpm ${props.command}`}
+    </CodeBlock>
+  </TabItem>
+  <TabItem value="yarn" label="yarn">
+    <CodeBlock language="bash">
+    {`yarn ${props.command}`}
+    </CodeBlock>
+  </TabItem>
+</Tabs>

@@ -31,6 +31,12 @@ const config: Config = {
     locales: ['zh-Hans', 'en'],
   },
 
+  markdown: {
+    mermaid: true,
+  },
+
+  themes: ['@docusaurus/theme-mermaid'],
+
   presets: [
     [
       'classic',
@@ -44,6 +50,16 @@ const config: Config = {
               rehypeShikiOptions,
             ],
           ],
+          versions: {
+            current: {
+              label: '5.x (Next)',
+              badge: false,
+            },
+            v2: {
+              label: '2.x',
+              badge: false,
+            },
+          },
         },
         blog: {
           showReadingTime: true,
@@ -85,6 +101,11 @@ const config: Config = {
           sidebarId: 'tutorialSidebar',
           position: 'left',
           label: '文档',
+        },
+        {
+          type: 'docsVersionDropdown',
+          versions: ['current', 'v2'],
+          position: 'right',
         },
         {
           href: 'https://github.com/keq-request/keq',

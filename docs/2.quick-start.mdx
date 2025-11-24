@@ -1,150 +1,311 @@
 # 快速上手
 
-## 安装
+本指南将带你快速了解 Keq 的基本用法，从安装到发送第一个请求，再到掌握常用的 API。
 
-如果在 NodeJS 中运行,NodeJS 版本必须大于 18。
+## 安装
 
 import InstallPackagesCode from '@site/docs/components/_install-packages-code.mdx'
 
 <InstallPackagesCode packages="keq" />
 
-## 发送请求
-
-通过`request`构造请求，然后调用`.then()`(或`.end()`) 发送。下面发送一个简单的 GET 请求：
-
-```typescript
-import { request } from "keq"
-
-const cat = await request
-  .get("/cat")
-
-console.log(`我可爱的 ${cat.name} 今年 ${cat.age} 岁啦。`)
-```
-
-响应体会根据响应头的`Content-Type`自动序列化，这省去了我们许多麻烦。
-
-:::tip
-如果调用`.get(url)`的`url`地址仅包含请求路径(`pathname`)。那么在浏览器中会默认使用 `window.location.origin`作为 Http 请求域名；在 NodeJS 中则是 `http://127.0.0.1`.
+:::warning 注意
+Keq 5.x 需要 Node.js 20 及以上版本。
 :::
 
-构造 _DELETE_, _HEAD_, _PATCH_, _POST_, _PUT_ 请求只需要调用`request`不同的方法：
+## 发送你的第一个请求
+
+使用 Keq 发送 HTTP 请求非常简单，只需调用对应的方法并使用 `await` 等待结果：
 
 ```typescript
 import { request } from "keq"
 
-await request.delete("https://example.com/cat")
-await request.del("https://example.com/cat") // .del() 是 .delete() 的别名
-await request.head("https://example.com/cat")
-await request.patch("https://example.com/cat")
-await request.post("https://example.com/cat")
-await request.put("https://example.com/cat")
+const cats = await request.get("/cats")
+
+console.log(`我的可爱的猫咪们有：${cats.map(cat => cat.name).join(", ")}`)
 ```
 
-## 设置 Headers/Query
+:::tip 自动解析响应体
+Keq 会根据响应头的 `Content-Type` 自动解析响应体（[详细说明](#解析响应)），省去手动调用 `.json()` 的麻烦。
+:::
 
-调用 `.set()`/`.query()` 即可设置 Headers/Query：
+:::tip 自动补全 URL
+如果 URL 只包含路径（如 `/cats`），Keq 会自动补全域名：
+- **浏览器环境**：使用 `window.location.origin`
+- **Node.js 环境**：使用 `http://127.0.0.1`
+:::
 
-```typescript {6-8,10-11}
+## HTTP 方法
+
+Keq 支持所有常见的 HTTP 方法，API 简洁明了：
+
+```typescript
+import { request } from "keq"
+
+// GET 请求
+await request.get("https://example.com/cats")
+
+// POST 请求
+await request.post("https://example.com/cats")
+
+// PUT 请求
+await request.put("https://example.com/cats/1")
+
+// PATCH 请求
+await request.patch("https://example.com/cats/1")
+
+// DELETE 请求
+await request.delete("https://example.com/cats/1")
+await request.del("https://example.com/cats/1") // .del() 是 .delete() 的别名
+
+// HEAD 请求
+await request.head("https://example.com/cats")
+```
+
+## 设置请求参数
+
+### 查询参数（Query）
+
+使用 `.query()` 方法添加 URL 查询参数：
+
+```typescript
+import { request } from "keq"
+
+// 基础用法
+await request
+  .get("https://example.com/cats")
+  .query("breed", "british_shorthair")  // 单个参数
+  .query({ order: "desc", limit: 10 })  // 多个参数
+// 实际请求: https://example.com/cats?breed=british_shorthair&order=desc&limit=10
+
+// 数组参数
+await request
+  .get("https://example.com/cats")
+  .query({ breeds: ["british_shorthair", "persian"] })
+// 实际请求: https://example.com/cats?breeds[0]=british_shorthair&breeds[1]=persian
+
+// 嵌套对象
+await request
+  .get("https://example.com/cats")
+  .query({ filter: { breed: "british", age: { min: 1, max: 5 } } })
+// 实际请求: https://example.com/cats?filter[breed]=british&filter[age][min]=1&filter[age][max]=5
+```
+
+#### 自定义数组序列化格式
+
+通过 `arrayFormat` 选项可以控制数组参数的序列化方式：
+
+| arrayFormat 值 | 序列化结果示例 | 说明 |
+|:--------------|:-------------|:-----|
+| `"indices"`（默认） | `breeds[0]=a&breeds[1]=b` | 使用索引形式 |
+| `"brackets"` | `breeds[]=a&breeds[]=b` | 使用空括号形式 |
+| `"repeat"` | `breeds=a&breeds=b` | 重复键名 |
+| `"comma"` | `breeds=a,b` | 逗号分隔 |
+
+```typescript
 import { request } from "keq"
 
 await request
-  .get("https://example.com/cat")
-  // 设置 Headers
-  .set("X-Origin-Host", "https://example.com")
-  .set({ Accept: "application/json" })
-  .set(new Headers({ 'cache-control': 'no-cache' }))
-  // 添加 Query
-  .query('breed', 'british_shorthair')
-  .query({ order: 'desc' })
+  .get("/cats")
+  .query({ breeds: ["british_shorthair", "persian"] }, { arrayFormat: "repeat" })
+// 实际请求: /cats?breeds=british_shorthair&breeds=persian
 ```
 
-## 路由参数
+:::tip
+不同的后端框架可能期望不同的数组序列化格式。例如，某些 PHP 框架偏好 `brackets` 格式，而 Express.js 通常使用 `repeat` 格式。
+:::
 
-`Keq` 提供了便捷的填充接口路由参数的方法：
+### 请求头（Headers）
 
-```typescript {5-11}
+使用 `.set()` 或 `.headers()` 方法设置请求头：
+
+```typescript
 import { request } from "keq"
 
 await request
-  .get("/users/:userName/books/{bookName}")
-  .params("userName", "jack")
-  .params("bookName", "kafka")
-  // 也可使用对象做为参数
+  .get("https://example.com/cats")
+  .set("Authorization", "Bearer token")                    // 单个请求头
+  .set({ "Accept": "application/json" })                   // 多个请求头
+  .headers("X-Custom-Header", "value")                     // .headers() 是 .set() 的别名
+  .set(new Headers({ "Cache-Control": "no-cache" }))      // 使用 Headers 对象
+```
+
+### 路由参数（Route Parameters）
+
+Keq 支持 [URI Template (RFC 6570)](https://www.rfc-editor.org/rfc/rfc6570.html) 规范，可以方便地填充路由参数：
+
+```typescript
+import { request } from "keq"
+
+await request
+  .get("/cats/{catId}")
+  .params("catId", "123")
+
+// 或使用对象一次性设置多个参数
+await request
+  .get("/cats/{catId}/toys/{toyId}")
   .params({
-    userName: "jack",
-    bookName: "kafka",
+    catId: "123",
+    toyId: "456",
   })
+
+// 实际请求: /cats/123/toys/456
 ```
 
-## 请求体
+:::info
+路由参数使用 [@opendoc/uri-template](https://www.npmjs.com/package/@opendoc/uri-template) 实现，支持标准的 URI Template 语法。
+:::
 
-### JSON
+## 发送请求体
 
-通常，我们使用下面的代码发送携带请求体的 POST 请求：
+### JSON 格式
 
-```typescript {5-8}
+发送 JSON 数据是最常见的场景，只需调用 `.send()` 并传入对象：
+
+```typescript
 import { request } from "keq"
 
 await request
-  .post("/cat")
+  .post("/cats")
   .send({
-    name: "sweet",
-    age: 8,
+    name: "mimi",
+    age: 3,
+    breed: "british_shorthair"
   })
 ```
 
-:::tip
-调用`.send()` 并且参数是 `object` 时，会自动的将 `Content-Type` 设置为 `application/json`。
+:::tip 自动设置 Content-Type
+当 `.send()` 的参数是普通对象时，Keq 会自动将 `Content-Type` 设置为 `application/json`。
 :::
 
-### FormData
+### FormData 格式
 
-```typescript {5-7}
+#### 使用链式 API
+
+Keq 提供了便捷的 API 来构造 FormData：
+
+```typescript
 import { request } from "keq"
 
 await request
-  .post("/cat")
-  .field("name", "sweet")
-  .field("age", 8)
-  .attach("avatar", new Blob(/* image */))
+  .post("/cats")
+  .field("name", "mimi")
+  .field("age", 3)
+  .attach("avatar", imageBlob)  // 上传文件
 ```
 
-:::tip
-调用`.field()`/`.attach()` 时，会自动的将 `Content-Type` 设置为 `multipart/form-data`。
+:::tip 自动设置 Content-Type
+调用 `.field()` 或 `.attach()` 时，Keq 会自动将 `Content-Type` 设置为 `multipart/form-data`。
 :::
 
-你也可以直接使用`FormData`:
+#### 使用原生 FormData
 
-```typescript {3-5,9}
+你也可以直接传入 `FormData` 对象：
+
+```typescript
 import { request } from "keq"
 
 const form = new FormData()
-form.append("name", "sweet")
-form.append("age", 8)
+form.append("name", "mimi")
+form.append("age", "3")
+form.append("avatar", imageBlob)
 
 await request
-  .post("/cat")
+  .post("/cats")
   .send(form)
 ```
 
-:::tip
-当调用`.send()` 的参数是 `FormData` 时，会自动的将 `Content-Type` 设置为 `multipart/form-data`。
-:::
+### URL 编码格式
 
-### x-www-form-urlencoded Request
+要发送 `application/x-www-form-urlencoded` 格式的数据，需要使用 `.type()` 方法显式指定：
 
-要发送 `application/x-www-form-urlencoded` 格式的请求体, 你必须调用 `.type("form")` 来确保设置正确的 `Content-Type`:
-
-```typescript title="example.ts"
+```typescript
 import { request } from "keq"
 
 await request
-  .post("/cat")
+  .post("/cats")
   .type("form")
-  .send({ name: "sweet" })
-  .send("age=8")
+  .send({ name: "mimi", age: 3 })
+  .send("breed=british_shorthair")  // 也可以追加字符串
 ```
 
-:::tip
-`.type()` 显式设置的 `Content-Type` 优先级高于 `.send()`/`.filed()`/`.attach()`隐式推导的 `Content-Type`。与调用先后顺序无关。
+:::info Content-Type 优先级
+`.type()` 显式设置的 `Content-Type` 优先级最高，会覆盖 `.send()`、`.field()`、`.attach()` 的自动推断。
 :::
+
+## 解析响应
+
+### 自动解析
+
+Keq 会根据响应的 `Content-Type` 自动选择合适的解析方式：
+
+| Content-Type             | 解析方式              | 返回类型    |
+|:------------------------|:---------------------|:-----------|
+| `application/json`      | `response.json()`    | 对象/数组   |
+| `multipart/form-data`   | `response.formData()`| `FormData` |
+| `text/plain`            | `response.text()`    | 字符串      |
+| 其他                     | -                    | `undefined`|
+
+```typescript
+import { request } from "keq"
+
+// 假设响应的 Content-Type 是 application/json
+const cats = await request.get("/cats")
+
+console.log(`找到了 ${cats.length} 只猫咪`)
+console.log(`第一只猫咪叫：${cats[0].name}`)
+```
+
+### 手动指定解析方式
+
+使用 `.resolveWith()` 可以手动指定如何解析响应体，忽略 `Content-Type`：
+
+```typescript
+import { request } from "keq"
+
+// 强制解析为 JSON（即使 Content-Type 不是 application/json）
+const cats = await request
+  .get("/cats")
+  .resolveWith("json")
+
+// 强制解析为文本
+const text = await request
+  .get("/cats")
+  .resolveWith("text")
+
+// 解析为 FormData
+const form = await request
+  .get("/cats")
+  .resolveWith("formData")
+
+// 解析为 Blob
+const blob = await request
+  .get("/cats")
+  .resolveWith("blob")
+
+// 解析为 ArrayBuffer
+const buffer = await request
+  .get("/cats")
+  .resolveWith("arrayBuffer")
+```
+
+### 获取原始 Response 对象
+
+如果需要访问原始的 `Response` 对象（例如读取响应头、状态码等），可以使用 `.resolveWith("response")`：
+
+```typescript
+import { request } from "keq"
+
+// 获取原始 Response 对象
+const response = await request
+  .get("/cats")
+  .resolveWith("response")
+
+// 访问响应信息
+console.log(response.status)        // 200
+console.log(response.statusText)    // "OK"
+console.log(response.headers.get("content-type"))
+
+// 手动解析响应体
+const cats = await response.json()
+console.log(cats)
+```

@@ -1,0 +1,122 @@
+# TypeScript
+
+Keq supports extending TypeScript Interface to provide users with complete type hints:
+
+```typescript
+import type { KeqOperation } from "keq"
+
+declare module keq {
+  export interface KeqOperations {
+    "/cats": {
+      get: {
+        requestParams: {}
+        requestQuery: {
+          breed: string
+        }
+        requestHeaders: {
+          Authorization: string
+        }
+        requestBody: {}
+        responseBody: {
+          id: string
+          breed: string
+          name: string
+        }
+      }
+
+      post: {
+        requestParams: {}
+        requestQuery: {}
+        requestHeaders: {
+          Authorization: string
+        }
+        requestBody: {
+          breed: string
+          name: string
+        }
+        responseBody: {
+          id: string
+          breed: string
+          name: string
+        }
+      }
+    }
+
+    "/cats/:id": {
+      put: {
+        requestParams: {
+          id: string
+        }
+        requestQuery: {}
+        requestHeaders: {
+          Authorization: string
+        }
+        requestBody: {
+          breed: string
+          name: string
+        }
+        responseBody: {
+          id: string
+          breed: string
+          name: string
+        }
+      }
+    }
+  }
+}
+```
+
+When using `request`, you'll have more elegant TypeScript hints:
+
+```typescript
+import { request } from 'keq'
+
+
+const cats = await request
+  .get('/cats')
+  .query('breed', 'siamese')
+
+console.log(`My Cats: ${cats.map(cat => cat.name).join(',')}`)
+
+await request
+  .put('/cats/:id')
+  .params<'strict'>({ id: 1 })
+  .send<'strict'>({
+    breed: 'siamese',
+    name: 'sweet'
+  })
+```
+
+:::note
+`<'strict'>` will strictly constrain parameters to fully conform to the definition in KeqOperations.
+:::
+
+## createRequest
+
+`createRequest` can also create your own `request` with TypeScript:
+
+```typescript
+import { createRequest, KeqOperations } from "keq";
+
+export interface CatServiceOperations extends KeqOperations {
+  "/cats": {
+    get: {
+      requestParams: {};
+      requestQuery: {
+        breed: string;
+      };
+      requestHeaders: {
+        Authorization: string;
+      };
+      requestBody: {};
+      responseBody: {
+        id: string;
+        breed: string;
+        name: string;
+      };
+    };
+  };
+}
+
+const request = createRequest<CatServiceOperations>();
+```

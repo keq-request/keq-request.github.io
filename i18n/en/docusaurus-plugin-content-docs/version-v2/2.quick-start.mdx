@@ -1,0 +1,144 @@
+# Quick Start
+
+## Installation
+
+If running in Node.js, the version must be greater than 18.
+
+import InstallPackagesCode from '@site/docs/components/_install-packages-code.mdx'
+
+<InstallPackagesCode packages="keq" />
+
+## Sending Requests
+
+Build your request with `request`, then call `.then()` (or `.end()`) to send it. Here's a simple GET request:
+
+```typescript
+import { request } from "keq"
+
+const cat = await request
+  .get("/cat")
+
+console.log(`My lovely ${cat.name} is ${cat.age} years old.`)
+```
+
+The response body is automatically serialized based on the `Content-Type` header, which saves us a lot of trouble.
+
+:::tip
+If the `url` in `.get(url)` only contains the request path (`pathname`), it will default to using `window.location.origin` as the HTTP request domain in browsers; in Node.js, it defaults to `http://127.0.0.1`.
+:::
+
+Constructing _DELETE_, _HEAD_, _PATCH_, _POST_, _PUT_ requests simply requires calling different methods on `request`:
+
+```typescript
+import { request } from "keq"
+
+await request.delete("https://example.com/cat")
+await request.del("https://example.com/cat") // .del() is an alias for .delete()
+await request.head("https://example.com/cat")
+await request.patch("https://example.com/cat")
+await request.post("https://example.com/cat")
+await request.put("https://example.com/cat")
+```
+
+## Setting Headers/Query
+
+Call `.set()`/`.query()` to set Headers/Query:
+
+```typescript {6-8,10-11}
+import { request } from "keq"
+
+await request
+  .get("http://example.com/cat")
+  // Set headers with .set()
+  .set("X-Origin-Host", "https://example.com")
+  .set({ Accept: "application/json" })
+  .set(new Headers({ 'cache-control': 'no-cache' }))
+  // .setHeader("x-custom-header", "value")
+  // Set query parameters with .query()
+  .query('breed', 'british_shorthair')
+  .query({ order: 'desc' })
+```
+
+## Setting Request Body
+
+For methods like _POST_, _PATCH_, _PUT_, we can set the request body by calling `.send()`:
+
+```typescript {5-9}
+import { request } from "keq"
+
+await request
+  .post("http://example.com/cat")
+  .send({
+    name: "Mimi",
+    breed: "siamese",
+    color: "white",
+  })
+```
+
+By default, `.send()` will serialize the request body as JSON and set the `Content-Type` header to `application/json`.
+If you need to set `x-www-form-urlencoded` encoded request body, use `.type()` to set the request content type:
+
+```typescript
+import { request } from "keq"
+
+await request
+  .post("http://example.com/cat")
+  .type("form") // [!code ++]
+  .send({
+    name: "Mimi",
+    breed: "siamese",
+    color: "white",
+  })
+```
+
+For `multipart/form-data` encoded request body (typically used for file uploads), use `.field()` and `.attach()`:
+
+```typescript {5-9}
+import { request } from "keq"
+
+await request
+  .post("http://example.com/cat")
+  .field("name", "Mimi")
+  .field("breed", "siamese")
+  .field("color", "white")
+  .attach("cat-avatar", file/* File, Blob or Buffer*/, "mimi.png")
+```
+
+As you expect, the `Content-Type` header will be automatically set to `multipart/form-data` when use `.field()` or `.attach()`,
+even though we don't call `.type('form-data')` manually.
+
+:::note Which `Content-Type` is set when calling `.send()`, `.field()`, or `.attach()` at the same time?
+This depends on the order of method calls. The first method that sets the `Content-Type` header will take precedence.
+:::
+
+## Parsing Response
+
+The default returned value of the request is determined by the response `Content-Type` header:
+
+- If the `Content-Type` is `application/json`, the response body will be automatically parsed as JSON through `response.json()`.
+- If the `Content-Type` is `multipart/form-data`, the response body will be parsed as `FormData` through `response.formData()`.
+- If the `Content-Type` is `plain/text`, the response body will be parsed as text through `response.text()`.
+- Otherwise, `undefined` is returned.
+
+```typescript
+import { request } from "keq"
+
+const cat = await request
+  .get("http://example.com/cat") // Assume response Content-Type is application/json
+
+console.log(`My lovely ${cat.name} is ${cat.age} years old.`)
+```
+
+If you want to get the raw `Response` object, or manually parse the response body, you can use `.resolveWith()` to specify how to parse the response:
+
+```typescript
+import { request } from "keq"
+
+const res = await request
+  .get("http://example.com/cat")
+  .resolveWith("response") // Get the raw Response object
+
+const cat = await res.json() // Manually parse the response body as JSON
+
+console.log(`My lovely ${cat.name} is ${cat.age} years old.`)
+```
