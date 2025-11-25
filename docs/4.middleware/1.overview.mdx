@@ -1,0 +1,257 @@
+# 概览
+
+[Fetch MDN]: https://developer.mozilla.org/en-US/docs/Web/API/Fetch
+
+中间件是 Keq 最强大的特性之一，它让你能够以优雅的方式扩展和定制 HTTP 请求的行为。Keq 采用了与 [Koa](https://github.com/koajs/koa) 相似的洋葱模型中间件架构。
+
+## 为什么需要中间件?
+
+在使用原生 [Fetch API][Fetch MDN] 时，我们经常需要各种功能增强，比如自动重试、超时控制、错误处理等。
+NPM 上有很多这类库，如 [`fetch-retry`](https://www.npmjs.com/package/fetch-retry)、[`node-fetch-har`](https://www.npmjs.com/package/node-fetch-har) 等，
+它们通常提供 `wrap(fetch)` 式的 API。但这种方式有两个问题：
+
+1. **难以组合**：多个功能需要层层嵌套，像 `wrapX(wrapY(wrapZ(fetch)))`，代码难以维护
+2. **缺乏灵活性**：难以为不同的 API 路由配置不同的行为
+
+另外一些 Http Client 库提供了拦截器机制，
+但拦截器通常只能在请求前后做简单的处理，
+想实现 SWR(Stale-While-Revalidate) 缓存 这类复杂诉求时就显得力不从心。
+
+## 洋葱模型
+
+![Keq Middleware](/img/keq_middleware.png)
+
+Keq 的中间件采用洋葱模型：请求从外层中间件进入，层层向内传递直到发送请求，然后响应再从内向外返回，每层中间件都有机会处理请求和响应。
+
+Keq 内置了 3 层核心中间件（由外到内）：
+
+1. **flowControlMiddleware** - 提供并发控制功能
+2. **timeoutMiddleware** - 提供请求超时控制
+3. **fetchMiddleware** - 使用 [Fetch API][Fetch MDN] 发送实际请求
+
+## 编写中间件
+
+### 基础概念
+
+中间件是一个接收 `context` 和 `next` 两个参数的异步函数，其类型定义如下：
+
+```typescript
+type KeqMiddleware = (context: KeqExecutionContext, next: () => Promise<void>) => Promise<void>
+```
+
+**参数说明**：
+
+- **context** - 请求上下文，包含请求参数、响应结果等所有信息（详见 [Context 对象](./context)）
+- **next** - 调用下一层中间件的函数
+
+一个简单的中间件示例：
+
+```typescript
+import { KeqMiddleware } from "keq"
+
+const myMiddleware: KeqMiddleware = async (context, next) => {
+  // 在这里可以修改请求参数
+  console.log("请求发送前")
+
+  await next() // 调用下一层中间件
+
+  // 在这里可以处理响应
+  console.log("请求完成后")
+}
+```
+
+### 应用中间件
+
+使用 `.use()` 方法将中间件添加到请求实例：
+
+```typescript
+import { request } from "keq"
+
+request.use(myMiddleware)
+
+// 链式调用添加多个中间件
+request
+  .use(middleware1)
+  .use(middleware2)
+  .use(middleware3)
+```
+
+### 示例：日志中间件
+
+让我们从一个简单的例子开始，编写一个记录请求耗时的中间件：
+
+```typescript
+import { request } from "keq"
+
+request.use(async (context, next) => {
+  const startTime = Date.now()
+  console.log("请求开始:", context.request.url.href)
+
+  await next() // 执行请求
+
+  const duration = Date.now() - startTime
+  console.log("请求完成，耗时:", duration, "ms")
+})
+
+await request.get("http://example.com/cats")
+// 输出：
+// 请求开始: http://example.com/cats
+// 请求完成，耗时: 234 ms
+```
+
+### 可复用的中间件
+
+将中间件封装成函数，可以在多处复用并接受配置参数：
+
+```typescript {4-14,18}
+import { KeqMiddleware, request } from "keq"
+
+// 创建一个日志中间件工厂函数
+function logMiddleware(prefix: string): KeqMiddleware {
+  return async (context, next) => {
+    const startTime = Date.now()
+    console.log(`${prefix} 请求开始:`, context.request.url.href)
+
+    await next() // 执行请求
+
+    const duration = Date.now() - startTime
+    console.log(`${prefix} 请求完成:`, context.response?.status, `耗时: ${duration}ms`)
+  }
+}
+
+// 应用中间件
+request
+  .use(logMiddleware("[API]"))
+```
+
+### 添加自定义选项
+
+中间件可以通过 TypeScript 模块扩展添加自定义选项，让使用者在调用时灵活控制行为。
+
+让我们完善之前的日志中间件，添加一个 `silent` 选项来控制是否输出日志：
+
+```typescript
+import { KeqMiddleware, request } from "keq"
+
+// 1. 扩展类型定义
+declare module "keq" {               // [!code ++]
+  interface KeqOptions<T> {          // [!code ++]
+    silent(value: boolean): Keq<T>   // [!code ++]
+  }                                  // [!code ++]
+}                                    // [!code ++]
+
+// 2. 创建支持自定义选项的中间件
+function logMiddleware(prefix: string): KeqMiddleware {
+  return async (context, next) => {
+    // 读取自定义选项
+    const isSilent = context.options.silent || false // [!code ++]
+
+    if (!isSilent) {   // [!code ++]
+      const startTime = Date.now()
+      console.log(`${prefix} 请求开始:`, context.request.url.href)
+
+      await next()
+
+      const duration = Date.now() - startTime
+      console.log(`${prefix} 请求完成:`, context.response?.status, `耗时: ${duration}ms`)
+    } else {          // [!code ++]
+      await next()    // [!code ++]
+    }
+  }
+}
+
+request.use(logMiddleware("[API]"))
+
+// 3. 正常情况会输出日志
+await request.get("/cats")
+
+// 4. 使用 silent 选项，不输出日志
+await request
+  .get("/cats")
+  .option("silent", true)  // [!code ++]
+```
+
+### 路由中间件
+
+前面的示例中，中间件会对所有请求生效。在实际项目中，不同的 API 可能需要不同的处理逻辑。Keq 提供了强大的路由功能，让中间件只对特定请求生效：
+
+```typescript
+import { request } from "keq"
+
+request
+  .useRouter()
+  .host("api.example.com", logMiddleware("[EXAMPLE API]"))
+  .host("admin.example.com", logMiddleware("[ADMIN]"))
+```
+
+路由方法的详细说明请参考 [路由方法](./router)。
+
+## 创建独立实例
+
+使用 `new KeqRequest()` 可以创建独立的请求实例，不同实例之间的中间件、全局状态完全隔离：
+
+```typescript
+import { KeqRequest } from "keq"
+
+const internalAPI = new KeqRequest({
+  baseOrigin: "http://internal-api.company.com"
+})
+
+const externalAPI = new KeqRequest({
+  baseOrigin: "https://api.example.com"
+})
+
+// 两个实例即使使用相同的 key，并发控制队列也是独立的
+await Promise.all([
+  internalAPI.get("/users").flowControl("serial", "api-key"),
+  externalAPI.get("/data").flowControl("serial", "api-key"), // 与 internalAPI 独立，不会阻塞
+])
+```
+
+**KeqRequest 构造函数选项**：
+
+| 选项 | 描述 |
+|:-----|:-----|
+| `baseOrigin` | 默认的请求域名（浏览器默认为 `window.location.origin`，Node.js 默认为 `http://127.0.0.1`） |
+| `initMiddlewares` | 自定义内置中间件（高级用法，一般不需要修改） |
+
+:::tip `keq` 导出的 `request` 对象也是一个默认的 `KeqRequest` 实例。
+:::
+
+:::tip 中间件应该遵循职责单一原则：
+
+```typescript
+// ✅ 好的做法：功能单一
+function authMiddleware(token: string): KeqMiddleware { /* ... */ }
+function logMiddleware(): KeqMiddleware { /* ... */ }
+
+// ❌ 不好的做法：功能混杂
+function megaMiddleware(): KeqMiddleware {
+  // 既做认证，又做日志
+}
+```
+:::
+
+{/* ## 最佳实践
+
+### 1. 中间件职责单一
+
+
+### 2. 谨慎使用 context.global
+
+`context.global` 中的数据不会自动清理，使用后应及时删除以避免内存泄漏。
+
+```typescript
+const key = Symbol('myMiddleware')
+
+const middleware: KeqMiddleware = async (context, next) => {
+  context.global[key] = { startTime: Date.now() }
+
+  try {
+    await next()
+  } finally {
+    // 及时清理
+    delete context.global[key]
+  }
+}
+``` */}

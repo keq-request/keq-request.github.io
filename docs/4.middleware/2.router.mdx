@@ -1,0 +1,183 @@
+# 路由方法
+
+`.useRouter()` 提供了多种路由匹配方式，让中间件只对特定请求生效。
+
+## `.host(host, ...middlewares)`
+
+匹配特定域名。
+
+```typescript
+import { request } from "keq"
+
+request
+  .useRouter()
+  .host("api.example.com", async (context, next) => {
+    context.request.headers.set("X-API-Version", "v1")
+    await next()
+  })
+```
+
+**参数**：
+- `host` - 要匹配的域名
+- `middlewares` - 一个或多个中间件函数
+
+## `.pathname(pattern, ...middlewares)`
+
+匹配路径模式，支持 glob 和正则表达式。
+
+```typescript
+import { request } from "keq"
+
+request
+  .useRouter()
+  // 使用 glob 模式
+  .pathname("/api/**", async (context, next) => {
+    console.log("API 请求")
+    await next()
+  })
+  // 使用正则表达式
+  .pathname(/^\/users\/\d+$/, async (context, next) => {
+    console.log("用户详情请求")
+    await next()
+  })
+```
+
+**参数**：
+- `pattern` - glob 字符串或正则表达式
+- `middlewares` - 一个或多个中间件函数
+
+**Glob 模式示例**：
+- `/api/**` - 匹配 `/api/` 下的所有路径
+- `/users/*` - 匹配 `/users/` 下的一级路径
+- `/files/*.{jpg,png}` - 匹配特定扩展名的文件
+
+## `.method(method, ...middlewares)`
+
+匹配 HTTP 方法。
+
+```typescript
+import { request } from "keq"
+
+request
+  .useRouter()
+  .method("POST", async (context, next) => {
+    console.log("POST 请求")
+    await next()
+  })
+  .method("GET", async (context, next) => {
+    console.log("GET 请求")
+    await next()
+  })
+```
+
+**参数**：
+- `method` - HTTP 方法（'GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'HEAD'）
+- `middlewares` - 一个或多个中间件函数
+
+## `.module(name, ...middlewares)`
+
+匹配模块名，配合 `@keq-request/cli` 使用。
+
+当使用 `@keq-request/cli` 从 Swagger/OpenAPI 生成请求代码时，每个接口会自动设置 `module` 信息。你可以通过此方法为特定模块添加中间件。
+
+```typescript
+import { request } from "keq"
+
+request
+  .useRouter()
+  .module("userService", async (context, next) => {
+    // 仅对 userService 模块的请求生效
+    context.request.headers.set("X-Service", "user")
+    await next()
+  })
+```
+
+**参数**：
+- `name` - 模块名称
+- `middlewares` - 一个或多个中间件函数
+
+## `.location(...middlewares)`
+
+匹配当前域名（浏览器为 `window.location.origin`，Node.js 为 `127.0.0.1`）。
+
+```typescript
+import { request } from "keq"
+
+request
+  .useRouter()
+  .location(async (context, next) => {
+    // 仅对当前域名的请求生效
+    context.request.headers.set("X-Same-Origin", "true")
+    await next()
+  })
+```
+
+**参数**：
+- `middlewares` - 一个或多个中间件函数
+
+## `.route(...middlewares)`
+
+自定义路由条件。
+
+```typescript
+import { request, KeqRouteMatcher } from "keq"
+
+// 自定义匹配器
+const customMatcher: KeqRouteMatcher = (context) => {
+  // 匹配所有 API 请求且带有特定 header
+  return context.request.url.pathname.startsWith("/api") &&
+         context.request.headers.has("X-Custom-Header")
+}
+
+request
+  .useRouter()
+  .route(customMatcher, async (context, next) => {
+    console.log("匹配自定义条件")
+    await next()
+  })
+```
+
+**参数**：
+- `matcher` - 路由匹配函数，返回 `boolean` 表示是否匹配
+- `middlewares` - 一个或多个中间件函数
+
+## 综合示例
+
+多种路由方法可以组合使用：
+
+```typescript
+import { request } from "keq"
+
+request
+  .useRouter()
+  // 为所有 example.com 的请求添加认证
+  .host("example.com", authMiddleware("token-1"))
+  // 为 /admin 路径下的请求添加额外认证
+  .pathname("/admin/**", adminAuthMiddleware())
+  // 为所有 POST 请求添加日志
+  .method("POST", logMiddleware("[POST]"))
+  // 为通过 CLI 生成的 userService 模块添加错误处理
+  .module("userService", errorHandlerMiddleware())
+  // 为同源请求添加 CSRF Token
+  .location(csrfMiddleware())
+  // 自定义条件：为包含敏感数据的请求添加加密
+  .route(
+    (ctx) => ctx.request.headers.has("X-Sensitive-Data"),
+    encryptionMiddleware()
+  )
+```
+
+## 执行顺序
+
+路由中间件按照添加的顺序执行。当请求匹配多个路由时，所有匹配的中间件都会执行：
+
+```typescript
+request
+  .useRouter()
+  .host("api.example.com", middleware1)  // 第一个执行
+  .pathname("/users/**", middleware2)     // 第二个执行
+  .method("GET", middleware3)             // 第三个执行
+
+// 对于 GET https://api.example.com/users/123
+// 执行顺序：middleware1 -> middleware2 -> middleware3 -> 内置中间件
+```

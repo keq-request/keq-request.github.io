@@ -1,0 +1,298 @@
+# 响应体序列化
+
+响应体序列化控制如何处理 HTTP 响应的 body 数据。Keq 提供了多种序列化方式，可以根据实际需求灵活选择。
+
+## 基本用法
+
+使用 `.resolveWith(type)` 方法指定响应体的序列化方式：
+
+```typescript
+import { request } from "keq"
+
+const response = await request
+  .get("/api/cats/1")
+  .resolveWith("json")
+
+console.log(response.name)
+```
+
+## 序列化类型
+
+### intelligent（默认）
+
+自动序列化模式会根据实际情况自动选择最佳的处理方式：
+
+1. 如果中间件设置了 `context.output`，则直接返回该值
+2. 否则，根据响应的 `Content-Type` 自动选择序列化方式
+
+import IntelligentTable from '../components/_intelligent-table.mdx'
+
+<IntelligentTable />
+
+
+```typescript
+import { request } from "keq"
+
+// 根据 Content-Type 自动处理
+const cat = await request.get("/api/cats/1")
+// Content-Type: application/json → 自动解析为对象
+// Content-Type: text/plain → 返回字符串
+```
+
+:::tip 推荐
+对于大多数场景，使用默认的 `intelligent` 模式即可，它能智能处理各种响应类型。
+:::
+
+### json
+
+将响应体解析为 JSON 对象：
+
+```typescript
+import { request } from "keq"
+
+interface Cat {
+  id: number
+  name: string
+  breed: string
+}
+
+const cat = await request
+  .get("/api/cats/1")
+  .resolveWith("json") as Cat
+
+console.log(`${cat.name} is a ${cat.breed}`)
+```
+
+### text
+
+将响应体解析为纯文本字符串：
+
+```typescript
+import { request } from "keq"
+
+const description = await request
+  .get("/api/cats/1/description")
+  .resolveWith("text")
+
+console.log(description)
+```
+
+### blob
+
+将响应体解析为 [Blob](https://developer.mozilla.org/en-US/docs/Web/API/Blob) 对象，适合处理文件下载：
+
+```typescript
+import { request } from "keq"
+
+const imageBlob = await request
+  .get("/api/cats/1/photo")
+  .resolveWith("blob")
+
+// 创建下载链接
+const url = URL.createObjectURL(imageBlob)
+const link = document.createElement("a")
+link.href = url
+link.download = "cat-photo.jpg"
+link.click()
+
+// 清理 URL
+URL.revokeObjectURL(url)
+```
+
+### array-buffer
+
+将响应体解析为 [ArrayBuffer](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/ArrayBuffer)，适合处理二进制数据：
+
+```typescript
+import { request } from "keq"
+
+const buffer = await request
+  .get("/api/cats/1/audio")
+  .resolveWith("array-buffer")
+
+// 使用 Web Audio API 播放音频
+const audioContext = new AudioContext()
+const audioBuffer = await audioContext.decodeAudioData(buffer)
+const source = audioContext.createBufferSource()
+source.buffer = audioBuffer
+source.connect(audioContext.destination)
+source.start()
+```
+
+### form-data
+
+将响应体解析为 [FormData](https://developer.mozilla.org/en-US/docs/Web/API/FormData) 对象：
+
+```typescript
+import { request } from "keq"
+
+const formData = await request
+  .get("/api/cats/1/form")
+  .resolveWith("form-data")
+
+console.log(formData.get("name"))
+console.log(formData.get("breed"))
+```
+
+### response
+
+返回原始的 [Response](https://developer.mozilla.org/en-US/docs/Web/API/Response) 对象，可以完全控制响应的处理方式：
+
+```typescript
+import { request } from "keq"
+
+const response = await request
+  .get("/api/cats/1")
+  .resolveWith("response")
+
+console.log(response.status)
+console.log(response.headers.get("content-type"))
+
+// 手动解析响应体
+const cat = await response.json()
+console.log(cat.name)
+```
+
+## 实际场景
+
+### 下载文件
+
+```typescript
+import { request } from "keq"
+
+async function downloadCatImage(catId: number) {
+  const blob = await request
+    .get(`/api/cats/${catId}/photo`)
+    .resolveWith("blob")
+
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement("a")
+  a.href = url
+  a.download = `cat-${catId}.jpg`
+  document.body.appendChild(a)
+  a.click()
+  document.body.removeChild(a)
+  URL.revokeObjectURL(url)
+}
+
+await downloadCatImage(1)
+```
+
+### 处理流式数据
+
+```typescript
+import { request } from "keq"
+
+const response = await request
+  .get("/api/cats/stream")
+  .resolveWith("response")
+
+const reader = response.body?.getReader()
+const decoder = new TextDecoder()
+
+if (reader) {
+  while (true) {
+    const { done, value } = await reader.read()
+    if (done) break
+
+    const text = decoder.decode(value)
+    console.log("接收到数据:", text)
+  }
+}
+```
+
+### 检查响应状态
+
+```typescript
+import { request } from "keq"
+
+const response = await request
+  .get("/api/cats/1")
+  .resolveWith("response")
+
+if (response.ok) {
+  const cat = await response.json()
+  console.log("获取成功:", cat)
+} else {
+  console.error("请求失败:", response.status, response.statusText)
+}
+```
+
+## 类型对照表
+
+| 序列化类型 | 返回类型 | 适用场景 |
+|:----------|:---------|:---------|
+| `intelligent` | 自动推断 | 大多数场景（默认） |
+| `json` | `any` | API 返回 JSON 数据 |
+| `text` | `string` | 纯文本内容 |
+| `blob` | `Blob` | 文件下载、图片等 |
+| `array-buffer` | `ArrayBuffer` | 二进制数据处理 |
+| `form-data` | `FormData` | 表单数据 |
+| `response` | `Response` | 需要完全控制响应 |
+
+## 最佳实践
+
+### 1. 使用类型注解
+
+```typescript
+import { request } from "keq"
+
+interface Cat {
+  id: number
+  name: string
+  breed: string
+}
+
+// ✅ 好的做法：明确类型
+const cat = await request
+  .get("/api/cats/1")
+  .resolveWith("json") as Cat
+
+// ❌ 不好的做法：类型不明确
+const cat = await request.get("/api/cats/1")
+```
+
+### 2. 根据 Content-Type 选择
+
+```typescript
+import { request } from "keq"
+
+// JSON API
+const data = await request
+  .get("/api/cats")
+  .resolveWith("json")
+
+// 文本内容
+const readme = await request
+  .get("/docs/README.txt")
+  .resolveWith("text")
+
+// 二进制文件
+const image = await request
+  .get("/images/cat.jpg")
+  .resolveWith("blob")
+```
+
+### 3. 处理特殊情况
+
+```typescript
+import { request } from "keq"
+
+const response = await request
+  .get("/api/cats/1")
+  .resolveWith("response")
+
+// 检查内容类型
+const contentType = response.headers.get("content-type")
+
+if (contentType?.includes("application/json")) {
+  const data = await response.json()
+  console.log(data)
+} else if (contentType?.includes("text/")) {
+  const text = await response.text()
+  console.log(text)
+} else {
+  const blob = await response.blob()
+  console.log("二进制数据:", blob.size, "bytes")
+}
+```

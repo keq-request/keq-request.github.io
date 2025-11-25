@@ -238,12 +238,10 @@ await request
 
 Keq 会根据响应的 `Content-Type` 自动选择合适的解析方式：
 
-| Content-Type             | 解析方式              | 返回类型    |
-|:------------------------|:---------------------|:-----------|
-| `application/json`      | `response.json()`    | 对象/数组   |
-| `multipart/form-data`   | `response.formData()`| `FormData` |
-| `text/plain`            | `response.text()`    | 字符串      |
-| 其他                     | -                    | `undefined`|
+import IntelligentTable from './components/_intelligent-table.mdx'
+
+<IntelligentTable />
+
 
 ```typescript
 import { request } from "keq"

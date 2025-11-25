@@ -1,0 +1,245 @@
+# Context 对象
+
+[Fetch MDN]: https://developer.mozilla.org/en-US/docs/Web/API/Fetch
+[Headers MDN]: https://developer.mozilla.org/en-US/docs/Web/API/Headers
+[Response MDN]: https://developer.mozilla.org/en-US/docs/Web/API/Response
+[URL MDN]: https://developer.mozilla.org/en-US/docs/Web/API/URL
+
+`context` 是中间件的核心，包含了请求的所有信息。
+
+## 主要属性
+
+| 属性 | 描述 |
+|:-----|:-----|
+| `context.request` | HTTP 请求参数（URL、方法、请求头、请求体等） |
+| `context.response` | **[Readonly]** HTTP 响应代理对象，可多次读取响应体 |
+| `context.res` | 原始 Fetch Response 对象 |
+| `context.options` | 通过 `.option()` 设置的自定义选项 |
+| `context.output` | **[Writeonly]** 设置请求的返回值（当未使用 `.resolveWith()` 时） |
+| `context.data` | 请求级别的共享数据，在请求完成后自动清理 |
+| `context.global` | 全局共享数据，不会随请求结束而销毁 |
+| `context.orchestration` | **[Readonly]** 详见[进阶 - 中间件调度与执行](../advanced/middleware-orchestrator#contextorchestration-属性详解) |
+| `context.locationId` | **[Readonly]** 请求代码的位置标识（文件路径+行号） |
+
+### context.data
+
+`context.data` 是一个对象，用于在同一请求的多个中间件之间共享数据。并在请求完成后销毁。
+
+**示例：**
+
+```typescript
+import { KeqMiddleware } from "keq"
+
+const timerMiddleware: KeqMiddleware = async (context, next) => {
+  context.emitter.on('fetch:before', (ctx) => {
+    ctx.data.timer = { start: Date.now() }
+  })
+
+  context.emitter.on('fetch:after', (ctx) => {
+    const duration = Date.now() - ctx.data.timer.start
+    console.log(`请求耗时: ${duration}ms`)
+  })
+  await next()
+}
+```
+
+### context.options
+
+通过 `.option()` 方法设置的自定义选项。
+
+**内置选项及其默认值：**
+
+| 选项 | 默认值 | 描述 |
+|:-----|:------|:-----|
+| `context.options.fetchAPI` | `global.fetch` | 用于发送请求的 [Fetch API][Fetch MDN] 实现 |
+| `context.options.resolveWith` | `"intelligent"` | 响应体解析方式 |
+| `context.options.retry.times` | `undefined` | 重试次数 |
+| `context.options.retry.delay` | `undefined` | 重试延迟时间（毫秒） |
+| `context.options.retry.on` | `undefined` | 自定义重试条件函数 |
+| `context.options.timeout` | `undefined` | 请求超时时间（毫秒） |
+| `context.options.flowControl` | `undefined` | 并发控制模式 |
+| `context.options.module` | `undefined` | 模块元信息（name、pathname、method），通常由 `@keq-request/cli` 自动生成 |
+
+**添加自定义选项：**
+
+```typescript
+import { KeqMiddleware } from "keq"
+
+// 扩展类型定义
+declare module "keq" {
+  interface KeqOptions<T> {
+    customOption(value: string): Keq<T>
+  }
+}
+
+const customMiddleware: KeqMiddleware = async (context, next) => {
+  // 读取自定义选项
+  const value = context.options.customOption
+  console.log("Custom option:", value)
+
+  await next()
+}
+```
+
+### context.global
+
+全局共享数据，不会随请求结束而销毁。使用时需要特别注意内存管理。
+
+**示例：**
+
+```typescript
+import { KeqMiddleware } from "keq"
+
+const key = Symbol('myMiddleware')
+
+const middleware: KeqMiddleware = async (context, next) => {
+  context.global[key] = { startTime: Date.now() }
+
+  try {
+    await next()
+  } finally {
+    // 及时清理
+    delete context.global[key]
+  }
+}
+```
+
+:::note `context.data` VS `context.options` VS `context.global`
+
+| 特性 | context.data | context.options | context.global |
+|:-----|:-------------|:----------------|:---------------|
+| **设置方式** | 直接赋值 | `.option()` 方法或直接赋值 | 直接赋值 |
+| **生命周期** | 请求结束自动清理 | 请求结束自动清理 | 手动清理 |
+| **作用域** | 单个请求 | 单个请求 | 全局共享 |
+| **用途** | 中间件间传递数据 | 向中间件传递配置 | 跨请求共享状态 |
+:::
+
+
+## context.request
+
+包含发送 HTTP 请求所需的所有参数：
+
+| 属性 | 描述 |
+|:-----|:-----|
+| `context.request.url` | 请求 [URL][URL MDN] 对象 |
+| `context.request.__url__` | **只读** 合并了路由参数后的完整请求 [URL][URL MDN] |
+| `context.request.method` | HTTP 方法（'get', 'post', 'put', 'patch', 'delete', 'head'） |
+| `context.request.headers` | 请求头（[Headers][Headers MDN] 对象） |
+| `context.request.body` | 请求体 |
+| `context.request.routeParams` | 路由参数对象 |
+| `context.request.abort()` | 中止当前请求 |
+| `context.request.credentials` | [Fetch API][Fetch MDN] 的 credentials 选项 |
+| `context.request.mode` | [Fetch API][Fetch MDN] 的 mode 选项 |
+| `context.request.cache` | [Fetch API][Fetch MDN] 的 cache 选项 |
+| `context.request.redirect` | [Fetch API][Fetch MDN] 的 redirect 选项 |
+| `context.request.referrer` | [Fetch API][Fetch MDN] 的 referrer 选项 |
+| `context.request.referrerPolicy` | [Fetch API][Fetch MDN] 的 referrerPolicy 选项 |
+| `context.request.integrity` | [Fetch API][Fetch MDN] 的 integrity 选项 |
+| `context.request.keepalive` | [Fetch API][Fetch MDN] 的 keepalive 选项 |
+
+### 示例：修改请求参数
+
+```typescript
+import { KeqMiddleware } from "keq"
+
+const modifyRequestMiddleware: KeqMiddleware = async (context, next) => {
+  // 修改 URL
+  context.request.url.searchParams.set("timestamp", Date.now().toString())
+
+  // 添加请求头
+  context.request.headers.set("X-Custom-Header", "value")
+
+  // 修改请求方法
+  context.request.method = "post"
+
+  await next()
+}
+```
+
+### 路由参数
+
+使用 `context.request.routeParams` 和 `context.request.__url__` 处理路由参数：
+
+```typescript
+import { request } from "keq"
+
+request.use(async (context, next) => {
+  console.log("原始 URL:", context.request.url.href)
+  console.log("路由参数:", context.request.routeParams)
+  console.log("实际 URL:", context.request.__url__.href)
+
+  await next()
+})
+
+await request.get("/users/{id}").params("id", "123")
+// 原始 URL: /users/{id}
+// 路由参数: { id: "123" }
+// 实际 URL: /users/123
+```
+
+## context.response
+
+`context.response` 是原始 [Response][Response MDN] 对象的代理，解决了 [Response][Response MDN] 对象的方法（如 `.json()`、`.text()`）只能调用一次的限制，允许多个中间件安全地读取响应体。
+
+### 示例：读取响应体
+
+```typescript
+import { KeqMiddleware } from "keq"
+
+const logResponseMiddleware: KeqMiddleware = async (context, next) => {
+  await next()
+
+  if (context.response) {
+    // 多个中间件都可以安全地读取 JSON
+    const data = await context.response.json()
+    console.log("响应数据:", data)
+    console.log("状态码:", context.response.status)
+    console.log("响应头:", context.response.headers)
+  }
+}
+
+const cacheMiddleware: KeqMiddleware = async (context, next) => {
+  await next()
+
+  if (context.response) {
+    // 再次读取同样的 JSON，不会出错
+    const data = await context.response.json()
+    localStorage.setItem("cache", JSON.stringify(data))
+  }
+}
+```
+
+### context.res
+
+`context.res` 是原始的 Fetch [Response][Response MDN] 对象。大多数情况下应该使用 `context.response`，只有在需要访问原始 Response 对象时才使用 `context.res`。
+
+## context.output
+
+用于设置请求的返回值。当未使用 `.resolveWith()` 时，可以通过 `context.output` 自定义返回内容：
+
+```typescript
+import { KeqMiddleware } from "keq"
+
+const transformMiddleware: KeqMiddleware = async (context, next) => {
+  await next()
+
+  if (context.response) {
+    const data = await context.response.json()
+    // 设置自定义返回值
+    context.output = {
+      success: true,
+      data: data,
+      timestamp: Date.now()
+    }
+  }
+}
+```
+
+:::warning
+设置 `context.output` 后，请求将返回该值，而不会根据 `Content-Type` 自动解析响应体。
+:::
+
+## context.orchestration
+
+中间件编排器，提供中间件执行状态和 fork 能力，详见[进阶 - 中间件调度与执行](../advanced/middleware-orchestrator)。
+

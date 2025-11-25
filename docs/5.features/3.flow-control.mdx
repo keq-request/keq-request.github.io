@@ -1,0 +1,153 @@
+# 并发控制
+
+并发控制用于管理多个请求同时发送时的行为。Keq 提供了两种控制策略：串行执行（`serial`）和中止旧请求（`abort`）。
+
+## 为什么需要并发控制？
+
+1. **搜索框输入**：用户快速输入时会触发多个搜索请求，但我们只关心最新的搜索结果
+2. **批量请求**：处理大量请求时，受限于浏览器的并发连接数，需要控制并发量
+3. **防止重复提交**：用户连续点击按钮时，避免发送多个相同的请求
+
+## 串行执行 - serial
+
+串行模式确保同一个队列中的请求按顺序执行，当上一个请求未完成时，后续请求会等待。
+
+### 基本用法
+
+```typescript
+import { request } from "keq"
+
+await request
+  .get("/api/cats")
+  .flowControl("serial"/*, context.locationId */)
+
+await request
+  .get("/api/cats/random")
+  .flowControl("serial", "cat-api") // 命名队列
+```
+
+:::tip [`context.locationId` 是什么](../middleware/context#主要属性)
+:::
+
+### 实际场景：批量请求
+
+处理多个请求时，确保它们按顺序执行：
+
+```typescript
+import { request } from "keq";
+
+const catIds = [1, 2, 3, 4, 5];
+
+// 所有请求会串行执行，而不是并发
+await Promise.all(
+  catIds.map((id) =>
+    request
+      .get(`/api/cats/${id}`)
+      .flowControl("serial", "cat-fetch")
+  )
+);
+```
+
+:::tip 性能提示
+浏览器对同一域名的并发 HTTP 连接数有限制（通常为 6 个）。使用 `serial` 模式可以精确控制并发数，避免请求排队。
+:::
+
+## 中止旧请求 - abort
+
+abort 模式在发送新请求时会自动中止同一队列中未完成的旧请求，确保只有最新的请求在执行。
+
+### 基本用法
+
+```typescript
+import { request } from "keq"
+
+await request
+  .get("/api/cats/search")
+  .flowControl("abort"/*, context.locationId */)
+
+await request
+  .get("/api/cats/search")
+  .flowControl("abort", "cat-search"); // 命名队列
+```
+
+:::tip [`context.locationId` 是什么](../middleware/context#主要属性)
+:::
+
+### 实际场景：搜索建议
+
+用户快速输入时，只展示最新的搜索结果：
+
+```tsx
+import { request, AbortException } from "keq"
+import { useState } from "react"
+
+function SearchBox() {
+  const [suggestions, setSuggestions] = useState<string[]>([])
+
+  const handleSearch = async (keyword: string) => {
+    try {
+      const results = await request
+        .get("/api/cats/search")
+        .query("q", keyword)
+        .flowControl("abort", "cat-search")
+
+      setSuggestions(results)
+    } catch (err) {
+      // 旧请求被中止时会抛出 AbortException
+      if (!(err instanceof AbortException)) {
+        console.error(err)
+      }
+    }
+  }
+
+  return (
+    <div>
+      <input
+        type="text"
+        onChange={(e) => handleSearch(e.target.value)}
+        placeholder="搜索中..."
+      />
+      <ul>
+        {suggestions.map((suggestion, i) => (
+          <li key={i}>{suggestion}</li>
+        ))
+      </ul>
+    </div>
+  )
+}
+```
+
+:::tip 错误处理
+当请求被中止时，会抛出一个 `AbortException`。在实际应用中，通常需要捕获并忽略这个错误。
+:::
+
+## 队列隔离
+
+不同的命名队列之间完全独立，互不影响：
+
+```typescript
+import { request } from "keq";
+
+// 这两个请求在不同的队列中，可以并发执行
+await Promise.all([
+  request.get("/api/cats").flowControl("serial", "cats"),
+  request.get("/api/dogs").flowControl("serial", "dogs"),
+]);
+```
+
+## 实例隔离
+
+不同的 `KeqRequest` 实例之间的并发控制队列是完全隔离的：
+
+```typescript
+import { KeqRequest } from "keq";
+
+const api1 = new KeqRequest();
+const api2 = new KeqRequest();
+
+// 即使使用相同的 key，两个实例的队列也是独立的
+await Promise.all([
+  api1.get("/api/cats").flowControl("serial", "my-key"),
+  api2.get("/api/cats").flowControl("serial", "my-key"),
+]);
+```
