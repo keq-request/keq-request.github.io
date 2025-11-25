@@ -1,0 +1,118 @@
+# 概览
+
+## 简介
+
+`@keq-request/cache` 是一个为 Keq 请求库提供缓存功能的中间件。它为无法使用 [Service Worker](https://developer.mozilla.org/en-US/docs/Web/API/Service_Worker_API) 的项目提供了一个简单而强大的缓存解决方案。
+
+### 核心特性
+
+- 🚀 **零配置启动** - 开箱即用的缓存功能
+- 🎯 **多种缓存策略** - 支持网络优先、缓存优先、仅网络等多种策略
+- 💾 **灵活的存储方案** - 支持内存、IndexedDB 以及多层缓存
+- 🎨 **规则化配置** - 通过规则灵活控制不同请求的缓存行为
+- 🔧 **可扩展** - 支持自定义缓存策略和存储实现
+
+## 快速开始
+
+### 基础用法
+
+```typescript
+import { request } from "keq"
+import { cache, MemoryStorage } from "@keq-request/cache"
+
+// 创建存储实例
+const storage = new MemoryStorage()
+
+// 使用缓存中间件
+// 默认不会缓存任何请求
+request.use(cache({ storage }))
+
+// 发起请求
+request
+  .get("/api/data")
+  // 启用缓存
+  .options({
+    cache: {
+      key: '/api/data',
+      strategy: Strategy.CACHE_FIRST,
+      ttl: 60, // 缓存 60 秒
+    }
+  })
+```
+
+
+### 配置缓存规则
+
+```typescript
+import { request } from "keq"
+import { cache, Strategy, MemoryStorage } from "@keq-request/cache"
+
+request.use(
+  cache({
+    storage: new MemoryStorage(),
+    rules: [
+      {
+        // 匹配所有 GET 请求
+        pattern: (ctx) => ctx.request.method === "get",
+
+        // 使用 SWR 策略
+        strategy: Strategy.STALE_WHILE_REVALIDATE,
+
+        // 缓存有效期 5 分钟
+        ttl: 5 * 60,
+
+        // 自定义缓存键
+        key: (ctx) => ctx.request.__url__.href,
+
+        // 排除非 200 响应
+        exclude: async (response) => response.status !== 200,
+      },
+    ],
+  })
+)
+```
+
+### 请求级别配置
+
+可以在发起请求时覆盖全局配置：
+
+```typescript
+import { request } from "keq"
+import { Strategy } from "@keq-request/cache"
+
+request
+  .get("/cats")
+  // 覆盖全局缓存配置
+  .options({
+    cache: {
+      strategy: Strategy.NETWORK_FIRST,
+      key: 'custom-cache-key',
+      // 未设置的属性将使用全局配置
+      // exclude: async (response) => response.status !== 200,
+      ttl: 60,
+    },
+  })
+
+  // 也可以禁止缓存
+  .option('cache', false)
+```
+
+## 配置项
+
+### Options
+
+| 参数名                   | 类型                                                | 默认值                                              | 说明                                                           |
+| :---------------------- | :------------------------------------------------- | :------------------------------------------------- | :------------------------------------------------------------- |
+| storage                 | `KeqCacheStorage`                                  | -                                                  | 缓存存储实例，[详见 Storage](./storage)                             |
+| keyFactory              | `(context) => string`                              | `(context) => context.locationId`                  | 缓存键生成函数，生成相同 key 的请求将共享缓存                           |
+| rules                   | `Rule[]`                                           | `[]`                                               | 缓存规则数组                                                    |
+
+### Rule
+
+| 参数名                   | 类型                                                | 默认值                                              | 说明                                                           |
+| :---------------------- | :------------------------------------------------- | :------------------------------------------------- | :------------------------------------------------------------- |
+| pattern                 | `boolean \| (ctx) => boolean`                      | `true`                                             | 匹配规则，用于判断请求是否应用此缓存规则                          |
+| key                     | `(ctx) => string`                                  | 使用全局 `keyFactory`                               | 自定义缓存键生成函数                                             |
+| strategy                | `Strategy`                                         | `Strategy.NETWORK_FIRST`                           | 缓存策略，[详见 缓存策略](./strategies)                              |
+| ttl                     | `number`                                           | `Infinity`                                         | 缓存有效期（秒）                                                |
+| exclude                 | `(response) => boolean \| Promise<boolean>`        | -                                                  | 排除函数，返回 `true` 时不缓存该响应                            |

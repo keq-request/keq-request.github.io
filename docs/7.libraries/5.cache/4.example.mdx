@@ -1,0 +1,97 @@
+# 示例
+
+本文展示了两种不同的使用方式，你可以根据实际需求选择合适的方式。
+
+## 全局中间件 + 全局配置 + `.options`调控
+
+适用于需要对所有符合条件的请求应用统一缓存策略的场景。
+
+```typescript
+import { request } from "keq"
+import { cache, Strategy, MemoryStorage } from "@keq-request/cache"
+
+request.use(
+  cache({
+    storage: new MemoryStorage(),
+    rules: [
+      {
+        // 仅匹配 GET /example 请求
+        pattern: (ctx) => ctx.request.method === "get" && ctx.request.url.pathname === "/example",
+        strategy: Strategy.STALE_WHILE_REVALIDATE,
+        ttl: 5 * 60,
+        key: (ctx) => ctx.request.__url__.href,
+        exclude: async (response) => response.status !== 200,
+      },
+    ],
+  })
+)
+
+// 这个请求会被缓存
+request.get("/example")
+
+// 这个请求不会被缓存（不匹配规则）
+request.post("/cat")
+
+// 特殊场景下手动禁用缓存
+request
+  .get("/example")
+  .option("cache", false)
+
+// 特殊场景下修改缓存规则
+request
+  .get("/example")
+  .options({
+    cache: {
+      strategy: Strategy.NETWORK_FIRST,
+      key: "custom-cache-key",
+      ttl: 60,
+    },
+  })
+```
+
+:::danger 请注意
+- 如果配置大量的 `rules`，会影响每次请求的性能。即便不匹配任何 `Rule`，也会遍历所有规则并执行 pattern 函数。
+- 另外，调整全局 Rule 将面临更大的风险，不合理的规划可能导致代码难以维护。
+
+你也可以完全放弃全局 `rules` 配置，仅使用 `.options` 来为每个请求单独配置缓存策略，以避免上述两个问题。
+:::
+
+## 一次性中间件
+
+这种使用方式可以将常用的缓存参数按需封装成一个快捷的中间件，使得业务代码可读性更好：
+
+```typescript title="./shortcut/swr.ts"
+import { request, KeqMiddleware } from "keq"
+import { cache, Strategy, MemoryStorage } from "@keq-request/cache"
+
+const storage = new MemoryStorage()
+
+export function swr(): KeqMiddleware {
+  return cache({
+    storage,
+    rules: [
+      {
+        strategy: Strategy.STALE_WHILE_REVALIDATE,
+        ttl: 5 * 60,
+        key: (ctx) => ctx.request.__url__.href,
+        exclude: async (response) => response.status !== 200,
+      },
+    ],
+  })
+}
+```
+
+```typescript title="./example.ts"
+import { request } from "keq"
+import { swr } from "./shortcut/swr"
+
+// 这个请求会被缓存
+request
+  .get("/example")
+  .use(swr())
+
+// 这个请求不会被缓存
+request.get("/example")
+```
+
+

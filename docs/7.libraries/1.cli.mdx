@@ -9,11 +9,11 @@ import PackageManager from '@site/docs/components/_package-manager.mdx';
 
 ## 安装
 
-<InstallPackagesCode packages="keq-cli" />
+<InstallPackagesCode packages="@keq-request/cli" />
 
 :::caution
-建议在 package.json 锁定 keq-cli 的版本。
-keq-cli 的小版本升级为了修复 Bug 可能会修改代码模板。这有极小的概率导致代码不向前兼容。
+建议在 package.json 锁定 `@keq-request/cli` 的版本。
+`@keq-request/cli` 的小版本升级为了修复 Bug 可能会修改代码模板。这有极小的概率导致代码不向前兼容。
 :::
 
 ## 使用方法
@@ -80,7 +80,7 @@ keq-cli 的小版本升级为了修复 Bug 可能会修改代码模板。这有�
   ```
 </details>
 
-然后，我们创建 `keq-cli` 的配置文件，指定 `swagger` 文档的位置和编译参数：
+然后，我们创建 `@keq-request/cli` 的配置文件，指定 `swagger` 文档的位置和编译参数：
 
 <Tabs>
   <TabItem value="ts" label="Typescript" default>
@@ -133,9 +133,9 @@ keq-cli 的小版本升级为了修复 Bug 可能会修改代码模板。这有�
 
 接下来，在终端执行以下命令：
 
-<PackageManager command="keq-cli build" />
+<PackageManager command="keq build" />
 
-执行完成后，`keq-cli` 会在 `./src/api/cat_service/` 目录下生成如下文件：
+执行完成后，`@keq-request/cli` 会在 `./src/api/cat_service/` 目录下生成如下文件：
 
 <Tabs>
   <TabItem value="services_get_cats" label="请求函数" default>
@@ -233,8 +233,8 @@ keq-cli 的小版本升级为了修复 Bug 可能会修改代码模板。这有�
 
     // 实际请求地址: /cats?breed=siamese
 
-    console.log(`My cats: ${cats.map(cat => cat.name).join(',')}`)
-    console.log(`The request pathname is ${getCats.pathname}`)
+    console.log(`我的猫咪有：${cats.map(cat => cat.name).join('、')}`)
+    console.log(`请求路径：${getCats.pathname}`)
     ```
 
   </TabItem>
@@ -250,8 +250,8 @@ keq-cli 的小版本升级为了修复 Bug 可能会修改代码模板。这有�
 
     // 实际请求地址: /cats?breed=siamese&extraParam=extraValue
 
-    console.log(`My cats: ${cats.map(cat => cat.name).join(',')}`)
-    console.log(`The request pathname is ${getCats.pathname}`)
+    console.log(`我的猫咪有：${cats.map(cat => cat.name).join('、')}`)
+    console.log(`请求路径：${getCats.pathname}`)
     ```
 
   </TabItem>
@@ -296,7 +296,9 @@ request
 
 ## 配置文件
 
-`keq-cli` 会自动查找名为 `.keqrc.yml`、`.keqrc.json`、`.keqrc.js`、`.keqrc.ts`的配置文件。
+### `.keqrc.(yml|json|js|ts)`
+
+`@keq-request/cli` 会自动查找名为 `.keqrc.yml`、`.keqrc.json`、`.keqrc.js`、`.keqrc.ts`的配置文件。
 你可以通过 `-c --config <config_file_path>` 设置配置文件地址。
 
 | **配置参数**       | **是否必填** | **默认值**                                 | **描述**                                                          |
@@ -324,14 +326,53 @@ request
 | `FileNamingStyle.sentenceCase` | `"Two words"` |
 | `FileNamingStyle.snakeCase`    | `"two_words"` |
 
-## 命令行选项
+### `.keqignore`
+
+还可以通过 `.keqignore` 文件忽略不需要生成代码的 HTTP 接口：
+
+```ini
+# 格式为
+# [moduleName] [method] [pathname]
+
+* * *                   # 忽略所有模块的所有接口
+
+* GET /cats             # 忽略所有模块的 GET /cats 接口
+
+* GET *                 # 忽略所有模块的 GET 接口
+
+catService * /cats      # 忽略 catService 模块的 /cats 接口
+
+catService GET /cats    # 忽略 catService 模块的 GET /cats 接口
+
+! dogService POST /dogs # 不忽略 dogService 模块的 POST /dogs 接口
+```
+
+
+## 命令
+
+### `keq build [options]`
+
+按照配置文件的内容，生成代码。
 
 | **选项**                         | **描述**                                                                                                 |
 | :------------------------------- | :------------------------------------------------------------------------------------------------------- |
-| `[moduleName]`                   | 仅生成指定的模块                                                                                         |
+| `--modules <moduleName...>`      | 仅生成匹配模块名称的模块                                                                                 |
 | `-c --config <config_file_path>` | 配置文件的地址                                                                                           |
 | `-i --interactive`               | 通过命令行交互，指定需要生成的 HTTP 接口                                                                 |
+| `--tolerant`                     | 忽略 Swagger 格式错误，尽可能生成代码                                                               |
 | `--method <method...>`           | 仅生成匹配 method(`'get' \| 'post' \| 'put' \| 'patch' \| 'head' \| 'options' \| 'delete'`) 的 HTTP 接口 |
 | `--pathname <pathname...>`       | 仅生成匹配 pathname 的 HTTP 接口                                                                         |
-| `--no-append`                    | 不生成新添加的 HTTP 接口（与上次生成做对比）                                                             |
-| `--no-update`                    | 不更新上次已生成的 HTTP 接口                                                                             |
+
+### `keq ignore <mode> [options]`
+
+添加忽略规则到 `.keqignore` 文件。使用 `--interactive` 可以通过命令行交互指定需要忽略的 HTTP 接口。
+
+| **选项**                         | **描述**                                                                                                 |
+| :------------------------------- | :------------------------------------------------------------------------------------------------------- |
+| `<mode>`                         | `add`：添加忽略规则，`except`：添加不忽略规则
+| `-c --config <config_file_path>` | 配置文件的地址                                                                                         |
+| `--modules`                     | 设置添加的忽略规则的模块名称                                                                    |
+| `--method <method> `           | 设置添加的忽略规则的 HTTP 方法(`'get' \| 'post' \| 'put' \| 'patch' \| 'head' \| 'options' \| 'delete'`) |
+| `--pathname <pathname...>`       | 设置添加的忽略规则的 HTTP 接口路径                                                             |
+| `-i --interactive`               | 通过命令行交互，指定需要忽略的 HTTP 接口                                                               |
+| `--build`                     | 忽略规则添加完成后，自动执行 `keq build` 命令生成代码                                                  |

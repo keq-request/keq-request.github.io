@@ -1,0 +1,112 @@
+# 缓存策略
+
+缓存策略决定了如何处理缓存数据和网络请求之间的关系。`@keq-request/cache` 提供了多种内置策略，并支持自定义策略。
+
+## Strategies.NETWORK_ONLY
+
+![network-only](./assets/network-only.png)
+
+**仅网络** - 直接发送请求，不使用缓存，等价于不启用缓存中间件。
+
+## Strategies.NETWORK_FIRST
+
+![network-first](./assets/network-first.png)
+
+**网络优先** - 优先尝试发送网络请求，如果失败则返回缓存。
+
+## Strategies.CACHE_FIRST
+
+![cache-first](./assets/cache-first.png)
+
+**缓存优先** - 如果缓存存在则直接返回，否则发送网络请求。
+
+## Strategies.STALE_WHILE_REVALIDATE
+
+![stale-wile-revalidate](./assets/stale-while-revalidate.png)
+
+**边用边更新** - 如果缓存存在则立即返回缓存，同时异步发送网络请求更新缓存。
+
+
+## 自定义策略
+
+你可以实现自己的 `Strategy` 函数来控制缓存行为。
+示例展示了`CACHE_FIRST`策略的简单实现：
+
+```typescript
+import { request, KeqMiddleware } from "keq"
+import { KeqCacheStrategy, KeqCacheParameters, CacheEntry } from "@keq-request/cache"
+
+const MyCacheFirstStrategy: KeqCacheStrategy = function (params: KeqCacheParameters): KeqMiddleware {
+  const { storage, key } = params
+
+  return async function (context, next) {
+    const cache = await storage.get(key)
+
+    if (cache) {
+      context.res = cache.response
+      context.emitter.emit('cache:hit', { key, response: context.response, context }) // 不要忘记触发缓存命中事件
+      return
+    }
+
+    context.emitter.emit('cache:miss', { key, context }) // 不要忘记触发缓存未命中事件
+
+    // 发送请求
+    await next()
+
+    if (context.response) {
+      // 检查是否应该可以缓存
+      if (params.exclude && (await params.exclude(context.response))) {
+        return
+      }
+
+      // 构建缓存
+      const entry = await CacheEntry.build({
+        key: key,
+        response: context.response,
+        ttl: params.ttl,
+      })
+
+      await storage.set(entry)
+
+      // 不要忘记触发缓存更新事件
+      context.emitter.emit('cache:update', {
+        key,
+        oldResponse: undefined,
+        newResponse: entry.response,
+        context,
+      })
+    }
+  }
+}
+
+// 接下来你可以直接使用这个自定义策略
+request
+  .get("/example")
+  .options({
+    cache: {
+      key: "custom-cache-key",
+      strategy: MyCacheFirstStrategy,
+      ttl: 60,
+    },
+  })
+```
+
+### 组合策略
+
+实现全新的策略有些复杂，你需要的可能只是在不同场景下组合内置的策略：
+
+```typescript
+import { KeqCacheStrategy, Strategies } from "@keq-request/cache"
+
+const isNetworkFast = true
+
+const MyStrategy: KeqCacheStrategy = function (params) {
+  // 根据条件选择不同的策略
+  if (isNetworkFast) {
+    return Strategies.NETWORK_FIRST(params)
+  } else {
+    // 其他情况使用边用边更新
+    return Strategies.STALE_WHILE_REVALIDATE(params)
+  }
+}
+```

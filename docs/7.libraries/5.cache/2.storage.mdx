@@ -1,0 +1,178 @@
+# Storage
+
+`Storage` 是用于存储缓存数据的容器。`@keq-request/cache` 提供了多种内置存储方案，并支持自定义存储实现。
+
+## MemoryStorage
+
+`MemoryStorage` 将缓存数据存储在内存中，页面刷新后会被清空。
+
+### 配置选项
+
+| 参数名      | 类型                                   | 默认值                     | 说明                                                           |
+| :--------- | :------------------------------------- | :------------------------ | :------------------------------------------------------------- |
+| size       | `number`                               | `Infinity`                | 最大存储容量（字节），当容量不足时会根据淘汰策略删除缓存数据        |
+| eviction   | `Eviction`                             | `Eviction.VOLATILE_TTL`   | 内存不足时的淘汰策略，[查看详情](#淘汰策略)                      |
+
+### 使用示例
+
+```typescript
+import { request } from "keq"
+import { cache, MemoryStorage, Eviction, Size } from "@keq-request/cache"
+
+const storage = new MemoryStorage({
+  size: 10 * Size.MB,
+  eviction: Eviction.LRU,
+})
+
+request.use(cache({ storage }))
+```
+
+## IndexedDBStorage
+
+`IndexedDBStorage` 将缓存数据存储在 IndexedDB 中，数据持久化，页面刷新后仍然保留。
+
+### 配置选项
+
+| 参数名      | 类型                                   | 默认值                              | 说明                                                           |
+| :--------- | :------------------------------------- | :--------------------------------- | :------------------------------------------------------------- |
+| size       | `number`                               | `Infinity`                         | 最大存储容量（字节），当容量不足时会根据淘汰策略删除缓存数据        |
+| eviction   | `Eviction`                             | `Eviction.VOLATILE_TTL`            | 存储空间不足时的淘汰策略，[查看详情](#淘汰策略)                  |
+| tableName  | `string`                               | `'keq_cache_indexed_db_storage'`   | IndexedDB 的表名，**使用相同表名的多个实例将共享缓存数据**        |
+
+### 使用示例
+
+```typescript
+import { request } from "keq"
+import { cache, IndexedDBStorage, Eviction, Size } from "@keq-request/cache"
+
+const storage = new IndexedDBStorage({
+  size: 50 * Size.MB,
+  eviction: Eviction.LRU,
+  tableName: "my-app-cache",
+})
+
+request.use(cache({ storage }))
+```
+
+## MultiTierStorage
+
+`MultiTierStorage` 提供多层缓存解决方案。可以将快速、容量较小、生命周期短的 `Storage`（如 MemoryStorage）作为第一层，慢速、容量较大、生命周期长的 `Storage`（如 IndexedDBStorage）作为第二层，实现高性能缓存。
+
+### 配置选项
+
+| 参数名      | 类型                                   | 默认值                     | 说明                                                           |
+| :--------- | :------------------------------------- | :------------------------ | :------------------------------------------------------------- |
+| tiers      | `KeqCacheStorage[]`                    | -                         | `Storage` 数组。查找缓存时会按顺序遍历这些存储层。 |
+
+### 工作原理
+
+- **读取**：从第一层到最后一层按序查找缓存数据。当在较后层找到数据时，会自动将数据同步到前面所有层，以便下次更快访问。
+- **写入**：同时写入所有层，确保数据在所有存储层之间保持一致。
+- **删除**：同时从所有层删除数据。
+
+### 使用示例
+
+```typescript
+import { request } from "keq"
+import {
+  cache,
+  MemoryStorage,
+  IndexedDBStorage,
+  MultiTierStorage,
+  Size,
+} from "@keq-request/cache"
+
+const memoryStorage = new MemoryStorage({
+  size: 5 * Size.MB, // 5MB 内存缓存
+})
+
+const indexedDBStorage = new IndexedDBStorage({
+  size: 50 * Size.MB, // 50MB 持久化缓存
+  tableName: "app-cache",
+})
+
+const storage = new MultiTierStorage({
+  tiers: [memoryStorage, indexedDBStorage],
+})
+
+request.use(cache({ storage }))
+```
+
+## TierStorage
+
+`TierStorage` 是一个便捷的双层缓存解决方案，结合了 `MemoryStorage`（L1 缓存）和 `IndexedDBStorage`（L2 缓存）。它本质上是 `MultiTierStorage` 的一个特化版本，专门用于两层存储。
+
+### 配置选项
+
+| 参数名      | 类型                                                              | 默认值    | 说明                                                           |
+| :--------- | :--------------------------------------------------------------- | :------- | :------------------------------------------------------------- |
+| memory     | `MemoryStorage \| MemoryStorageOptions`                          | `{}`     | 内存存储（L1 缓存）的配置选项或现有的 `MemoryStorage` 实例。如果未提供，将创建默认的 `MemoryStorage` |
+| indexedDB  | `IndexedDBStorage \| IndexedDBStorageOptions`                    | `{}`     | IndexedDB 存储（L2 缓存）的配置选项或现有的 `IndexedDBStorage` 实例。如果未提供，将创建默认的 `IndexedDBStorage` |
+
+### 基础用法
+
+```typescript
+import { request } from "keq"
+import { cache, TierStorage, Eviction, Size } from "@keq-request/cache"
+
+const storage = new TierStorage({
+  memory: {
+    size: 5 * Size.MB, // 5MB 内存缓存
+    eviction: Eviction.LRU,
+  },
+  indexedDB: {
+    size: 50 * Size.MB, // 50MB 持久化缓存
+    eviction: Eviction.TTL,
+    tableName: "app-cache",
+  },
+})
+
+request.use(cache({ storage }))
+```
+
+## 淘汰策略
+
+内置的 `MemoryStorage` 和 `IndexedDBStorage` 均实现了多种淘汰策略：
+
+### Eviction.TTL
+
+淘汰即将过期的缓存
+
+### Eviction.LRU
+
+淘汰最久未使用的缓存
+
+### Eviction.LFU
+
+淘汰使用频率最低的缓存
+
+### Eviction.RANDOM
+
+随机淘汰缓存数据
+
+## 自定义存储
+
+你可以定义自己的 `Storage`，如果想使用其他方式存储缓存（例如 `SessionStorage`）。下面是一个简单的示例：
+
+```typescript
+import { KeqCacheStorage, CacheEntry } from "@keq-request/cache"
+
+class MyStorage extends KeqCacheStorage {
+  private storage = new Map<string, CacheEntry>()
+
+  async get(key: string): Promise<CacheEntry | undefined> {
+    return this.storage.get(key)
+  }
+
+  async set(entry: CacheEntry): Promise<void> {
+    this.storage.set(entry.key, entry)
+  }
+
+  async remove(key: string): Promise<void> {
+    this.storage.delete(key)
+  }
+}
+```
+
+示例仅展示了最基础的自定义存储实现。真正的生产环境中，你还需要处理存储容量限制和淘汰策略等问题。
+更多实现细节，请参考 [`MemoryStorage`](https://github.com/keq-request/keq-cache/blob/main/src/storage/memory-storage/memory-storage.ts) 和 [`IndexedDBStorage`](https://github.com/keq-request/keq-cache/blob/main/src/storage/indexed-db-storage/indexed-db-storage.ts) 的源代码。

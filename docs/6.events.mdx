@@ -215,7 +215,74 @@ try {
 }
 ```
 
-## 实际应用场景
+## 自定义事件
+
+你可以定义和触发自定义事件，实现更灵活的功能扩展。
+
+### 定义自定义事件类型
+
+```typescript
+import { KeqContext } from 'keq'
+
+declare module 'keq' {
+  interface KeqEvents {
+    'custom:event': { context: KeqContext; data: string }
+  }
+}
+```
+
+### 触发自定义事件
+
+```typescript
+import { request, KeqMiddleware } from 'keq'
+
+function emitCustomEvent(): KeqMiddleware {
+  return async (context, next) => {
+    // 在请求前触发自定义事件
+    context.emitter.emit('custom:event', {
+      context,
+      data: 'custom data'
+    })
+
+    await next()
+  }
+}
+
+await request
+  .get('/cats')
+  .use(emitCustomEvent())
+  .on('custom:event', ({ context, data }) => {
+    console.log('自定义事件触发:', data)
+  })
+```
+
+### 事件监听器的清理
+
+```typescript
+import { request, KeqMiddleware } from 'keq'
+
+function eventListenerMiddleware(): KeqMiddleware {
+  return async (context, next) => {
+    function onCustomEvent({ context, data }) {
+      console.log('收到自定义事件:', data)
+    }
+
+    // 监听事件
+    context.emitter.on('custom:event', onCustomEvent)
+
+    await next()
+
+    // 手动清理事件监听器（可选，请求结束后会自动移除）
+    context.emitter.off('custom:event', onCustomEvent)
+  }
+}
+```
+
+:::tip
+事件监听器在请求结束后会自动清理，通常不需要手动调用 `.off()` 方法。但在某些场景下（如需要提前停止监听），可以手动清理。
+:::
+
+## 示例
 
 ### 性能监控
 
@@ -283,70 +350,3 @@ request.use(requestLogger())
 
 await request.get('/cats')
 ```
-
-## 自定义事件
-
-你可以定义和触发自定义事件，实现更灵活的功能扩展。
-
-### 定义自定义事件类型
-
-```typescript
-import { KeqContext } from 'keq'
-
-declare module 'keq' {
-  interface KeqEvents {
-    'custom:event': { context: KeqContext; data: string }
-  }
-}
-```
-
-### 触发自定义事件
-
-```typescript
-import { request, KeqMiddleware } from 'keq'
-
-function emitCustomEvent(): KeqMiddleware {
-  return async (context, next) => {
-    // 在请求前触发自定义事件
-    context.emitter.emit('custom:event', {
-      context,
-      data: 'custom data'
-    })
-
-    await next()
-  }
-}
-
-await request
-  .get('/cats')
-  .use(emitCustomEvent())
-  .on('custom:event', ({ context, data }) => {
-    console.log('自定义事件触发:', data)
-  })
-```
-
-### 事件监听器的清理
-
-```typescript
-import { request, KeqMiddleware } from 'keq'
-
-function eventListenerMiddleware(): KeqMiddleware {
-  return async (context, next) => {
-    function onCustomEvent({ context, data }) {
-      console.log('收到自定义事件:', data)
-    }
-
-    // 监听事件
-    context.emitter.on('custom:event', onCustomEvent)
-
-    await next()
-
-    // 手动清理事件监听器（可选，请求结束后会自动移除）
-    context.emitter.off('custom:event', onCustomEvent)
-  }
-}
-```
-
-:::tip
-事件监听器在请求结束后会自动清理，通常不需要手动调用 `.off()` 方法。但在某些场景下（如需要提前停止监听），可以手动清理。
-:::
