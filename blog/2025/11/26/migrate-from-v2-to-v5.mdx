@@ -160,6 +160,12 @@ function myMiddleware(): KeqMiddleware {
     // context.options.resolveWithResponse => context.options.resolveWith
     context.options.resolveWithResponse = true // [!code --]
     context.options.resolveWith = "response"   // [!code ++]
+
+    // 新版本中 context.response 是只读属性
+    context.response = new Response() // [!code --]
+
+    // 若要避免中间件被重试
+    if (!context.data.retry?.attempt) doSomething() // [!code ++]
   }
 }
 ```
