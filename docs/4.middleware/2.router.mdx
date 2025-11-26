@@ -115,26 +115,28 @@ request
 **参数**：
 - `middlewares` - 一个或多个中间件函数
 
-## `.route(...middlewares)`
+## `.route(matcher,...middlewares)`
 
 自定义路由条件。
 
 ```typescript
-import { request, KeqRouteMatcher } from "keq"
+import { request, KeqRoute, KeqRoute } from "keq"
 
 // 自定义匹配器
-const customMatcher: KeqRouteMatcher = (context) => {
+const isExpectedApi: KeqRoute = (context: KeqContext) => {
   // 匹配所有 API 请求且带有特定 header
-  return context.request.url.pathname.startsWith("/api") &&
-         context.request.headers.has("X-Custom-Header")
+  return context.request.url.pathname.startsWith("/api")
+         && context.request.headers.has("X-Custom-Header")
 }
 
 request
   .useRouter()
-  .route(customMatcher, async (context, next) => {
+  .route(isExpectedApi, async (context, next) => {
     console.log("匹配自定义条件")
     await next()
   })
+
+  .route()
 ```
 
 **参数**：
