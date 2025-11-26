@@ -19,7 +19,7 @@ KeqContext (TypeScript Interface)
 
 | 类型 | 说明 |
 |:-----|:-----|
-| `KeqContext` | TypeScript 接口，定义了 [Context 对象](../middleware#Context-对象) 的核心属性（不包含 `orchestration`）。|
+| `KeqContext` | TypeScript 接口，定义了 [Context 对象](../middleware/context) 的核心属性（不包含 `orchestration`）。|
 | `KeqSharedContext` | `KeqContext` 的完整实现类，使用 `getter` 和 `setter` 保护数据，防止中间件意外修改。|
 | `KeqExecutionContext` | 在 `KeqSharedContext` 基础上增加了 `orchestration` 属性，提供中间件执行状态的访问和控制能力。|
 
