@@ -85,7 +85,7 @@ import PackageManager from '@site/docs/components/_package-manager.mdx';
 <Tabs>
   <TabItem value="ts" label="Typescript" default>
     ```typescript title=".keqrc.ts"
-    import { defineKeqConfig, FileNamingStyle } from "keq-cli"
+    import { defineKeqConfig, FileNamingStyle } from "@keq-request/cli"
 
     export default defineKeqConfig({
       outdir: "./src/api", // 编译结果的输出目录
@@ -101,7 +101,7 @@ import PackageManager from '@site/docs/components/_package-manager.mdx';
 
   <TabItem value="js" label="Javascript">
     ```javascript title=".keqrc.js"
-    const { defineKeqConfig, FileNamingStyle } = require("keq-cli")
+    const { defineKeqConfig, FileNamingStyle } = require("@keq-request/cli")
 
     module.exports = defineKeqConfig({
       outdir: "./src/api", // 编译结果的输出目录
@@ -139,79 +139,66 @@ import PackageManager from '@site/docs/components/_package-manager.mdx';
 
 <Tabs>
   <TabItem value="services_get_cats" label="请求函数" default>
-    ```typescript title="./src/api/cat_service/get_cats.ts"
+    ```typescript title="./src/api/cat_service/get_cats.request.ts"
     import { Keq } from "keq"
-    import { request } from "keq"
-    import type { RequestParameters, ResponseMap, Operation, QueryParameters, HeaderParameters, BodyParameters } from "./types/get_cats"
+    import { request } from '../../request'
+    import { Operation, GetCatsResponseBodies, GetCatsRequestParameters } from '../types/get_cats.type'
+    export { GetCatsRequestQuery, GetCatsRequestHeaders, GetCatsRequestBody } from '../types/get_cats.type'
 
-    export type GetCatsRequestQuery = QueryParameters
-    export type GetCatsRequestBody = BodyParameters
-    export type GetCatsRequestHeaders = HeaderParameters
-
-
+    const moduleName = "catService"
+    const method = "get"
     const pathname = "/cats"
 
-    export function getCats<STATUS extends keyof ResponseMap>(arg?: RequestParameters): Keq<ResponseMap[STATUS], Operation<STATUS>> {
-      const req = request.get<ResponseMap[STATUS]>("/cats")
-        .option('module', {
-          name: "catService",
-          pathname,
-        })
+    export function getCats<STATUS extends keyof GetCatsResponseBodies>(args?: GetCatsRequestParameters): Keq<Operation<STATUS>> {
+      const req = request.post<GetCatsResponseBodies[STATUS]>("/cats")
+        .option('module', { name: moduleName, pathname, method })
 
-      const queryWrap = (value: any) => typeof value === 'boolean' ? String(value) : value
+      if (args && "breed" in args) req.query("breed", args["breed"], {"arrayFormat":"repeat"})
 
-      if (arg && "breed" in arg) req.query("breed", queryWrap(arg["breed"]))
-
-      return req as unknown as Keq<ResponseMap[STATUS], Operation<STATUS>>
+      return req
     }
 
     getCats.pathname = pathname
+    getCats.method = method
     ```
 
   </TabItem>
 
   <TabItem value="type_cat" label="接口类型定义">
 
-    ```typescript title="./src/api/cat_service/types/get_cats.ts"
-    import type { KeqOperation } from 'keq'
-    import type { Cat } from "../components/schemas/cat"
+    ```typescript title="./src/api/cat_service/types/get_cats.type.ts"
+    import { KeqOperation, KeqQueryValue, KeqParamValue } from 'keq'
+    import { Cat as CatSchema } from '../components/schemas/cat.type'
 
-    export interface ResponseMap {
-      "200": (Cat)[]
+    export interface GetCatsResponseBodies {
+      200: CatSchema[]
     }
 
-
-    export type QueryParameters = {
+    export type GetCatsRequestQuery = {
       "breed"?: string
     }
 
-    export type RouteParameters = {
-    }
+    export type GetCatsRouteParameters = {}
 
-    export type HeaderParameters = {
-    }
+    export type GetCatsRequestHeaders = {}
 
-    export type BodyParameters ={}
-    export type RequestParameters = QueryParameters & RouteParameters & HeaderParameters & BodyParameters
+    export type GetCatsRequestBody = {}
 
+    export type GetCatsRequestParameters = GetCatsRequestQuery & GetCatsRouteParameters & GetCatsRequestHeaders & GetCatsRequestBody
 
-    export interface Operation<STATUS extends keyof ResponseMap> extends KeqOperation {
-      requestParams: RouteParameters
-      requestQuery: QueryParameters
-      requestHeaders: HeaderParameters
-      requestBody: BodyParameters
-      responseBody: ResponseMap[STATUS]
+    export interface Operation<STATUS extends keyof GetCatsResponseBodies> extends KeqOperation {
+      requestParams: GetCatsRouteParameters & { [key: string]: KeqParamValue }
+      requestQuery: GetCatsRequestQuery & { [key: string]: KeqQueryValue }
+      requestHeaders: GetCatsRequestHeaders & { [key: string]: string | number }
+      requestBody: GetCatsRequestBody
+      responseBody: GetCatsResponseBodies[STATUS]
     }
     ```
 
   </TabItem>
 
   <TabItem value="schema_cat" label="数据模型定义">
-    ```typescript title="./src/api/cat_service/components/schemas/cat.ts"
-    /**
-    * @interface Cat
-    * @export
-    */
+    ```typescript title="./src/api/cat_service/components/schemas/cat.schema.ts"
     export interface Cat {
       "name"?: string
       "age"?: number
@@ -225,7 +212,7 @@ import PackageManager from '@site/docs/components/_package-manager.mdx';
 <Tabs>
   <TabItem value="example1" label="示例" default>
     ```typescript
-    import { getCats } from "./src/api/cat_service/get_cats"
+    import { getCats } from "./src/api/cat_service/operations"
 
     const cats = await getCats({ breed: "siamese", unknownKey: 'value' }) // unknownKey 未在 swagger 定义，将被丢弃
       .retry(3, 1000)
@@ -241,7 +228,7 @@ import PackageManager from '@site/docs/components/_package-manager.mdx';
 
   <TabItem value="example2" label="添加未定义在 Swagger 中的参数">
     ```typescript
-    import { getCats } from "./src/api/cat_service/get_cats"
+    import { getCats } from "./src/api/cat_service/operations"
 
     const cats = await getCats({ breed: "siamese", unknownKey: 'value' }) // unknownKey 未在 swagger 定义，将被丢弃
       .query('extraParam', 'extraValue') // 链式调用添加的参数不会被丢弃 [!code ++]
@@ -260,7 +247,7 @@ import PackageManager from '@site/docs/components/_package-manager.mdx';
 最后，我们可以为 `catService` 模块的所有接口添加统一的错误处理逻辑：
 
 ```typescript
-import { request } from 'keq'
+import { request } from './api/request'
 import { throwException, RequestException } from 'keq-exception'
 
 

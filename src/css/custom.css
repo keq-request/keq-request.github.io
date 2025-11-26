@@ -58,7 +58,7 @@ html {
   white-space: nowrap;
 }
 
-article {
+article .markdown {
   @apply prose dark:prose-invert;
   max-width: none;
 }

@@ -1,0 +1,265 @@
+---
+authors: val.istar.guo
+---
+
+import PackageManager from '@site/docs/components/_package-manager.mdx'
+
+# 迁移指南：从 Keq v2 到 v5
+
+> Keq v5 对架构进行了全面重构，这些变更虽然涉及多个方面，但大部分对用户是透明的。本指南重点关注你需要实际修改的代码部分。
+
+## 为什么升级到 v5？
+
+### 核心收益
+
+- ✅ **统一的官方生态** - 所有官方包统一在 `@keq-request` scope 下，版本号统一管理，更清晰的依赖关系
+- ✅ **CLI 能力增强** - 代码生成工具支持插件扩展和 ignore 配置，适应更复杂的项目结构
+- ✅ **更安全的上下文对象** - 通过 getter/setter 保护，防止中间件意外修改关键状态
+- ✅ **更好的 IoC 框架集成** - `KeqRequest` 改为真正的类，完美支持 NestJS 等依赖注入框架的服务注入
+- ✅ **灵活的 Query 序列化** - 支持多种数组序列化方式（`indices`/`brackets`/`repeat`/`comma`），轻松适配各种后端
+
+
+<details>
+  <summary>为什么没有 v3 和 v4？</summary>
+
+  keq 核心库的旧版本号是 v2，但是 `keq-url`、`keq-headers`、`keq-cli` 等官方包各自独立维护，版本号不统一。
+  尤其是 `keq-cli` 曾发布过 v3 和 v4 版本，并带来了一些重要功能。
+  因此，为了统一版本号和简化用户认知，我们将下一个主要版本号定为 v5。
+</details>
+
+
+## 快速迁移步骤
+
+按照以下步骤逐一迁移你的项目：
+
+### 第一步：更新包版本和导入
+
+在 `package.json` 中更新所有 keq 相关包到 v5，然后更新所有导入：
+
+```typescript
+// ❌ v2
+import request from "keq"                              // [!code --]
+import { RequestException } from "keq-exception"       // [!code --]
+import { cache } from "keq-cache"                      // [!code --]
+
+// ✅ v5
+import { request } from "keq"                              // [!code ++]
+import { RequestException } from "@keq-request/exception"  // [!code ++]
+import { cache } from "@keq-request/cache"                 // [!code ++]
+```
+
+**受影响的包列表：**
+
+| v2 包名 | v5 包名 |
+|:------|:------|
+| `keq-cache` | `@keq-request/cache` |
+| `keq-headers` | `@keq-request/headers` |
+| `keq-cli` | `@keq-request/cli` |
+| `keq-url` | `@keq-request/url` |
+| `keq-exception` | `@keq-request/exception` |
+
+### 第二步：修复 Query 参数序列化
+
+如果你的代码中使用了数组类型的 Query 参数，则需要指定 `arrayFormat` 选项以保持与 v2 行为一致：
+
+```typescript
+// ❌ v2 (默认使用 brackets 格式)
+request
+  .get("/api")
+  .query({ a: [1, 2] })
+
+// ✅ v5 (需显式指定 brackets 格式)
+request
+  .get("/api")
+  .query({ a: [1, 2] }, { arrayFormat: "brackets" }) // [!code ++]
+```
+
+**v5 支持的所有格式：**
+
+- `indices` (v5 默认) - `?ids[0]=1&ids[1]=2`
+- `brackets` (v2 默认) - `?ids[]=1&ids[]=2`
+- `repeat` - `?ids=1&ids=2`
+- `comma` - `?ids=1,2`
+
+<details>
+  <summary> 为何 v5 默认的 `arrayFormat` 与 v2 不一致？</summary>
+
+  `keq` 使用 [`qs` 库](https://www.npmjs.com/package/qs) 进行 Query 参数序列化。（`qs` 的默认数组格式是 `indices`）
+  在 v2 版本中，`keq` 并不支持自定义 `arrayFormat`，所以采用了 `brackets` 作为默认值以兼容大部分后端框架。
+  但这种做法导致了与 `qs` 默认行为不一致，给用户带来更多的心智负担。
+  因此，在 v5 中我们将默认值改为 `indices`，并允许用户根据需要自定义。
+</details>
+
+### 第三步：修复路由参数编码
+
+```typescript
+// ❌ v2 支持 :variable 和 {variable} 两种写法，且 .params 会自动编码参数
+request
+  .get("/cats/{name}/:age") // [!code --]
+  .params("name", "fluffy.cat") // [!code --]
+  .params("age", 3)
+
+// ✅ v5 仅支持 {variable} 写法，且 .params 不会自动编码参数
+request
+  .get("/cats/{name}/{age}")  // [!code ++]
+  .params("name", encodeURIComponent("fluffy.cat")) // [!code ++]
+  .params("age", 3)
+```
+
+### 第四步：更新 options
+
+**resolveWithResponse：**
+
+```typescript
+const response = await request
+  .get("/data")
+  .option("resolveWithResponse", true)      // ❌ v2 [!code --]
+  .resolveWith("response")                  // ✅ v5 [!code ++]
+```
+
+**retryTimes/retryDelay/retryOn：**
+
+```typescript
+await request
+  .get("/data")
+  .options({                // [!code --]
+    retryTimes: 3,          // [!code --]
+    retryDelay: 1000,       // [!code --]
+    retryOn: () => true,    // [!code --]
+  })                        // [!code --]
+  .options({                // [!code ++]
+    retry: {                // [!code ++]
+      times: 3,             // [!code ++]
+      delay: 1000,          // [!code ++]
+      on: () => true,       // [!code ++]
+    }                       // [!code ++]
+  })                        // [!code ++]
+```
+
+### 第五步：修改中间件
+
+```typescript
+import { KeqMiddleware } from 'keq'
+
+// RequestException 的导入路径变更
+import { RequestException } from 'keq-exception' // [!code --]
+import { RequestException } from 'keq'           // [!code ++]
+
+function myMiddleware(): KeqMiddleware {
+  return async (context, next) => {
+    // context.identifier => context.locationId
+    context.identifier // [!code --]
+    context.locationId // [!code ++]
+
+    // context.metadata => context.orchestration
+    context.metadata      // [!code --]
+    context.orchestration // [!code ++]
+
+    // retryTimes/retryDelay/retryOn => retry.on/times/delay
+    context.options.retryTimes // [!code --]
+    context.options.retryDelay // [!code --]
+    context.options.retryOn    // [!code --]
+    context.data.retry.times   // [!code ++]
+    context.data.retry.delay   // [!code ++]
+    context.data.retry.on      // [!code ++]
+
+    // context.options.resolveWithResponse => context.options.resolveWith
+    context.options.resolveWithResponse = true // [!code --]
+    context.options.resolveWith = "response"   // [!code ++]
+  }
+}
+```
+
+### 第六步：修改 Typescript 类型
+
+部分 TypeScript 类型名称发生了变化：
+
+| 旧类型 | 新类型 |
+|:-------|:-------|
+| `KeqOptions` | `KeqMiddlewareOptions` |
+| `KeqOperations` | `KeqApiSchema` |
+| `KeqBaseOperation` | `KeqDefaultOperation` |
+
+## 其他破坏性变更
+
+### @keq-request/cli
+
+#### 代码结构变更
+
+旧的 `keq-cli@4` 生成的代码结构如下：
+
+```text
+outdir
+└── animal-service
+    ├── components
+    │   └── schemas
+    │       ├── cat.ts
+    │       ├── dog.ts
+    │       └── index.ts
+    ├── types
+    │   ├── get-cat.ts
+    │   └── get-dog.ts
+    ├── get-cat.ts
+    ├── get-dog.ts
+    └── index.ts
+```
+
+相比旧版本，`@keq-request/cli` 将 请求函数聚合到 `operations` 目录下，
+并且增加 `.request.ts`、`.schema.ts`、`.type.ts` 后缀以区分不同文件类型。
+新的代码结构如下：
+
+```text
+outdir
+├── animal-service
+│   ├── components
+│   │   └── schemas
+│   │       ├── cat.schema.ts
+│   │       ├── dog.schema.ts
+│   │       └── index.ts
+│   ├── types
+│   │   ├── get-cat.type.ts
+│   │   └── get-dog.type.ts
+│   └── operations
+│       ├── get-cat.request.ts
+│       ├── get-dog.request.ts
+│       └── index.ts
+└── request.ts
+```
+
+#### 迁移方案
+
+1. 删除旧的`outdir`目录，
+2. 修改 `.keqrc.(yml|json|js|ts)` 配置
+
+    ```typescript title=.keqrc.ts
+    import { defineKeqConfig, FileNamingStyle } from "keq-cli";           // [!code --]
+    import { defineKeqConfig, FileNamingStyle } from "@keq-request/cli";  // [!code ++]
+
+    export default defineKeqConfig({
+      outdir: './outdir',
+      request: './custom_request_file_path',  // [!code --]
+      fileNamingStyle: FileNamingStyle.snakeCase,
+      modules: {
+        animalService: 'http://example.com/v1/swagger.json',
+      },
+      qs: { arrayFormat: 'brackets' }  // [!code ++]
+    });
+    ```
+3. 重新生成代码：
+
+    <PackageManager command="keq build" />
+
+4. 更新项目代码：
+
+    ```typescript
+    // 请求函数的导入路径变更
+    import { getCat } from '@outdir/animal-service'            // [!code --]
+    import { getCat } from '@outdir/animal-service/operations' // [!code ++]
+
+    import { getDog } from '@outdir/animal-service/get-dog'            // [!code --]
+    import { getDog } from '@outdir/animal-service/operations/get-dog' // [!code ++]
+
+    // request 的导入路径变更
+    import { request } from 'keq'             // [!code --]
+    import { request } from '@outdir/request' // [!code ++]
+    ```

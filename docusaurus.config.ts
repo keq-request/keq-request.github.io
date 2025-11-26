@@ -72,6 +72,12 @@ const config: Config = {
           onInlineTags: 'warn',
           onInlineAuthors: 'warn',
           onUntruncatedBlogPosts: 'warn',
+          beforeDefaultRehypePlugins: [
+            [
+              rehypeShiki,
+              rehypeShikiOptions,
+            ],
+          ],
         },
         theme: {
           customCss: [
@@ -103,13 +109,18 @@ const config: Config = {
           label: '文档',
         },
         {
-          type: 'docsVersionDropdown',
-          versions: ['current', 'v2'],
-          position: 'right',
+          to: '/blog',
+          label: '博客',
+          position: 'left',
         },
         {
           href: 'https://github.com/keq-request/keq',
           label: 'GitHub',
+          position: 'right',
+        },
+        {
+          type: 'docsVersionDropdown',
+          versions: ['current', 'v2'],
           position: 'right',
         },
         {

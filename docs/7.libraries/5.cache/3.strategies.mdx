@@ -4,27 +4,36 @@
 
 ## Strategies.NETWORK_ONLY
 
-![network-only](./assets/network-only.png)
+import NetworkOnly from './assets/network-only.png'
+
+<img src={NetworkOnly} style={{ maxHeight: '300px' }} />
+
 
 **仅网络** - 直接发送请求，不使用缓存，等价于不启用缓存中间件。
 
 ## Strategies.NETWORK_FIRST
 
-![network-first](./assets/network-first.png)
+import NetworkFirst from './assets/network-first.png'
+
+<img src={NetworkFirst} style={{ maxHeight: '300px' }} />
 
 **网络优先** - 优先尝试发送网络请求，如果失败则返回缓存。
 
 ## Strategies.CACHE_FIRST
 
-![cache-first](./assets/cache-first.png)
+import CacheFirst from './assets/cache-first.png'
+
+<img src={CacheFirst} style={{ maxHeight: '300px' }} />
 
 **缓存优先** - 如果缓存存在则直接返回，否则发送网络请求。
 
 ## Strategies.STALE_WHILE_REVALIDATE
 
-![stale-wile-revalidate](./assets/stale-while-revalidate.png)
+import StaleWhileRevalidate from './assets/stale-while-revalidate.png'
 
-**边用边更新** - 如果缓存存在则立即返回缓存，同时异步发送网络请求更新缓存。
+<img src={StaleWhileRevalidate} style={{ maxHeight: '300px' }} />
+
+**SWR** - 如果缓存存在则立即返回缓存，同时异步发送网络请求更新缓存。
 
 
 ## 自定义策略
