@@ -90,19 +90,13 @@ request
   因此，在 v5 中我们将默认值改为 `indices`，并允许用户根据需要自定义。
 </details>
 
-### 第三步：修复路由参数编码
+### 第三步：修复路径参数编码
 
 ```typescript
-// ❌ v2 支持 :variable 和 {variable} 两种写法，且 .params 会自动编码参数
 request
-  .get("/cats/{name}/:age") // [!code --]
-  .params("name", "fluffy.cat") // [!code --]
-  .params("age", 3)
-
-// ✅ v5 仅支持 {variable} 写法，且 .params 不会自动编码参数
-request
-  .get("/cats/{name}/{age}")  // [!code ++]
-  .params("name", encodeURIComponent("fluffy.cat")) // [!code ++]
+  .get("/cats/{name}/:age") // ❌ v2 支持 :variable 和 {variable} 两种写法 [!code --]
+  .get("/cats/{name}/{age}")  // ✅ v5 仅支持 {variable} 写法 [!code ++]
+  .params("name", "mimi")
   .params("age", 3)
 ```
 
