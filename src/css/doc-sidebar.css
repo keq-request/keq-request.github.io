@@ -1,0 +1,75 @@
+@import "tailwindcss/theme.css";
+
+aside.theme-doc-sidebar-container {
+  @apply border-r-gray-100!;
+}
+
+nav.menu {
+  padding: 0.5rem;
+}
+
+/* 菜单项 */
+nav.menu .menu__list .menu__link {
+  @apply text-gray-600 font-normal;
+}
+
+/* 文件夹 */
+nav.menu .menu__list .menu__list-item-collapsible:hover {
+  background-color: transparent;
+}
+
+/* 没有href的情况下设置cursor: default */
+nav.menu .menu__list .menu__list-item-collapsible > .menu__link {
+  @apply text-gray-400 font-bold text-sm;
+}
+
+nav.menu .menu__list .menu__list-item-collapsible > .menu__link[href]:hover {
+  @apply text-gray-500;
+}
+
+nav.menu .menu__list .menu__list-item-collapsible > .menu__link:not([href]) {
+  cursor: default;
+}
+
+nav.menu .menu__list .menu__list-item .menu__list-item-collapsible > .menu__link.menu__link--active {
+  @apply text-gray-600;
+}
+
+nav.menu .menu__list .menu__list .menu__list-item .menu__link {
+  background: transparent;
+  border-radius: 0;
+}
+
+/* 选项 */
+nav.menu .menu__list .menu__list-item .menu__link {
+  background: transparent;
+  border-radius: 0;
+}
+
+nav.menu .menu__list .menu__list-item .menu__link.menu__link--active {
+  @apply font-bold text-gray-950;
+}
+
+
+/* 子菜单 */
+nav.menu .menu__list .menu__list {
+  @apply border-l-gray-300 border-l-1;
+  padding-left: 0 !important;
+  margin-left: var(--ifm-menu-link-padding-horizontal);
+}
+
+nav.menu .menu__list .menu__list .menu__list-item {
+  @apply -ml-px;
+}
+
+nav.menu .menu__list .menu__list .menu__list-item:has(.menu__link)  {
+  @apply border-l-gray-300 border-l-1;
+}
+
+nav.menu .menu__list .menu__list .menu__list-item:has(.menu__link:hover) {
+  @apply border-l-gray-400!;
+}
+
+nav.menu .menu__list .menu__list .menu__list-item:has(.menu__link.menu__link--active) {
+  @apply border-l-gray-950!;
+}
