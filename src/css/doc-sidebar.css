@@ -14,6 +14,10 @@ nav.menu .menu__list .menu__link {
   @apply text-gray-600 font-normal;
 }
 
+nav.menu .menu__list .menu__link:hover {
+  @apply text-gray-950 font-normal;
+}
+
 /* 文件夹 */
 nav.menu .menu__list .menu__list-item-collapsible:hover {
   background-color: transparent;
