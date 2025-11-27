@@ -10,6 +10,9 @@ article .markdown {
 article .markdown pre {
   margin: 0;
 }
+article .markdown table th, article .markdown table td {
+  @apply px-2!;
+}
 
 .theme-doc-toc-desktop > ul {
   @apply py-0.5!;
