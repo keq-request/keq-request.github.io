@@ -5,6 +5,7 @@
 [Response MDN]: https://developer.mozilla.org/en-US/docs/Web/API/Response
 [FormData MDN]: https://developer.mozilla.org/en-US/docs/Web/API/FormData
 [URL MDN]: https://developer.mozilla.org/en-US/docs/Web/API/URL
+[minimatch]: https://www.npmjs.com/package/minimatch
 
 `Keq` adopts a middleware model similar to [`koa`](https://github.com/koajs/koa).
 This gives `Keq` powerful custom extension capabilities.
@@ -245,7 +246,7 @@ By interacting with `context`, `Middleware` can completely control request behav
 | :------------------------------------------------------- | :------------------------------------------------------------------------------------------------------------------------------------------- |
 | `.location(...middlewares)`                              | In browsers, routes requests to `window.location.origin` to `middlewares`. In Node.js, routes to `127.0.0.1`                                |
 | `.method(method: string[, ...middlewares])`              | Routes requests matching `method` to `middlewares`.                                                                                          |
-| `.pathname(matcher: string \| Regexp[, ...middlewares])` | `matcher` can be a `glob` expression or regular expression, and routes matching requests to `middlewares`.                                  |
+| `.pathname(matcher: string \| Regexp[, ...middlewares])` | `matcher` can be a glob（[minimatch][minimatch] expression or regular expression, and routes matching requests to `middlewares`.                                  |
 | `.host(host: string[, ...middlewares])`                  | Routes requests sent to `host` domain to `middlewares`.                                                                                      |
 | `.module(moduleName: string[, ...middlewares])`          | Routes requests of `moduleName` module to `middlewares`.                                                                                     |
 | `.route(...middlewares)`                                 | Custom routing strategy                                                                                                                      |

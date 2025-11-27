@@ -1,5 +1,7 @@
 # 路由方法
 
+[minimatch]: https://www.npmjs.com/package/minimatch
+
 `.useRouter()` 提供了多种路由匹配方式，让中间件只对特定请求生效。
 
 ## `.host(host, ...middlewares)`
@@ -23,7 +25,7 @@ request
 
 ## `.pathname(pattern, ...middlewares)`
 
-匹配路径模式，支持 glob 和正则表达式。
+匹配路径模式，支持 glob（[minimatch][minimatch]）和正则表达式。
 
 ```typescript
 import { request } from "keq"
@@ -43,7 +45,7 @@ request
 ```
 
 **参数**：
-- `pattern` - glob 字符串或正则表达式
+- `pattern` - glob（[minimatch][minimatch]） 字符串或正则表达式
 - `middlewares` - 一个或多个中间件函数
 
 **Glob 模式示例**：
