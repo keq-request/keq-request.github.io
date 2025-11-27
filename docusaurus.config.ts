@@ -82,7 +82,9 @@ const config: Config = {
         theme: {
           customCss: [
             './src/css/custom.css',
+            './src/css/article.css',
             './src/css/doc-sidebar.css',
+            './src/css/navbar.css',
             './src/css/shiki.css',
           ],
         },

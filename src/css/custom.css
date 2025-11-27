@@ -51,15 +51,3 @@ html {
   scroll-behavior: smooth;
 }
 
-/* Fix navbar GitHub link wrapping issue */
-.navbar__link {
-  display: inline-flex;
-  align-items: center;
-  white-space: nowrap;
-}
-
-article .markdown {
-  @apply prose dark:prose-invert;
-  max-width: none;
-}
-

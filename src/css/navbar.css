@@ -1,0 +1,13 @@
+@import "tailwindcss/theme.css";
+
+
+nav.navbar {
+  @apply shadow-none border-b-gray-50 border-b;
+}
+
+/* Fix navbar GitHub link wrapping issue */
+.navbar__link {
+  display: inline-flex;
+  align-items: center;
+  white-space: nowrap;
+}

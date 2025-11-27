@@ -1,0 +1,40 @@
+@import "tailwindcss/theme.css";
+@plugin "@tailwindcss/typography";
+
+
+article .markdown {
+  @apply prose dark:prose-invert;
+  max-width: none;
+}
+
+.theme-doc-toc-desktop > ul {
+  @apply py-0.5!;
+}
+
+.theme-doc-toc-desktop > ul {
+  @apply border-l-gray-200! border-l;
+}
+
+.theme-doc-toc-desktop .table-of-contents__link {
+  @apply text-gray-500!;
+}
+
+.theme-doc-toc-desktop .table-of-contents__link * {
+  @apply text-gray-500!;
+}
+
+.theme-doc-toc-desktop .table-of-contents__link:hover {
+  @apply text-gray-800!;
+}
+
+.theme-doc-toc-desktop .table-of-contents__link:hover * {
+  @apply text-gray-800!;
+}
+
+.theme-doc-toc-desktop .table-of-contents__link.table-of-contents__link--active {
+  @apply font-bold text-gray-800!;
+}
+
+.theme-doc-toc-desktop .table-of-contents__link.table-of-contents__link--active * {
+  @apply font-bold text-gray-800!;
+}
