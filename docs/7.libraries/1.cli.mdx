@@ -296,6 +296,7 @@ request
 | operationIdFactory | false        | `({ operation }) => operation.operationId` | 自定义函数名的生成规则，默认使用 `swagger` 文件中的 `operationId` |
 | strict             | false        | `false`                                    | 是否清空输出目录                                                  |
 | esm                | false        | 若 `package.json` 是否设置了 `"type": "module"` 则为 `true` | 是否生成 ESM 风格的代码                      |
+| plugins            | false        | `[]`                                        | 插件向第三方开发者提供了完整的自定义 cli 行为的能力     |
 
 ### FileNamingStyle
 
@@ -363,3 +364,120 @@ catService GET /cats    # 忽略 catService 模块的 GET /cats 接口
 | `--pathname <pathname...>`       | 设置添加的忽略规则的 HTTP 接口路径                                                             |
 | `-i --interactive`               | 通过命令行交互，指定需要忽略的 HTTP 接口                                                               |
 | `--build`                     | 忽略规则添加完成后，自动执行 `keq build` 命令生成代码                                                  |
+
+
+## Plugin
+
+`Plugin` 为第三方开发者提供了完整的自定义 CLI 行为的能力。通过 `Plugin`，你可以在编译过程的各个阶段介入，修改生成的代码或添加自定义逻辑。
+
+一个最简单的 `Plugin` 只需要实现 `apply` 方法：
+
+```typescript
+import { Plugin } from '@keq-request/cli'
+
+export class MyPlugin implements Plugin {
+  apply(compiler) {
+    console.log('插件已加载!')
+  }
+}
+```
+
+然后在配置文件中启用 `Plugin`：
+
+```typescript title=".keqrc.ts"
+import { defineKeqConfig } from "@keq-request/cli"
+import { MyPlugin } from "./my-plugin"
+
+export default defineKeqConfig({
+  outdir: "./src/api",
+  modules: {
+    catService: "./cat-service-swagger.json",
+  },
+  plugins: [new MyPlugin()],
+})
+```
+
+### 编译生命周期
+
+`Plugin` 可以通过 `Hooks` 在编译的各个阶段介入。
+因此，在深入了解 `Hooks` 之前，需要先理解 `@keq-request/cli` 的编译流程。
+整个编译过程分为 7 个阶段，按顺序执行：
+
+#### 1. Setup - 加载配置
+
+加载 `.keqrc` 配置文件和 `.keqignore` 忽略规则。
+
+**数据输出**：`context.setup.rc`（配置信息）、`context.setup.matcher`（匹配规则）
+
+#### 2. Download - 下载文档
+
+从本地或远程加载 Swagger 文档。
+
+**数据输出**：`context.downloaded.documents`（原始 Swagger 文档）
+
+#### 3. Validate - 验证转换
+
+验证 Swagger 格式并统一转换为 OpenAPI 3.1 标准。此阶段会进行：格式验证、版本转换（Swagger 2.0 → OpenAPI 3.1）、特殊字符修正、去除冗余 `$ref`、重新计算 `operationId` 等操作。
+
+**数据输出**：`context.validated.documents`（规范化后的文档）
+
+#### 4. Interactive - 交互选择（可选）
+
+通过命令行交互选择需要生成的接口，并将选择结果添加到 `context.setup.matcher`。仅在使用 `-i` 或 `--interactive` 参数时执行。
+
+#### 5. Shaking - 过滤接口
+
+根据 `context.setup.matcher` 中的匹配规则，移除不需要生成代码的接口。
+
+**数据输出**：`context.shaken.documents`（过滤后的文档）
+
+#### 6. Compile - 生成代码
+
+将 `context.shaken.documents` 编译为 TypeScript 代码文件。
+
+**数据输出**：`context.compiled.artifacts`（生成的代码文件）
+
+#### 7. Persist - 写入文件
+
+将 `context.compiled.artifacts` 写入磁盘，并将 `context.setup.matcher` 写入 `.keqignore` 文件。
+
+### Hooks
+
+CLI 基于 [tapable](https://github.com/webpack/tapable) 实现了钩子系统。根据使用场景，钩子分为两类：
+
+#### 生命周期 Hook
+
+在编译的各个阶段触发，用于执行通用逻辑：
+
+| **钩子名称**      | **触发时机**             | **类型**              |
+| :---------------- | :----------------------- | :-------------------- |
+| `afterSetup`      | Setup 阶段完成后         | `AsyncSeriesHook<[]>`  |
+| `afterDownload`   | Download 阶段完成后      | `AsyncSeriesHook<[]>`  |
+| `afterValidate`   | Validate 阶段完成后      | `AsyncSeriesHook<[]>`  |
+| `afterShaking`    | Shaking 阶段完成后       | `AsyncSeriesHook<[]>`  |
+| `afterPersist`    | Persist 阶段完成后       | `AsyncSeriesHook<[]>`  |
+
+**示例**：在配置加载后打印日志
+
+```typescript
+export class LoggerPlugin implements Plugin {
+  apply(compiler) {
+    compiler.hooks.afterSetup.tap('LoggerPlugin', () => {
+      console.log('配置加载完成:', compiler.context.setup.rc)
+    })
+  }
+}
+```
+
+#### Compile Hook
+
+在 Compile 阶段触发，可用于修改生成的代码：
+
+| **钩子名称**                    | **触发时机**           | **类型**                         |
+| :------------------------------ | :--------------------- | :------------------------------- |
+| `afterCompileKeqRequest`        | 生成 `request.ts` 文件后 | `AsyncSeriesWaterfallHook<[Artifact]>`           |
+| `afterCompileComponentSchema`   | 生成数据模型后         | `AsyncSeriesWaterfallHook<[Artifact, SchemaDefinition]>`           |
+| `afterCompileOperationRequest`  | 生成请求函数后         | `AsyncSeriesWaterfallHook<[Artifact, OperationDefinition]>`          |
+| `afterCompileOperationType`     | 生成类型定义后         | `AsyncSeriesWaterfallHook<[Artifact, OperationDefinition]>`          |
+
+所有 `Compile Hook` 都是必须返回修改后的 `Artifact`。
