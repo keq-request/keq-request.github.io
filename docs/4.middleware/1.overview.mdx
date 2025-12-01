@@ -19,7 +19,9 @@ NPM 上有很多这类库，如 [`fetch-retry`](https://www.npmjs.com/package/fe
 
 ## 洋葱模型
 
-![Keq Middleware](/img/keq_middleware.png)
+import KeqMiddlewareImage from './assets/keq-middleware.png'
+
+<img src={KeqMiddlewareImage} style={{ display: 'block', maxHeight: '500px', marginRight: 'auto', marginLeft: 'auto' }} alt="Keq Middleware" />
 
 Keq 的中间件采用洋葱模型：请求从外层中间件进入，层层向内传递直到发送请求，然后响应再从内向外返回，每层中间件都有机会处理请求和响应。
 
