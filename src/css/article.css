@@ -45,3 +45,28 @@ article .markdown table th, article .markdown table td {
 .theme-doc-toc-desktop .table-of-contents__link.table-of-contents__link--active * {
   @apply font-bold text-gray-800!;
 }
+
+
+article .markdown table {
+  display: table;
+  width: 100%;
+  table-layout: fixed;
+  border-collapse: collapse;
+}
+
+article .markdown table thead {
+  @apply bg-gray-100!;
+}
+
+article .markdown table tr {
+  @apply border-1!;
+}
+
+article .markdown table th,
+article .markdown table td {
+  @apply border-gray-100!;
+}
+
+article .markdown table tr:nth-child(even) {
+  @apply bg-gray-50!;
+}
