@@ -47,6 +47,8 @@ article .markdown table th, article .markdown table td {
 }
 
 
+/* Table */
+
 article .markdown table {
   display: table;
   width: 100%;
@@ -69,4 +71,10 @@ article .markdown table td {
 
 article .markdown table tr:nth-child(even) {
   @apply bg-gray-50!;
+}
+
+/* Tabs */
+
+article .markdown .tabs .tabs__item {
+  padding: var(--ifm-tabs-padding-vertical) var(--ifm-tabs-padding-horizontal) !important;
 }
