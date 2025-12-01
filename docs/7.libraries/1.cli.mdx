@@ -88,7 +88,7 @@ import PackageManager from '@site/docs/components/_package-manager.mdx';
     import { defineKeqConfig, FileNamingStyle } from "@keq-request/cli"
 
     export default defineKeqConfig({
-      outdir: "./src/api", // 编译结果的输出目录
+      outdir: "./src/apis", // 编译结果的输出目录
       fileNamingStyle: FileNamingStyle.snakeCase,
       modules: {
         catService: "./cat-service-swagger.json",
@@ -104,7 +104,7 @@ import PackageManager from '@site/docs/components/_package-manager.mdx';
     const { defineKeqConfig, FileNamingStyle } = require("@keq-request/cli")
 
     module.exports = defineKeqConfig({
-      outdir: "./src/api", // 编译结果的输出目录
+      outdir: "./src/apis", // 编译结果的输出目录
       fileNamingStyle: FileNamingStyle.snakeCase,
       modules: {
         catService: "./cat-service-swagger.json",
@@ -117,7 +117,7 @@ import PackageManager from '@site/docs/components/_package-manager.mdx';
 
   <TabItem value="yml" label="YAML">
     ```yaml title=".keqrc.yml"
-    outdir: ./src/api # 编译结果的输出目录
+    outdir: ./src/apis # 编译结果的输出目录
     fileNamingStyle: snake_case
     modules:
       catService: ./cat-service-swagger.json
@@ -135,11 +135,11 @@ import PackageManager from '@site/docs/components/_package-manager.mdx';
 
 <PackageManager command="keq build" />
 
-执行完成后，`@keq-request/cli` 会在 `./src/api/cat_service/` 目录下生成如下文件：
+执行完成后，`@keq-request/cli` 会在 `./src/apis/cat_service/` 目录下生成如下文件：
 
 <Tabs>
   <TabItem value="services_get_cats" label="请求函数" default>
-    ```typescript title="./src/api/cat_service/get_cats.request.ts"
+    ```typescript title="./src/apis/cat_service/get_cats.request.ts"
     import { Keq } from "keq"
     import { request } from '../../request'
     import { Operation, GetCatsResponseBodies, GetCatsRequestParameters } from '../types/get_cats.type'
@@ -166,7 +166,7 @@ import PackageManager from '@site/docs/components/_package-manager.mdx';
 
   <TabItem value="type_cat" label="接口类型定义">
 
-    ```typescript title="./src/api/cat_service/types/get_cats.type.ts"
+    ```typescript title="./src/apis/cat_service/types/get_cats.type.ts"
     import { KeqOperation, KeqQueryValue, KeqParamValue } from 'keq'
     import { Cat as CatSchema } from '../components/schemas/cat.type'
 
@@ -198,7 +198,7 @@ import PackageManager from '@site/docs/components/_package-manager.mdx';
   </TabItem>
 
   <TabItem value="schema_cat" label="数据模型定义">
-    ```typescript title="./src/api/cat_service/components/schemas/cat.schema.ts"
+    ```typescript title="./src/apis/cat_service/components/schemas/cat.schema.ts"
     export interface Cat {
       "name"?: string
       "age"?: number
@@ -209,40 +209,26 @@ import PackageManager from '@site/docs/components/_package-manager.mdx';
 
 这样，我们就可以调用 `getCats` 函数来发送 HTTP 请求：
 
-<Tabs>
-  <TabItem value="example1" label="示例" default>
-    ```typescript
-    import { getCats } from "./src/api/cat_service/operations"
+```typescript
+import { getCats } from "./src/apis/cat_service/operations"
 
-    const cats = await getCats({ breed: "siamese", unknownKey: 'value' }) // unknownKey 未在 swagger 定义，将被丢弃
-      .retry(3, 1000)
-      .timeout(1000)
+const cats = await getCats({ breed: "siamese", unknownKey: 'value' }) // unknownKey 未在 swagger 定义，将被丢弃
+  .retry(3, 1000)
+  .timeout(1000)
+  // 追加额外的请求参数
+  .query('extraQuery', 'extra')
+  .set('Authorization', 'TOKEN')
+  .send({ extraBody: 'extra' })
 
-    // 实际请求地址: /cats?breed=siamese
+// 实际请求地址: /cats?breed=siamese&extraQuery=extra
 
-    console.log(`我的猫咪有：${cats.map(cat => cat.name).join('、')}`)
-    console.log(`请求路径：${getCats.pathname}`)
-    ```
+console.log(`我的猫咪有：${cats.map(cat => cat.name).join('、')}`)
+console.log(`请求路径：${getCats.pathname}`)
+```
 
-  </TabItem>
+:::note [`BodyFallbackPlugin`](#bodyfallbackplugin) 可以将 `unknownKey` 这样的未定义请求参数，全部添加到请求体中。
+:::
 
-  <TabItem value="example2" label="添加未定义在 Swagger 中的参数">
-    ```typescript
-    import { getCats } from "./src/api/cat_service/operations"
-
-    const cats = await getCats({ breed: "siamese", unknownKey: 'value' }) // unknownKey 未在 swagger 定义，将被丢弃
-      .query('extraParam', 'extraValue') // 链式调用添加的参数不会被丢弃 [!code ++]
-      .retry(3, 1000)
-      .timeout(1000)
-
-    // 实际请求地址: /cats?breed=siamese&extraParam=extraValue
-
-    console.log(`我的猫咪有：${cats.map(cat => cat.name).join('、')}`)
-    console.log(`请求路径：${getCats.pathname}`)
-    ```
-
-  </TabItem>
-</Tabs>
 
 最后，我们可以为 `catService` 模块的所有接口添加统一的错误处理逻辑：
 
@@ -277,8 +263,6 @@ request
 
 - *链式调用* 让我们在调用`请求函数`时，可以动态的修改请求参数，甚至设置违背 `swagger` 定义的参数。并且它完美地避免了臃肿的配置选项。
 - *中间件* 则提供了一种优雅的方式来为同一模块的所有接口添加统一的功能。并可以通过 *链式调用* 在不同场景下灵活的启用或禁用 *中间件*。
-
-> 真是为了一块肉，做了一桌子菜啊！
 :::
 
 ## 配置文件
@@ -389,7 +373,7 @@ import { defineKeqConfig } from "@keq-request/cli"
 import { MyPlugin } from "./my-plugin"
 
 export default defineKeqConfig({
-  outdir: "./src/api",
+  outdir: "./src/apis",
   modules: {
     catService: "./cat-service-swagger.json",
   },
@@ -481,3 +465,54 @@ export class LoggerPlugin implements Plugin {
 | `afterCompileOperationType`     | 生成类型定义后         | `AsyncSeriesWaterfallHook<[Artifact, OperationDefinition]>`          |
 
 所有 `Compile Hook` 都是必须返回修改后的 `Artifact`。
+
+### 内置 Plugin
+
+#### EslintPlugin
+
+`EslintPlugin` 会在代码生成后，自动运行 `eslint --fix` 来格式化代码。
+
+```typescript title=".keqrc.ts"
+import { EslintPlugin } from '@keq-request/cli/plugins'
+
+export default defineKeqConfig({
+  outdir: "./src/apis",
+  modules: {
+    catService: "./cat-service-swagger.json",
+  },
+  plugins: [new EslintPlugin()],
+})
+```
+
+#### PrettierPlugin
+
+`PrettierPlugin` 会在代码生成后，自动运行 `prettier --write` 来格式化代码。
+
+```typescript title=".keqrc.ts"
+import { PrettierPlugin } from '@keq-request/cli/plugins'
+
+export default defineKeqConfig({
+  outdir: "./src/apis",
+  modules: {
+    catService: "./cat-service-swagger.json",
+  },
+  plugins: [new PrettierPlugin()],
+})
+```
+
+#### BodyFallbackPlugin
+
+默认情况下，未定义在 `swagger` 文档中的请求参数会被丢弃。
+`BodyFallbackPlugin` 会将这些未定义的请求参数，全部添加到请求体中：
+
+```typescript title=".keqrc.ts"
+import { BodyFallbackPlugin } from '@keq-request/cli/plugins'
+
+export default defineKeqConfig({
+  outdir: "./src/apis",
+  modules: {
+    catService: "./cat-service-swagger.json",
+  },
+  plugins: [new BodyFallbackPlugin()],
+})
+```
