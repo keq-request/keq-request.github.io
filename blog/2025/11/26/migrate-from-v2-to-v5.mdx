@@ -274,3 +274,13 @@ Keq v5 则补充了详细的浏览器兼容性列表：
 import CompatibilityTable from '@site/docs/components/_compatibility-table.mdx'
 
 <CompatibilityTable />
+
+### Typescript
+
+Keq v2 中，`request.[method]()` 的返回类型默认为 `Keq<any>`；
+Keq v5 中，返回类型默认为 `Keq<unknown>`，以鼓励用户显式指定类型，提升类型安全性。
+
+```typescript
+const body = await request
+  .get<any>("/cats") // 若不显示指定类型，返回类型默认为 Keq<unknown> [!code ++]
+```
