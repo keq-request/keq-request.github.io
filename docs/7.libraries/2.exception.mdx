@@ -49,3 +49,70 @@ request
 | statusCode | -          | 错误码                |
 | message    | `''`       | 错误信息              |
 | retry      | `true`     | 异常是否会触发`retry` |
+
+## Middleware
+
+### validateStatusCode
+
+验证 `Response` 的 `status`，并抛出对应的 `RequestException`：
+
+- `status` 在 `200-399` 范围内时，不抛出异常
+- `status = 400` 时，抛出 `BadRequestException(statusText)`
+- `status = 401` 时，抛出 `UnauthorizedException(statusText)`
+- `status = 403` 时，抛出 `ForbiddenException(statusText)`
+- `status = 404` 时，抛出 `NotFoundException(statusText)`
+- `status = 405` 时，抛出 `MethodNotAllowedException(statusText)`
+- `status = 406` 时，抛出 `NotAcceptableException(statusText)`
+- `status = 407` 时，抛出 `ProxyAuthenticationRequiredException(statusText)`
+- `status = 408` 时，抛出 `RequestTimeoutException(statusText)`
+- `status = 409` 时，抛出 `ConflictException(statusText)`
+- `status = 412` 时，抛出 `PreconditionFailedException(statusText)`
+- `status = 413` 时，抛出 `ContentTooLargeException(statusText)`
+- `status = 414` 时，抛出 `UriTooLongException(statusText)`
+- `status = 415` 时，抛出 `UnsupportedMediaTypeException(statusText)`
+- `status = 418` 时，抛出 `ImATeapotException(statusText)`
+- `status = 429` 时，抛出 `TooManyRequestsException(statusText)`
+- `status` 为其他 `400-499` 的数值时，抛出 `RequestException(status, statusText, false)`
+- `status = 500` 时，抛出 `InternalServerErrorException(statusText
+- `status = 501` 时，抛出 `NotImplementedException(statusText)`
+- `status = 502` 时，抛出 `BadGatewayException(statusText)`
+- `status = 503` 时，抛出 `ServiceUnavailableException(statusText)`
+- `status = 504` 时，抛出 `GatewayTimeoutException(statusText)`
+- `status` 为其他 `500-599` 的数值时，抛出 `RequestException(status, statusText, true)`
+
+**示例**
+
+```typescript
+import { request } from "keq"
+import { validateStatusCode } from "@keq-request/exception"
+
+request.use(validateStatusCode())
+```
+
+## Plugin
+
+### ValidateStatusCode
+
+用于 `@keq-request/cli` 的 Plugin，其主要功能有：
+
+1. 删除 `openapi` / `swagger` 文档中的异常响应定义
+2. 添加 `validateStatusCode` Middleware
+
+**Options**
+
+| **参数** | **是否必填** | **类型** | **默认值** | **描述**               |
+| :------- | :----------- | :------- | :--------- | ---------------------- |
+| modules | 否           | string[] | `undefined` | 生效的 `module` 名称列表 |
+
+**示例**
+
+```typescript title=".keqrc.ts"
+import { DefineKeqConfig } from "@keq-request/cli"
+import { ValidateStatusCode } from "@keq-request/exception/plugins"
+
+const config: DefineKeqConfig = {
+  // ...
+  plugins: [
+    new ValidateStatusCode(/* { modules: [...] } */)
+  ],
+}

@@ -47,6 +47,30 @@ request.use(async (context, next) => {
 })
 ```
 
+Keq 提供了常见的 HTTP Exception，均继承自 `RequestException`：
+
+- `BadRequestException` (400)
+- `UnauthorizedException` (401)
+- `ForbiddenException` (403)
+- `NotFoundException` (404)
+- `MethodNotAllowedException` (405)
+- `NotAcceptableException` (406)
+- `ProxyAuthenticationRequiredException` (407)
+- `RequestTimeoutException` (408)
+- `ConflictException` (409)
+- `PreconditionFailedException` (412)
+- `ContentTooLargeException` (413)
+- `UriTooLongException` (414)
+- `UnsupportedMediaTypeException` (415)
+- `ImATeapotException` (418)
+- `TooManyRequestsException` (429)
+- `InternalServerErrorException` (500)
+- `NotImplementedException` (501)
+- `BadGatewayException` (502)
+- `ServiceUnavailableException` (503)
+- `GatewayTimeoutException` (504)
+
+
 ### AbortException
 
 继承自 `DOMException`，当请求被主动中止时抛出。
