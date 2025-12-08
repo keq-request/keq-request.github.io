@@ -8,10 +8,15 @@
 
 ### 配置选项
 
-| 参数名      | 类型                                   | 默认值                     | 说明                                                           |
-| :--------- | :------------------------------------- | :------------------------ | :------------------------------------------------------------- |
-| size       | `number`                               | `Infinity`                | 最大存储容量（字节），当容量不足时会根据淘汰策略删除缓存数据        |
-| eviction   | `Eviction`                             | `Eviction.VOLATILE_TTL`   | 内存不足时的淘汰策略，[查看详情](#淘汰策略)                      |
+| 参数名          | 类型                                   | 默认值                    | 说明                                                           |
+| :-------------- | :------------------------------------- | :------------------------ | :------------------------------------------------------------- |
+| size            | `number`                               | `Infinity`                | 最大存储容量（字节），当容量不足时会根据淘汰策略删除缓存数据    |
+| eviction        | `Eviction`                             | `Eviction.VOLATILE_TTL`   | 内存不足时的淘汰策略，[查看详情](#淘汰策略)                    |
+| onCacheGet      | `(event: OnCacheGetEvent) => void`     | `undefined`               | 缓存被获取时的回调函数                                         |
+| onCacheSet      | `(event: OnCacheSetEvent) => void`     | `undefined`               | 缓存被添加/更新时的回调函数                                    |
+| onCacheRemove   | `(event: OnCacheRemoveEvent) => void`  | `undefined`               | 缓存被删除时的回调函数                                         |
+| onCacheEvict    | `(event: OnCacheEvictEvent) => void`   | `undefined`               | 缓存被淘汰时的回调函数                                         |
+| onCacheExpired  | `(event: OnCacheExpiredEvent) => void` | `undefined`               | 缓存过期时的回调函数                                           |
 
 ### 使用示例
 
@@ -33,11 +38,16 @@ request.use(cache({ storage }))
 
 ### 配置选项
 
-| 参数名      | 类型                                   | 默认值                              | 说明                                                           |
-| :--------- | :------------------------------------- | :--------------------------------- | :------------------------------------------------------------- |
-| size       | `number`                               | `Infinity`                         | 最大存储容量（字节），当容量不足时会根据淘汰策略删除缓存数据        |
-| eviction   | `Eviction`                             | `Eviction.VOLATILE_TTL`            | 存储空间不足时的淘汰策略，[查看详情](#淘汰策略)                  |
-| tableName  | `string`                               | `'keq_cache_indexed_db_storage'`   | IndexedDB 的表名，**使用相同表名的多个实例将共享缓存数据**        |
+| 参数名          | 类型                                   | 默认值                             | 说明                                                           |
+| :-------------- | :------------------------------------- | :--------------------------------- | :------------------------------------------------------------- |
+| size            | `number`                               | `Infinity`                         | 最大存储容量（字节），当容量不足时会根据淘汰策略删除缓存数据    |
+| eviction        | `Eviction`                             | `Eviction.VOLATILE_TTL`            | 存储空间不足时的淘汰策略，[查看详情](#淘汰策略)                |
+| tableName       | `string`                               | `'keq_cache_indexed_db_storage'`   | IndexedDB 的表名，**使用相同表名的多个实例将共享缓存数据**     |
+| onCacheGet      | `(event: OnCacheGetEvent) => void`     | `undefined`                        | 缓存被获取时的回调函数                                         |
+| onCacheSet      | `(event: OnCacheSetEvent) => void`     | `undefined`                        | 缓存被添加/更新时的回调函数                                    |
+| onCacheRemove   | `(event: OnCacheRemoveEvent) => void`  | `undefined`                        | 缓存被删除时的回调函数                                         |
+| onCacheEvict    | `(event: OnCacheEvictEvent) => void`   | `undefined`                        | 缓存被淘汰时的回调函数                                         |
+| onCacheExpired  | `(event: OnCacheExpiredEvent) => void` | `undefined`                        | 缓存过期时的回调函数                                           |
 
 ### 使用示例
 
@@ -175,4 +185,36 @@ class MyStorage extends KeqCacheStorage {
 ```
 
 示例仅展示了最基础的自定义存储实现。真正的生产环境中，你还需要处理存储容量限制和淘汰策略等问题。
-更多实现细节，请参考 [`MemoryStorage`](https://github.com/keq-request/keq-cache/blob/main/src/storage/memory-storage/memory-storage.ts) 和 [`IndexedDBStorage`](https://github.com/keq-request/keq-cache/blob/main/src/storage/indexed-db-storage/indexed-db-storage.ts) 的源代码。
+更多实现细节，请参考 [`MemoryStorage`](https://github.com/keq-request/keq/blob/main/packages/cache/src/storage/memory-storage/memory-storage.ts) 和 [`IndexedDBStorage`](https://github.com/keq-request/keq/blob/main/packages/cache/src/storage/indexed-db-storage/indexed-db-storage.ts) 的源代码。
+
+若只是需要扩展 `MemoryStorage` 或 `IndexedDBStorage` 的功能，则可以继承相应的类并重写所需的方法。
+
+```typescript
+import { MemoryStorage } from "@keq-request/cache"
+
+
+/**
+ * 命中三次后缓存失效的内存缓存
+*/
+class OnceStorage extends MemoryStorage {
+  const counter = new Map<string, number>()
+
+  async get(key: string) {
+    const entry = await super.get(key)
+
+    if (entry) {
+      const count = (this.counter.get(key) || 0) + 1
+
+      if (count >= 3) {
+        await this.remove(key)
+        this.counter.delete(key)
+        return undefined
+      } else {
+        this.counter.set(key, count)
+      }
+    }
+
+    return entry
+  }
+}
+```

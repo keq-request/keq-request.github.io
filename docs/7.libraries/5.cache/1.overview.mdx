@@ -31,12 +31,10 @@ request.use(cache({ storage }))
 request
   .get("/api/data")
   // 启用缓存
-  .options({
-    cache: {
-      key: '/api/data',
-      strategy: Strategy.CACHE_FIRST,
-      ttl: 60, // 缓存 60 秒
-    }
+  .option('cache', {
+    key: '/api/data',
+    strategy: Strategy.CACHE_FIRST,
+    ttl: 60, // 缓存 60 秒
   })
 ```
 
@@ -99,15 +97,13 @@ request
 
 ## 配置项
 
-### Options
-
 | 参数名                   | 类型                                                | 默认值                                              | 说明                                                           |
 | :---------------------- | :------------------------------------------------- | :------------------------------------------------- | :------------------------------------------------------------- |
 | storage                 | `KeqCacheStorage`                                  | -                                                  | 缓存存储实例，[详见 Storage](./storage)                             |
 | keyFactory              | `(context) => string`                              | `(context) => context.locationId`                  | 缓存键生成函数，生成相同 key 的请求将共享缓存                           |
 | rules                   | `Rule[]`                                           | `[]`                                               | 缓存规则数组                                                    |
 
-### Rule
+**rules**
 
 | 参数名                   | 类型                                                | 默认值                                              | 说明                                                           |
 | :---------------------- | :------------------------------------------------- | :------------------------------------------------- | :------------------------------------------------------------- |
@@ -116,3 +112,22 @@ request
 | strategy                | `Strategy`                                         | `Strategy.NETWORK_FIRST`                           | 缓存策略，[详见 缓存策略](./strategies)                              |
 | ttl                     | `number`                                           | `Infinity`                                         | 缓存有效期（秒）                                                |
 | exclude                 | `(response) => boolean \| Promise<boolean>`        | -                                                  | 排除函数，返回 `true` 时不缓存该响应                            |
+
+## 扩展项
+
+### `.on(eventName, callback)`
+
+| 事件名       | 说明                           | 回调参数                                      |
+| :----------- | :----------------------------- | :------------------------------------------ |
+| cache:hit    | 缓存命中时触发                 | `({ key: string, response: Response, context: KeqContext })`
+| cache:miss   | 缓存未命中时触发               | `({ key: string, context: KeqContext})`                  |
+| cache:update | 缓存更新时触发                 | `({ key: string, oldResponse: Response, newResponse: Response, context: KeqContext })`            |
+
+### `.option('cache', options)`
+
+| 参数名            | 类型                                               | 说明                                                           |
+| :---------------- | :------------------------------------------------- | :------------------------------------------------------------- |
+| key               | `(ctx) => string`                                  |  自定义缓存键生成函数                                          |
+| strategy          | `Strategy`                                         |  缓存策略，[详见 缓存策略](./strategies)                       |
+| ttl               | `number`                                           | 缓存有效期（秒）                                               |
+| exclude           | `(response) => boolean \| Promise<boolean>`        | 排除函数，返回 `true` 时不缓存该响应                           |
