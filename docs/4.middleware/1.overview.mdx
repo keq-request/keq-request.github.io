@@ -136,11 +136,11 @@ request
 import { KeqMiddleware, request } from "keq"
 
 // 1. 扩展类型定义
-declare module "keq" {               // [!code ++]
-  interface KeqOptions<T> {          // [!code ++]
-    silent(value: boolean): Keq<T>   // [!code ++]
-  }                                  // [!code ++]
-}                                    // [!code ++]
+declare module "keq" {                  // [!code ++]
+  interface KeqMiddlewareOptions<OP> {  // [!code ++]
+    silent(value: boolean): Keq<OP>     // [!code ++]
+  }                                     // [!code ++]
+}                                       // [!code ++]
 
 // 2. 创建支持自定义选项的中间件
 function logMiddleware(prefix: string): KeqMiddleware {

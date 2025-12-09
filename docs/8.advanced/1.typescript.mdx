@@ -120,10 +120,10 @@ const cat = await catAPI
 ```typescript {4-8,17,27}
 import { Keq, KeqMiddleware } from "keq"
 
-// 扩展 KeqOptions 接口
+// 扩展 KeqMiddlewareOptions 接口
 declare module "keq" {
-  interface KeqOptions<T> {
-    silent(value: boolean): Keq<T>
+  interface KeqMiddlewareOptions<OP> {
+    silent(value: boolean): Keq<OP>
   }
 }
 

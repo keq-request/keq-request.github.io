@@ -67,8 +67,8 @@ import { KeqMiddleware } from "keq"
 
 // 扩展类型定义
 declare module "keq" {
-  interface KeqOptions<T> {
-    customOption(value: string): Keq<T>
+  interface KeqMiddlewareOptions<OP> {
+    customOption(value: string): Keq<OP>
   }
 }
 
