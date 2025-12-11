@@ -45,46 +45,32 @@ import StaleWhileRevalidate from './assets/stale-while-revalidate.png'
 import { request, KeqMiddleware } from "keq"
 import { KeqCacheStrategy, KeqCacheParameters, CacheEntry } from "@keq-request/cache"
 
-const MyCacheFirstStrategy: KeqCacheStrategy = function (params: KeqCacheParameters): KeqMiddleware {
-  const { storage, key } = params
+const MyCacheFirstStrategy: KeqCacheStrategy = async function (handler, context, next) {
+  // const { storage, key } = params
 
-  return async function (context, next) {
-    const cache = await storage.get(key)
+  // return async function (context, next) {
+  const [key,cache] = await handler.getCache(context)
 
-    if (cache) {
-      context.res = cache.response
-      context.emitter.emit('cache:hit', { key, response: context.response, context }) // 不要忘记触发缓存命中事件
-      return
-    }
+  if (cache) {
+    context.res = cache.response
+    context.emitter.emit('cache:hit', { key, response: context.response, context }) // 不要忘记触发缓存命中事件
+    return
+  }
 
-    context.emitter.emit('cache:miss', { key, context }) // 不要忘记触发缓存未命中事件
+  context.emitter.emit('cache:miss', { key, context }) // 不要忘记触发缓存未命中事件
 
-    // 发送请求
-    await next()
+  // 发送请求
+  await next()
 
-    if (context.response) {
-      // 检查是否应该可以缓存
-      if (params.exclude && (await params.exclude(context.response))) {
-        return
-      }
-
-      // 构建缓存
-      const entry = await CacheEntry.build({
-        key: key,
-        response: context.response,
-        ttl: params.ttl,
-      })
-
-      await storage.set(entry)
-
-      // 不要忘记触发缓存更新事件
-      context.emitter.emit('cache:update', {
-        key,
-        oldResponse: undefined,
-        newResponse: entry.response,
-        context,
-      })
-    }
+  const [, entry] = await handler.setCache(context, key)
+  if (entry) {
+    // 不要忘记触发缓存更新事件
+    context.emitter.emit('cache:update', {
+      key: entry.key,
+      oldResponse: cache?.response,
+      newResponse: entry.response,
+      context,
+    })
   }
 }
 
@@ -109,13 +95,13 @@ import { KeqCacheStrategy, Strategies } from "@keq-request/cache"
 
 const isNetworkFast = true
 
-const MyStrategy: KeqCacheStrategy = function (params) {
+const MyStrategy: KeqCacheStrategy = async function (handler, context, next) {
   // 根据条件选择不同的策略
   if (isNetworkFast) {
-    return Strategies.NETWORK_FIRST(params)
+    return Strategies.NETWORK_FIRST(handler, context, next)
   } else {
     // 其他情况使用边用边更新
-    return Strategies.STALE_WHILE_REVALIDATE(params)
+    return Strategies.STALE_WHILE_REVALIDATE(handler, context, next)
   }
 }
 ```
