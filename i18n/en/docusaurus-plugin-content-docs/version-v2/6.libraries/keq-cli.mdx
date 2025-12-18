@@ -304,6 +304,7 @@ You can specify the configuration file location with `-c --config <config_file_p
 | operationIdFactory | false        | `({ operation }) => operation.operationId` | Custom function name generation rules, defaults to using `operationId` from swagger document |
 | strict             | false        | `false`                                    | Whether to clear the output directory                                                        |
 | esm                | false        | `false`                                    | Whether to generate ESM-style code                                                           |
+| request            | false        | -                                          | File path to custom [`export const request = createRequest()`](../middleware#createrequest)  |
 
 ### FileNamingStyle
 

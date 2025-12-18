@@ -307,6 +307,7 @@ request
 | operationIdFactory | false        | `({ operation }) => operation.operationId` | 自定义函数名的生成规则，默认使用 `swagger` 文件中的 `operationId` |
 | strict             | false        | `false`                                    | 是否清空输出目录                                                  |
 | esm                | false        | `false`                                    | 是否生成 ESM 风格的代码                                           |
+| request            | false        | -                                          | 使用自定义的 [`export const request = createRequest()`](../middleware#createrequest) 的文件路径    |
 
 ### FileNamingStyle
 
