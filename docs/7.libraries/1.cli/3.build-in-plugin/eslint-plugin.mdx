@@ -1,0 +1,15 @@
+# EslintPlugin
+
+`EslintPlugin` 会在代码生成后，自动运行 `eslint --fix` 来格式化代码。
+
+```typescript title=".keqrc.ts"
+import { EslintPlugin } from '@keq-request/cli/plugins'
+
+export default defineKeqConfig({
+  outdir: "./src/apis",
+  modules: {
+    catService: "./cat-service-swagger.json",
+  },
+  plugins: [new EslintPlugin()],
+})
+```

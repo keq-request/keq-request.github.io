@@ -1,0 +1,17 @@
+# BodyFallbackPlugin
+
+默认情况下，未定义在 `swagger` 文档中的请求参数会被丢弃。
+`BodyFallbackPlugin` 会将这些未定义的请求参数，全部添加到请求体中：
+
+```typescript title=".keqrc.ts"
+import { BodyFallbackPlugin } from '@keq-request/cli/plugins'
+
+export default defineKeqConfig({
+  outdir: "./src/apis",
+  modules: {
+    catService: "./cat-service-swagger.json",
+  },
+  plugins: [new BodyFallbackPlugin()],
+})
+```
+

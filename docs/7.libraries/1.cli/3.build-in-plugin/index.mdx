@@ -1,0 +1,30 @@
+# 内置插件
+
+`@keq-request/cli` 提供了丰富的内置插件，帮助你从 OpenAPI 文档生成高质量的 TypeScript 代码。
+插件分为两类：需要手动配置的可选插件和自动启用的核心插件。
+
+## 可选插件
+
+以下插件需要在配置文件中手动添加才会生效，你可以根据项目需求选择性使用。
+
+| **插件名称**                | **功能说明** |
+|:----------------------------|:------------|
+| [BodyFallbackPlugin](./build-in-plugin/body-fallback-plugin)          | 将未定义在 OpenAPI 文档中的请求参数添加到请求体中，而不是丢弃 |
+| [ChineseToPinyinPlugin](./build-in-plugin/chinese-to-pinyin-plugin)       | 将 OpenAPI 文档中的中文标识符自动转换为拼音 |
+| [EslintPlugin](./build-in-plugin/eslint-plugin)                | 代码生成后自动运行 ESLint 格式化 (`eslint --fix`) |
+| [PrettierPlugin](./build-in-plugin/prettier-plugin)              | 代码生成后自动运行 Prettier 格式化 (`prettier --write`) |
+
+## 核心插件
+
+以下插件由 CLI 根据配置自动启用，无需手动配置。它们负责文档下载、代码生成等核心功能。
+
+| **插件名称**                | **功能说明** |
+|:----------------------------|:------------|
+| DownloadHttpFilePlugin      | 从 HTTP/HTTPS 地址下载 OpenAPI 文档 |
+| DownloadLocalFilePlugin     | 从本地文件系统加载 OpenAPI 文档 |
+| GenerateDeclarationPlugin   | 生成 TypeScript 类型声明文件 |
+| GenerateMicroFunctionPlugin | 生成函数形式的 API 调用代码 |
+| GenerateNestjsModulePlugin  | 生成 NestJS 模块代码  |
+| InitialPlugin               | 核心插件，负责根据配置文件加载其他插件 |
+| ShakingPlugin               | 移除 OpenAPI 文档中未被使用的 Schema 定义 |
+| TerminalSelect              | 提供终端交互式选择功能 |

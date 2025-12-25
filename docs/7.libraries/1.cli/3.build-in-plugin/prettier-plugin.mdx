@@ -1,0 +1,15 @@
+# PrettierPlugin
+
+`PrettierPlugin` 会在代码生成后，自动运行 `prettier --write` 来格式化代码。
+
+```typescript title=".keqrc.ts"
+import { PrettierPlugin } from '@keq-request/cli/plugins'
+
+export default defineKeqConfig({
+  outdir: "./src/apis",
+  modules: {
+    catService: "./cat-service-swagger.json",
+  },
+  plugins: [new PrettierPlugin()],
+})
+```

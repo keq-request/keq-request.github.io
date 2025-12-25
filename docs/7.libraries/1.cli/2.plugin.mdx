@@ -1,0 +1,98 @@
+# 插件
+
+`Plugin` 为第三方开发者提供了完整的自定义 CLI 行为的能力。通过 `Plugin`，你可以在编译过程的各个阶段介入，修改生成的代码或添加自定义逻辑。
+
+## 快速开始
+
+一个最简单的 `Plugin` 只需要实现 `apply` 方法：
+
+```typescript
+import { Plugin } from '@keq-request/cli'
+
+export class MyPlugin implements Plugin {
+  apply(compiler) {
+    console.log('插件已加载!')
+  }
+}
+```
+
+然后在配置文件中启用 `Plugin`：
+
+```typescript title=".keqrc.ts"
+import { defineKeqConfig } from "@keq-request/cli"
+import { MyPlugin } from "./my-plugin"
+
+export default defineKeqConfig({
+  outdir: "./src/apis",
+  modules: {
+    catService: "./cat-service-swagger.json",
+  },
+  plugins: [new MyPlugin()],
+})
+```
+
+## 编译生命周期
+
+`Plugin` 可以通过 `Hooks` 在编译的各个阶段介入。
+因此，在深入了解 `Hooks` 之前，需要先理解 `@keq-request/cli` 的编译流程。
+整个编译过程分为 4 个阶段，按顺序执行：
+
+### 1. Setup - 加载配置
+
+加载 `.keqrc` 配置文件和 `.keqignore` 忽略规则。
+
+**数据输出**：`context.rc`（配置信息）、`context.matcher`（匹配规则）
+
+### 2. Download - 下载文档
+
+从本地或远程加载 Swagger 3.1 文档
+
+**数据输出**：`context.documents`（规范化后的文档）
+
+### 3. Compile - 生成代码
+
+将 OpenAPI 文档编译为 TypeScript 代码文件。
+
+**数据输出**：`context.artifacts`
+
+### 4. Persist - 写入文件
+
+将 `context.artifacts` 写入磁盘，并将 `context.matcher` 写入 `.keqignore` 文件。
+
+## Hooks
+
+CLI 基于 [tapable](https://github.com/webpack/tapable) 实现了钩子系统。完整的 Hooks 列表如下：
+
+| **钩子名称**      | **触发时机**             | **类型**              | **参数** |
+| :---------------- | :----------------------- | :-------------------- | :------- |
+| `setup`           | Setup 阶段开始时（并行）  | `AsyncParallelHook`   | `[TaskWrapper]` |
+| `afterSetup`      | Setup 阶段完成后         | `AsyncSeriesHook`     | `[TaskWrapper]` |
+| `beforeDownload`  | Download 阶段开始前      | `AsyncSeriesHook`     | `[TaskWrapper]` |
+| `download`        | 自定义文档下载逻辑       | `AsyncSeriesBailHook` | `[address: string, module: ModuleDefinition, task: TaskWrapper]` |
+| `afterDownload`   | Download 阶段完成后      | `AsyncSeriesHook`     | `[TaskWrapper]` |
+| `beforeCompile`   | Compile 阶段开始前       | `AsyncSeriesHook`     | `[TaskWrapper]` |
+| `compile`         | Compile 阶段执行时（并行）| `AsyncParallelHook`   | `[TaskWrapper]` |
+| `afterCompile`    | Compile 阶段完成后       | `AsyncSeriesHook`     | `[TaskWrapper]` |
+| `beforePersist`   | Persist 阶段开始前       | `AsyncSeriesHook`     | `[TaskWrapper]` |
+| `persist`         | Persist 阶段执行时（并行）| `AsyncParallelHook`   | `[TaskWrapper]` |
+| `afterPersist`    | Persist 阶段完成后       | `AsyncSeriesHook`     | `[TaskWrapper]` |
+| `done`            | 所有阶段完成后           | `SyncHook`            | `[]` |
+
+
+
+**示例**：自定义下载逻辑
+
+```typescript
+export class CustomDownloadPlugin implements Plugin {
+  apply(compiler) {
+    compiler.hooks.download.tapPromise('CustomDownloadPlugin', async (address, module, task) => {
+      if (address.startsWith('custom://')) {
+        // 自定义下载逻辑
+        return await fetchFromCustomSource(address)
+      }
+      // 返回 undefined 表示此插件不处理
+      return undefined
+    })
+  }
+}
+```
