@@ -1,0 +1,69 @@
+# ChineseToPinyinPlugin
+
+在实际项目中,OpenAPI 文档可能包含中文的接口名称、参数名称或 Schema 名称。`ChineseToPinyinPlugin` 会自动将这些中文标识符转换为拼音,确保生成的 TypeScript 代码符合命名规范。
+
+:::warning
+如果有能力修改 OpenAPI 文档,建议直接使用英文标识符。`ChineseToPinyinPlugin` 主要用于无法修改文档的场景下,确保代码生成的顺利进行。
+:::
+
+## 使用场景
+
+假设你的 OpenAPI 文档中定义了这样的接口:
+
+```json
+{
+  "paths": {
+    "/users": {
+      "get": {
+        "operationId": "获取用户列表",
+        "parameters": [
+          {
+            "name": "用户名",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "用户信息": {
+        "type": "object",
+        "properties": {
+          "姓名": { "type": "string" },
+          "年龄": { "type": "number" }
+        }
+      }
+    }
+  }
+}
+```
+
+如果不使用 `ChineseToPinyinPlugin`，会导致部分接口/数据结构无法生成或生成的代码包含非法标识符。
+
+## 配置方法
+
+```typescript title=".keqrc.ts"
+import { ChineseToPinyinPlugin } from '@keq-request/cli/plugins'
+
+export default defineKeqConfig({
+  outdir: "./src/apis",
+  modules: {
+    userService: "./user-service-swagger.json",
+  },
+  plugins: [new ChineseToPinyinPlugin()],
+})
+```
+
+配置后,`ChineseToPinyinPlugin` 会自动转换所有中文标识符:
+
+- `operationId: "获取用户列表"` → 函数名: `huoQuYongHuLieBiao`
+- 参数名: `用户名` → `yongHuMing`
+- Schema 名称: `用户信息` → `YongHuXinXi`
+- 属性名: `姓名` → `xingMing`、`年龄` → `nianLing`
+
+生成的代码将完全使用拼音标识符,确保代码的可编译性和规范性。
+
