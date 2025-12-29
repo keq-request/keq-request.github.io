@@ -206,24 +206,25 @@ outdir
     └── index.ts
 ```
 
-相比旧版本，`@keq-request/cli` 将 请求函数聚合到 `operations` 目录下，
-并且增加 `.request.ts`、`.schema.ts`、`.type.ts` 后缀以区分不同文件类型。
+相比旧版本，`@keq-request/cli` 将类型声明文件和请求函数文件区分存放，
+并且增加 `.fn.ts`、`.schema.ts`、`.type.ts` 后缀以区分不同文件类型。
 新的代码结构如下：
 
 ```text
 outdir
 ├── animal-service
-│   ├── components
-│   │   └── schemas
-│   │       ├── cat.schema.ts
-│   │       ├── dog.schema.ts
-│   │       └── index.ts
 │   ├── types
-│   │   ├── get-cat.type.ts
-│   │   └── get-dog.type.ts
+│   │   ├── components
+│   │   │   └── schemas
+│   │   │       ├── cat.schema.ts
+│   │   │       ├── dog.schema.ts
+│   │   │       └── index.ts
+│   │   └── operations
+│   │       ├── get-cat.type.ts
+│   │       └── get-dog.type.ts
 │   └── operations
-│       ├── get-cat.request.ts
-│       ├── get-dog.request.ts
+│       ├── get-cat.fn.ts
+│       ├── get-dog.fn.ts
 │       └── index.ts
 └── request.ts
 ```
