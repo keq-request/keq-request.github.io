@@ -1,0 +1,28 @@
+# OverwriteOperationIdPlugin
+
+在 OpenAPI 文档中，`operationId` 用于标识每个 API 操作，CLI 工具会根据它生成对应的函数名称。
+`OverwriteOperationIdPlugin` 允许你根据自定义规则重新生成 `operationId`，解决原始文档中命名缺失、不规范、重复冲突或不符合团队命名约定的问题。
+
+```typescript title=".keqrc.ts"
+import { OverwriteOperationIdPlugin } from '@keq-request/cli/plugins'
+
+export default defineKeqConfig({
+  outdir: "./src/apis",
+  modules: {
+    catService: "./cat-service-swagger.json",
+  },
+  plugins: [
+    new OverwriteOperationIdPlugin((method, pathname, operation) => {
+      return [
+        ...pathname
+          .split('/')
+          .filter(Boolean)
+          .map(segment => segment.replace(/[^a-zA-Z0-9]/g, ''))
+          .join('_'),
+          'using',
+        method,
+      ].join('_')
+    })
+  ],
+})
+```

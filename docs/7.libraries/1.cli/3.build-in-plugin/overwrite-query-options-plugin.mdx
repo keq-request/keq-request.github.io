@@ -1,0 +1,22 @@
+# OverwriteQueryOptionsPlugin
+
+`OverwriteQueryOptionsPlugin` 用于自定义 URL 查询参数的格式化方式。
+当你的 API 需要特定的查询参数格式时（比如数组参数应该以 `ids=1&ids=2` 还是 `ids=1,2` 的形式传递），
+可以通过这个插件配置生成代码中 `.query()` 方法的第二个参数选项，从而控制查询参数如何被序列化到 URL 中。
+
+```typescript title=".keqrc.ts"
+import { OverwriteQueryOptionsPlugin } from '@keq-request/cli/plugins'
+
+
+export default defineKeqConfig({
+  outdir: "./src/apis",
+  modules: {
+    catService: "./cat-service-swagger.json",
+  },
+  plugins: [
+    new OverwriteQueryOptionsPlugin({
+      arrayFormat: 'command',
+    }),
+  ],
+})
+```

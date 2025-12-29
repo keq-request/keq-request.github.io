@@ -145,14 +145,15 @@ import PackageManager from '@site/docs/components/_package-manager.mdx';
     ```typescript title="./src/apis/cat_service/get_cats.request.ts"
     import { Keq } from "keq"
     import { request } from '../../request'
-    import { Operation, GetCatsResponseBodies, GetCatsRequestParameters } from '../types/get_cats.type'
-    export { GetCatsRequestQuery, GetCatsRequestHeaders, GetCatsRequestBody } from '../types/get_cats.type'
+    import type { GetCatsOperation, GetCatsResponseBodies, GetCatsRequestParameters } from "../types/operations/get_cats.type.js"
+    export type { GetCatsRequestQuery, GetCatsRequestHeaders, GetCatsRequestBodies } from "../types/operations/get_cats.type.js"
+
 
     const moduleName = "catService"
     const method = "get"
     const pathname = "/cats"
 
-    export function getCats<STATUS extends keyof GetCatsResponseBodies>(args?: GetCatsRequestParameters): Keq<Operation<STATUS>> {
+    export function getCats<STATUS extends keyof GetCatsResponseBodies, CONTENT_TYPE extends never = never>(args?: GetCatsRequestParameters): Keq<GetCatsOperation<STATUS, CONTENT_TYPE>> {
       const req = request.post<GetCatsResponseBodies[STATUS]>("/cats")
         .option('module', { name: moduleName, pathname, method })
 
@@ -169,13 +170,15 @@ import PackageManager from '@site/docs/components/_package-manager.mdx';
 
   <TabItem value="type_cat" label="接口类型定义">
 
-    ```typescript title="./src/apis/cat_service/types/get_cats.type.ts"
-    import { KeqOperation, KeqQueryValue, KeqParamValue } from 'keq'
-    import { Cat as CatSchema } from '../components/schemas/cat.type'
+    ```typescript title="./src/apis/cat_service/types/operations/get_cats.type.ts"
+    import type { KeqOperation, KeqPathParameterInit, KeqQueryInit, ServerSentEvent } from "keq"
+    import type { Cat as CatSchema } from "../components/schemas/cat.schema.js"
 
     export interface GetCatsResponseBodies {
-      200: CatSchema[]
+      200: CatSchema[] | CatSchema[]
     }
+
+    export interface GetCatsRequestBodies {}
 
     export type GetCatsRequestQuery = {
       "breed"?: string
@@ -185,15 +188,13 @@ import PackageManager from '@site/docs/components/_package-manager.mdx';
 
     export type GetCatsRequestHeaders = {}
 
-    export type GetCatsRequestBody = {}
+    export type GetCatsRequestParameters = GetCatsRequestQuery & GetCatsRouteParameters & GetCatsRequestHeaders
 
-    export type GetCatsRequestParameters = GetCatsRequestQuery & GetCatsRouteParameters & GetCatsRequestHeaders & GetCatsRequestBody
-
-    export interface Operation<STATUS extends keyof GetCatsResponseBodies> extends KeqOperation {
-      requestParams: GetCatsRouteParameters & { [key: string]: KeqParamValue }
-      requestQuery: GetCatsRequestQuery & { [key: string]: KeqQueryValue }
+    export interface GetCatsOperation<STATUS extends keyof GetCatsResponseBodies, CONTENT_TYPE extends string > extends KeqOperation {
+      requestParams: GetCatsRouteParameters & { [key: string]: KeqPathParameterInit }
+      requestQuery: GetCatsRequestQuery & { [key: string]: KeqQueryInit }
       requestHeaders: GetCatsRequestHeaders & { [key: string]: string | number }
-      requestBody: GetCatsRequestBody
+      requestBody: object | BodyInit
       responseBody: GetCatsResponseBodies[STATUS]
     }
     ```
@@ -201,7 +202,7 @@ import PackageManager from '@site/docs/components/_package-manager.mdx';
   </TabItem>
 
   <TabItem value="schema_cat" label="数据模型定义">
-    ```typescript title="./src/apis/cat_service/components/schemas/cat.schema.ts"
+    ```typescript title="./src/apis/cat_service/types/components/schemas/cat.schema.ts"
     export interface Cat {
       "name"?: string
       "age"?: number
@@ -275,17 +276,16 @@ request
 `@keq-request/cli` 会自动查找名为 `.keqrc.yml`、`.keqrc.json`、`.keqrc.js`、`.keqrc.ts`的配置文件。
 你可以通过 `-c --config <config_file_path>` 设置配置文件地址。
 
-| **配置参数**       | **是否必填** | **默认值**                                 | **描述**                                                          |
-| :----------------- | :----------- | :----------------------------------------- | :---------------------------------------------------------------- |
-| outdir             | true         | -                                          | 编译结果的输出目录                                                |
-| fileNamingStyle    | false        | -                                          | 文件名风格                                                        |
-| modules            | true         | -                                          | Swagger 文件地址和模块名称                                        |
-| operationIdFactory | false        | `({ operation }) => operation.operationId` | 自定义函数名的生成规则，默认使用 `swagger` 文件中的 `operationId` |
-| strict             | false        | `false`                                    | 是否清空输出目录                                                  |
-| esm                | false        | 若 `package.json` 是否设置了 `"type": "module"` 则为 `true` | 是否生成 ESM 风格的代码                      |
-| plugins            | false        | `[]`                                        | 插件向第三方开发者提供了完整的自定义 cli 行为的能力     |
+| **配置参数**       | **是否必填** | **默认值**                                                  | **描述**                                                          |
+| :----------------- | :----------- | :---------------------------------------------------------- | :---------------------------------------------------------------- |
+| outdir             | true         | -                                                           | 编译结果的输出目录                                                |
+| modules            | true         | -                                                           | Swagger 文件地址和模块名称                                        |
+| fileNamingStyle    | false        | -                                                           | 文件名风格                                                        |
+| mode               | false        | `micro-function`                                            | 生成的代码风格                                                    |
+| esm                | false        | 若 `package.json` 是否设置了 `"type": "module"` 则为 `true` | 是否生成 ESM 风格的代码                                           |
+| plugins            | false        | `[]`                                                        | 插件向第三方开发者提供了完整的自定义 cli 行为的能力               |
 
-### FileNamingStyle
+#### fileNamingStyle
 
 | **枚举**                       | **示例**      |
 | :----------------------------- | :------------ |
@@ -300,6 +300,13 @@ request
 | `FileNamingStyle.pathCase`     | `"two/words"` |
 | `FileNamingStyle.sentenceCase` | `"Two words"` |
 | `FileNamingStyle.snakeCase`    | `"two_words"` |
+
+#### mode
+
+| **枚举**                | **描述**                     |
+| :---------------------- | :--------------------------- |
+| `micro-function`       | 生成函数形式的 API 调用代码   |
+| `nestjs-module`        | 生成适用于 NestJS 的模块代码  |
 
 ### `.keqignore`
 
@@ -346,8 +353,8 @@ catService GET /cats    # 忽略 catService 模块的 GET /cats 接口
 | :------------------------------- | :------------------------------------------------------------------------------------------------------- |
 | `<mode>`                         | `add`：添加忽略规则，`except`：添加不忽略规则
 | `-c --config <config_file_path>` | 配置文件的地址                                                                                         |
-| `--modules`                     | 设置添加的忽略规则的模块名称                                                                    |
-| `--method <method> `           | 设置添加的忽略规则的 HTTP 方法(`'get' \| 'post' \| 'put' \| 'patch' \| 'head' \| 'options' \| 'delete'`) |
+| `--modules`                      | 设置添加的忽略规则的模块名称                                                                    |
+| `--method <method> `             | 设置添加的忽略规则的 HTTP 方法(`'get' \| 'post' \| 'put' \| 'patch' \| 'head' \| 'options' \| 'delete'`) |
 | `--pathname <pathname...>`       | 设置添加的忽略规则的 HTTP 接口路径                                                             |
 | `-i --interactive`               | 通过命令行交互，指定需要忽略的 HTTP 接口                                                               |
-| `--build`                     | 忽略规则添加完成后，自动执行 `keq build` 命令生成代码                                                  |
+| `--build`                        | 忽略规则添加完成后，自动执行 `keq build` 命令生成代码                                                  |
