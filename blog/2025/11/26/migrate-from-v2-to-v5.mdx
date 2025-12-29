@@ -236,6 +236,7 @@ outdir
     ```typescript title=.keqrc.ts
     import { defineKeqConfig, FileNamingStyle } from "keq-cli";           // [!code --]
     import { defineKeqConfig, FileNamingStyle } from "@keq-request/cli";  // [!code ++]
+    import { OverwriteOperationIdPlugin, OverwriteQueryOptionsPlugin } from "@keq-request/cli/plugins";                     // [!code ++]
 
     export default defineKeqConfig({
       outdir: './outdir',
@@ -244,7 +245,11 @@ outdir
       modules: {
         animalService: 'http://example.com/v1/swagger.json',
       },
-      qs: { arrayFormat: 'brackets' }  // [!code ++]
+      operationIdFactory: ({ operation }) => operation.operationId // [!code --]
+      plugins: [
+        new OverwriteOperationIdPlugin(({ operation }) => operation.operationId), // [!code ++]
+        new OverwriteQueryOptionsPlugin({ arrayFormat: 'brackets' }), // [!code ++]
+      ],
     });
     ```
 3. 重新生成代码：
