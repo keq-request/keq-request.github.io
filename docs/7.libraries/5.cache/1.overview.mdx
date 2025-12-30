@@ -101,17 +101,19 @@ request
 | :---------------------- | :------------------------------------------------- | :------------------------------------------------- | :------------------------------------------------------------- |
 | storage                 | `KeqCacheStorage`                                  | -                                                  | 缓存存储实例，[详见 Storage](./storage)                        |
 | keyFactory              | `(context) => string`                              | `(context) => context.locationId`                  | 缓存键生成函数，生成相同 key 的请求将共享缓存                  |
+| serverTiming            | `boolean`                                          | `false`                                            | 是否在响应头中添加 `Server-Timing`                             |
 | rules                   | `Rule[]`                                           | `[]`                                               | 缓存规则数组                                                   |
 
 **rules**
 
-| 参数名                   | 类型                                                | 默认值                                              | 说明                                                           |
+| 参数名                   | 类型                                                | 默认值                                           | 说明                                                           |
 | :---------------------- | :------------------------------------------------- | :------------------------------------------------- | :------------------------------------------------------------- |
-| pattern                 | `boolean \| (ctx) => boolean`                      | `true`                                             | 匹配规则，用于判断请求是否应用此缓存规则                          |
-| key                     | `(ctx) => string`                                  | 使用全局 `keyFactory`                               | 自定义缓存键生成函数                                             |
-| strategy                | `Strategy`                                         | `Strategy.NETWORK_FIRST`                           | 缓存策略，[详见 缓存策略](./strategies)                              |
-| ttl                     | `number`                                           | `Infinity`                                         | 缓存有效期（秒）                                                |
-| exclude                 | `(response) => boolean \| Promise<boolean>`        | -                                                  | 排除函数，返回 `true` 时不缓存该响应                            |
+| pattern                 | `boolean \| (ctx) => boolean`                      | `true`                                             | 匹配规则，用于判断请求是否应用此缓存规则                       |
+| key                     | `(ctx) => string`                                  | 使用全局 `keyFactory`                              | 自定义缓存键生成函数                                           |
+| strategy                | `Strategy`                                         | `Strategy.NETWORK_FIRST`                           | 缓存策略，[详见 缓存策略](./strategies)                        |
+| ttl                     | `number`                                           | `Infinity`                                         | 缓存有效期（秒）                                               |
+| exclude                 | `(response) => boolean \| Promise<boolean>`        | -                                                  | 排除函数，返回 `true` 时不缓存该响应                           |
+| serverTiming            | `boolean`                                          | `false`                                            | 是否在响应头中添加 `Server-Timing`                             |
 
 ## 扩展项
 
@@ -127,8 +129,9 @@ request
 
 | 参数名            | 类型                                               | 说明                                                           |
 | :---------------- | :------------------------------------------------- | :------------------------------------------------------------- |
-| key               | `(ctx) => string`                                  | 自定义缓存键生成函数                                          |
+| key               | `(ctx) => string`                                  | 自定义缓存键生成函数                                           |
 | debug             | `boolean`                                          | 打印调试日志                                                   |
-| strategy          | `Strategy`                                         | 缓存策略，[详见 缓存策略](./strategies)                       |
+| strategy          | `Strategy`                                         | 缓存策略，[详见 缓存策略](./strategies)                        |
 | ttl               | `number`                                           | 缓存有效期（秒）                                               |
 | exclude           | `(response) => boolean \| Promise<boolean>`        | 排除函数，返回 `true` 时不缓存该响应                           |
+| serverTiming      | `boolean`                                          | 是否在响应头中添加 `Server-Timing`                             |
