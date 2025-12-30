@@ -21,12 +21,13 @@ import { validateStatusCode } from '@keq-request/exception'
 
 @Module({
   imports: [
-    KeqModule.register({                // [!code ++]
-      middlewares: [                    // [!code ++]
-        // 配置全局中间件                  [!code ++]
-        validateStatusCode(),           // [!code ++]
-      ]                                 // [!code ++]
-    }),                                 // [!code ++]
+    KeqModule.register({                                       // [!code ++]
+      middlewares: [                                           // [!code ++]
+        // 配置全局中间件                                         [!code ++]
+        validateStatusCode(),                                  // [!code ++]
+        KeqRouter.host('example.com', setHeader('Authorization', 'Bearer YOUR_TOKEN_HERE')), // [!code ++]                                                    // [!code ++]
+      ]                                                        // [!code ++]
+    }),                                                        // [!code ++]
 
     /* ...其他模块... */
   ]
