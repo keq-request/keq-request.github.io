@@ -3,4 +3,8 @@ import TabItem from '@theme/TabItem';
 import CodeBlock from '@theme/CodeBlock';
 import PackageManager from './_package-manager.mdx';
 
-<PackageManager command={`install ${props.packages}@alpha`} />
+<PackageManager
+  npm={`npm install ${props.packages.split(' ').map(pkg => `${pkg}@alpha`).join(' ')}`}
+  pnpm={`pnpm install ${props.packages.split(' ').map(pkg => `${pkg}@alpha`).join(' ')}`}
+  yarn={`yarn install ${props.packages.split(' ').map(pkg => `${pkg}@alpha`).join(' ')}`}
+/>

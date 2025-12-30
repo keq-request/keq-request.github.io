@@ -1,0 +1,135 @@
+import InstallPackagesCode from '@site/docs/components/_install-packages-code.mdx'
+import ExecPackageCommandCode from '@site/docs/components/_exec-package-command-code.mdx'
+
+# 在 NestJS 中使用 Keq
+
+本文介绍如何在 NestJS 项目中集成 Keq，以及如何使用 OpenAPI 自动生成类型安全的客户端代码。
+
+## 安装依赖
+
+
+<InstallPackagesCode packages="keq @keq-request/cli @keq-request/nestjs" />
+
+## 注册 KeqModule
+
+在应用的根模块中注册 `KeqModule`：
+
+```typescript title="src/app.module.ts"
+import { Module } from '@nestjs/common'
+import { KeqModule } from '@keq-request/nestjs'
+import { validateStatusCode } from '@keq-request/exception'
+
+@Module({
+  imports: [
+    KeqModule.register({                // [!code ++]
+      middlewares: [                    // [!code ++]
+        // 配置全局中间件                  [!code ++]
+        validateStatusCode(),           // [!code ++]
+      ]                                 // [!code ++]
+    }),                                 // [!code ++]
+
+    /* ...其他模块... */
+  ]
+})
+export class AppModule {}
+```
+
+注册后即可在 Service 中通过依赖注入使用 `KeqRequest`：
+
+```typescript title="src/app.service.ts"
+import { Injectable } from '@nestjs/common'
+import { KeqRequest } from 'keq'
+
+@Injectable()
+export class AppService {
+  constructor(private readonly request: KeqRequest) {}
+
+  async getCats() {
+    const cats = await this.request.get('https://api.example.com/cats')
+    return cats
+  }
+}
+```
+
+## 使用 OpenAPI 生成 NestJS 模块
+
+`@keq-request/cli` 支持从 OpenAPI 文档生成 NestJS 模块，提供完整的类型定义和依赖注入支持。
+
+### 配置生成模式
+
+在 `.keqrc.ts` 中设置 `mode` 为 `nestjs-module`：
+
+```typescript title=".keqrc.ts"
+import { defineKeqConfig, FileNamingStyle } from '@keq-request/cli'
+
+export default defineKeqConfig({
+  mode: 'nestjs-module',   // [!code ++]
+  outdir: "./src/apis",
+  fileNamingStyle: FileNamingStyle.snakeCase,
+  modules: {
+    catService: "./cat-service-swagger.json",
+  },
+})
+```
+
+运行生成命令：
+
+<ExecPackageCommandCode command="keq build" />
+
+### 注册生成的模块
+
+将生成的模块导入到应用中：
+
+```typescript title="src/app.module.ts"
+import { Module } from '@nestjs/common'
+import { KeqModule } from '@keq-request/nestjs'
+import { CatServiceModule } from './apis/cat_service/cat_service.module' // [!code ++]
+
+@Module({
+  imports: [
+    // 必须注册 KeqModule
+    KeqModule.register({
+      // 配置全局中间件
+      middlewares: [
+        validateStatusCode(),
+      ]
+    }),
+
+    // 注册生成的模块
+    CatServiceModule.register({                                   // [!code ++]
+      // 模块级中间件配置                                            [!code ++]
+      middlewares: [                                              // [!code ++]
+        setBaseUrl('https://cat-api.example.com'),                // [!code ++]
+        appendHeader('Authorization', 'Bearer YOUR_TOKEN_HERE'),  // [!code ++]
+      ]                                                           // [!code ++]
+    }),                                                           // [!code ++]
+  ]
+})
+export class AppModule {}
+```
+
+:::tip 中间件执行顺序
+请求发送时，中间件的执行顺序为：全局中间件 → 模块级中间件。
+:::
+
+### 使用生成的客户端
+
+```typescript title="src/cat.service.ts"
+import { Injectable } from '@nestjs/common'
+import { CatServiceClient } from './apis/cat_service/cat_service.client'
+
+@Injectable()
+export class CatService {
+  constructor(private readonly catServiceClient: CatServiceClient) {}
+
+  async getCats() {
+    const response = await this.catServiceClient.getCats<200>()
+    return response.body
+  }
+
+  async getCatById(id: string) {
+    const response = await this.catServiceClient.getCatById<200>({ id })
+    return response.body
+  }
+}
+```
