@@ -13,18 +13,19 @@ class RequestException extends Error {
   constructor(
     statusCode: number,
     message?: string,
-    retry: boolean = true
+    options?: { fatal?: boolean, response?: Response } = {},
   )
 }
 ```
 
 **参数说明：**
 
-| 参数       | 类型      | 默认值 | 描述                                   |
-| :--------- | :-------- | :----- | :------------------------------------- |
-| statusCode | `number`  | -      | HTTP 状态码                            |
-| message    | `string`  | -      | 错误消息                               |
-| retry      | `boolean` | `true` | 标记该错误是否应该重试                 |
+| 参数              | 类型      | 默认值  | 描述                                   |
+| :---------------- | :-------- | :------ | :------------------------------------- |
+| statusCode        | `number`  | -       | HTTP 状态码                            |
+| message           | `string`  | -       | 错误消息                               |
+| options.fatal     | `boolean` | `false` | 设置为 `true` 可以终止重试机制         |
+| options.response  | `Response`| -       | 关联的 `Response` 对象（如果有的话）   |
 
 **使用示例：**
 
@@ -36,13 +37,13 @@ request.use(async (context, next) => {
   await next()
 
   if (context.response?.status === 404) {
-    throw new RequestException(404, context.response.statusText, false)
+    throw new RequestException(404, context.response.statusText, { fatal: true, response: context.response })
   }
 
   if (context.response?.status >= 500) {
     // 使用响应体内容作为错误消息
     const message = await context.response.text()
-    throw new RequestException(context.response.status, message, true)
+    throw new RequestException(context.response.status, message, { response: context.response })
   }
 })
 ```
