@@ -1,0 +1,147 @@
+import InstallPackagesCode from '@site/docs/components/_install-packages-code.mdx'
+
+
+# UseValibotPlugin
+
+`UseValibotPlugin` 使用 [Valibot](https://valibot.dev/) 来生成 OpenAPI 文档中 `components/schemas` 的类型定义和验证模式。Valibot 是一个轻量级的模式验证库，提供了更小的包体积和更好的类型推断。
+
+:::tip
+使用 Valibot 相比传统的 TypeScript 类型定义，可以在运行时进行数据验证，确保 API 响应数据的类型安全。
+:::
+
+## 安装依赖
+
+使用此插件前，需要先安装 Valibot：
+
+<InstallPackagesCode packages="valibot" />
+
+## 配置方法
+
+```typescript title=".keqrc.ts"
+import { UseValibotPlugin } from '@keq-request/cli/plugins'
+
+export default defineKeqConfig({
+  outdir: "./src/apis",
+  modules: {
+    catService: "./cat-service-swagger.json",
+  },
+  plugins: [new UseValibotPlugin()],
+})
+```
+
+## 使用场景
+
+假设你的 OpenAPI 文档中定义了这样的 Schema：
+
+```json
+{
+  "components": {
+    "schemas": {
+      "Cat": {
+        "type": "object",
+        "required": ["id", "name"],
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 100
+          },
+          "breed": {
+            "type": "string"
+          },
+          "age": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 30
+          }
+        }
+      }
+    }
+  }
+}
+```
+
+### 不使用 UseValibotPlugin
+
+默认情况下，CLI 会生成纯 TypeScript 类型定义：
+
+```typescript
+export interface Cat {
+  id: number
+  name: string
+  breed?: string
+  age?: number
+}
+```
+
+这种方式只提供编译时的类型检查，无法在运行时验证数据。
+
+### 使用 UseValibotPlugin
+
+配置插件后，CLI 会生成 Valibot schema：
+
+```typescript
+import * as v from 'valibot'
+
+export const CatSchema = v.object({
+  id: v.pipe(v.number(), v.integer()),
+  name: v.pipe(v.string(), v.minLength(1), v.maxLength(100)),
+  breed: v.optional(v.string()),
+  age: v.optional(v.pipe(v.number(), v.integer(), v.minValue(0), v.maxValue(30))),
+})
+
+export type Cat = v.InferOutput<typeof CatSchema>
+```
+
+你可以使用生成的 schema 进行运行时验证：
+
+#### 验证 API 响应数据
+
+```typescript
+import { CatSchema } from './apis/cat-service'
+import * as v from 'valibot'
+
+// 验证 API 响应数据
+const response = await fetch('/api/cats/1')
+const data = await response.json()
+
+try {
+  const cat = v.parse(CatSchema, data)
+  console.log(cat) // 类型安全的猫咪数据
+} catch (error) {
+  console.error('数据验证失败:', error)
+}
+```
+
+#### 表单校验与请求提交
+
+在实际应用中，可以结合表单校验和请求体验证，确保只有合法数据才会被提交：
+
+```typescript
+import { CatSchema, Cat } from './apis/cat-service'
+import * as v from 'valibot'
+
+// 表单的数据结构很可能是 Partial 类型
+type CatFormData = Partial<Cat>
+
+async function submitCatForm(formData: CatFormData) {
+  if (!v.is(CatSchema, formData)) {
+    // Do Something...
+    return
+  }
+
+  // 校验通过，发送请求
+  const response = await fetch('/api/cats', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(formData),
+  })
+
+  const result = await response.json()
+  console.log('猫咪创建成功')
+}
+```

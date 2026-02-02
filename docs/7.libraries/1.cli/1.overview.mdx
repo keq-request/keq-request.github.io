@@ -281,9 +281,9 @@ request
 | outdir             | true         | -                                                           | 编译结果的输出目录                                                |
 | modules            | true         | -                                                           | Swagger 文件地址和模块名称                                        |
 | fileNamingStyle    | false        | -                                                           | 文件名风格                                                        |
-| mode               | false        | `micro-function`                                            | 生成的代码风格                                                    |
 | esm                | false        | 若 `package.json` 是否设置了 `"type": "module"` 则为 `true` | 是否生成 ESM 风格的代码                                           |
-| plugins            | false        | `[]`                                                        | 插件向第三方开发者提供了完整的自定义 cli 行为的能力               |
+| translators        | false        | `[]`                                                        | [生成的代码风格](./4.translators.mdx)                                                    |
+| plugins            | false        | `[]`                                                        | [插件向第三方开发者提供了完整的自定义 cli 行为的能力](./2.plugin.mdx)               |
 
 #### fileNamingStyle
 
@@ -300,13 +300,6 @@ request
 | `FileNamingStyle.pathCase`     | `"two/words"` |
 | `FileNamingStyle.sentenceCase` | `"Two words"` |
 | `FileNamingStyle.snakeCase`    | `"two_words"` |
-
-#### mode
-
-| **枚举**                | **描述**                     |
-| :---------------------- | :--------------------------- |
-| `micro-function`       | 生成函数形式的 API 调用代码   |
-| `nestjs-module`        | 生成适用于 NestJS 的模块代码  |
 
 ### `.keqignore`
 
