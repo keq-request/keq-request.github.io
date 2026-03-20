@@ -1,0 +1,28 @@
+# OverwriteAdditionalPropertiesPlugin
+
+根据 OpenAPI 3.1 规范，未显式声明 `additionalProperties` 的 object schema 等同于 `additionalProperties: true`。
+这意味着生成的 TypeScript 类型会包含 index signature（`[key: string]: unknown`），使得类型约束变得宽松。
+
+`OverwriteAdditionalPropertiesPlugin` 可以在 OpenAPI 文档中未显式声明 `additionalProperties` 的 object schema 上强制设置 `additionalProperties: false`，从而阻止生成 index signature。
+
+```typescript title=".keqrc.ts"
+import { OverwriteAdditionalPropertiesPlugin } from '@keq-request/cli/plugins'
+
+export default defineKeqConfig({
+  outdir: "./src/apis",
+  modules: {
+    catService: "./cat-service-swagger.json",
+  },
+  plugins: [
+    new OverwriteAdditionalPropertiesPlugin({
+      disallowIfNotPresent: true,
+    }),
+  ],
+})
+```
+
+## 配置选项
+
+| **选项**                | **类型**  | **默认值** | **描述**                                                                                       |
+| :---------------------- | :-------- | :--------- | :--------------------------------------------------------------------------------------------- |
+| `disallowIfNotPresent`  | `boolean` | `false`    | 启用后，未声明 `additionalProperties` 的 object schema 会被强制设置为 `additionalProperties: false` |
