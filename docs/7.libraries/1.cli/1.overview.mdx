@@ -92,7 +92,9 @@ import ExecPackageCommandCode from '@site/docs/components/_exec-package-command-
 
     export default defineKeqConfig({
       outdir: "./src/apis", // 编译结果的输出目录
-      fileNamingStyle: FileNamingStyle.snakeCase,
+      rendering: {
+        fileNamingStyle: FileNamingStyle.snakeCase,
+      },
       modules: {
         catService: "./cat-service-swagger.json",
         // 也可以从网络上获取 swagger 文档，例如：
@@ -108,7 +110,9 @@ import ExecPackageCommandCode from '@site/docs/components/_exec-package-command-
 
     module.exports = defineKeqConfig({
       outdir: "./src/apis", // 编译结果的输出目录
-      fileNamingStyle: FileNamingStyle.snakeCase,
+      rendering: {
+        fileNamingStyle: FileNamingStyle.snakeCase,
+      },
       modules: {
         catService: "./cat-service-swagger.json",
         // 也可以从网络上获取 swagger 文档，例如：
@@ -121,7 +125,8 @@ import ExecPackageCommandCode from '@site/docs/components/_exec-package-command-
   <TabItem value="yml" label="YAML">
     ```yaml title=".keqrc.yml"
     outdir: ./src/apis # 编译结果的输出目录
-    fileNamingStyle: snake_case
+    rendering:
+      fileNamingStyle: snake_case
     modules:
       catService: ./cat-service-swagger.json
       # 也可以从网络上获取 swagger 文档，例如：
@@ -280,13 +285,14 @@ request
 | :----------------- | :----------- | :---------------------------------------------------------- | :---------------------------------------------------------------- |
 | outdir             | true         | -                                                           | 编译结果的输出目录                                                |
 | modules            | true         | -                                                           | Swagger 文件地址和模块名称                                        |
-| fileNamingStyle    | false        | -                                                           | 文件名风格                                                        |
-| esm                | false        | 若 `package.json` 是否设置了 `"type": "module"` 则为 `true` | 是否生成 ESM 风格的代码                                           |
+| rendering          | false        | `{}`                                                        | 控制代码生成结果的渲染选项                                        |
+| rendering.fileNamingStyle    | false        | -                                                   | 文件名风格                                                        |
+| rendering.esm                | false        | 若 `package.json` 是否设置了 `"type": "module"` 则为 `true` | 是否生成 ESM 风格的代码                                |
+| rendering.additionalPropertiesType | false  | `'unknown'`                                          | 控制 `additionalProperties: true`（或未声明时）在生成的 TypeScript 类型中渲染为 `unknown` 还是 `any` |
 | translators        | false        | `[]`                                                        | [生成的代码风格](./4.translators.mdx)                                                    |
-| additionalPropertiesType | false  | `'unknown'`                                                 | 控制 `additionalProperties: true`（或未声明时）在生成的 TypeScript 类型中渲染为 `unknown` 还是 `any` |
 | plugins            | false        | `[]`                                                        | [插件向第三方开发者提供了完整的自定义 cli 行为的能力](./2.plugin.mdx)               |
 
-#### fileNamingStyle
+#### rendering.fileNamingStyle
 
 | **枚举**                       | **示例**      |
 | :----------------------------- | :------------ |

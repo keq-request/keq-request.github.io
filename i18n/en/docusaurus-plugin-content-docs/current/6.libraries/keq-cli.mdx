@@ -89,7 +89,9 @@ Then, we create a configuration file for `keq-cli`, specifying the location of t
 
     export default defineKeqConfig({
       outdir: "./src/api", // Output directory for compilation results
-      fileNamingStyle: FileNamingStyle.snakeCase,
+      rendering: {
+        fileNamingStyle: FileNamingStyle.snakeCase,
+      },
       modules: {
         catService: "./cat-service-swagger.json",
         // You can also fetch swagger documents from the network, for example:
@@ -105,7 +107,9 @@ Then, we create a configuration file for `keq-cli`, specifying the location of t
 
     module.exports = defineKeqConfig({
       outdir: "./src/api", // Output directory for compilation results
-      fileNamingStyle: FileNamingStyle.snakeCase,
+      rendering: {
+        fileNamingStyle: FileNamingStyle.snakeCase,
+      },
       modules: {
         catService: "./cat-service-swagger.json",
         // You can also fetch swagger documents from the network, for example:
@@ -118,7 +122,8 @@ Then, we create a configuration file for `keq-cli`, specifying the location of t
   <TabItem value="yml" label="YAML">
     ```yaml title=".keqrc.yml"
     outdir: ./src/api # Output directory for compilation results
-    fileNamingStyle: snake_case
+    rendering:
+      fileNamingStyle: snake_case
     modules:
       catService: ./cat-service-swagger.json
       # You can also fetch swagger documents from the network, for example:
@@ -299,13 +304,15 @@ You can specify the configuration file location with `-c --config <config_file_p
 | **Configuration**  | **Required** | **Default**                                | **Description**                                                                              |
 | :----------------- | :----------- | :----------------------------------------- | :------------------------------------------------------------------------------------------- |
 | outdir             | true         | -                                          | Output directory for compilation results                                                     |
-| fileNamingStyle    | false        | -                                          | File naming style                                                                            |
 | modules            | true         | -                                          | Swagger file locations and module names                                                      |
+| rendering          | false        | `{}`                                       | Rendering options that control code generation output                                        |
+| rendering.fileNamingStyle    | false        | -                                | File naming style                                                                            |
+| rendering.esm                | false        | `false`                          | Whether to generate ESM-style code                                                           |
+| rendering.additionalPropertiesType | false  | `'unknown'`                      | Controls how `additionalProperties: true` (or undefined) is rendered as `unknown` or `any`   |
 | operationIdFactory | false        | `({ operation }) => operation.operationId` | Custom function name generation rules, defaults to using `operationId` from swagger document |
 | strict             | false        | `false`                                    | Whether to clear the output directory                                                        |
-| esm                | false        | `false`                                    | Whether to generate ESM-style code                                                           |
 
-### FileNamingStyle
+### rendering.fileNamingStyle
 
 | **Enum**                       | **Example**   |
 | :----------------------------- | :------------ |
