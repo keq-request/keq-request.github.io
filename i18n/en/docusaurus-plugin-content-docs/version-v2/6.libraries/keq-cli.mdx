@@ -305,6 +305,7 @@ You can specify the configuration file location with `-c --config <config_file_p
 | strict             | false        | `false`                                    | Whether to clear the output directory                                                        |
 | esm                | false        | `false`                                    | Whether to generate ESM-style code                                                           |
 | request            | false        | -                                          | File path to custom [`export const request = createRequest()`](../middleware#createrequest)  |
+| skipIndex          | false        | `false`                                    | Whether to skip generating `index.ts` files, useful to avoid merge conflicts in team collaboration |
 
 ### FileNamingStyle
 
@@ -333,3 +334,4 @@ You can specify the configuration file location with `-c --config <config_file_p
 | `--pathname <pathname...>`       | Generate only HTTP interfaces matching pathname                                                                 |
 | `--no-append`                    | Do not generate newly added HTTP interfaces (compared to the last generation)                                   |
 | `--no-update`                    | Do not update previously generated HTTP interfaces                                                              |
+| `--skip-index`                   | Skip generating `index.ts` files                                                                                |
