@@ -1,0 +1,66 @@
+# LintSchemaPlugin
+
+`LintSchemaPlugin` 使用 [AJV](https://ajv.js.org/) 和 JSON Schema Draft 2020-12 meta-schema 校验 OpenAPI 文档中的所有 Schema 对象，帮助你在代码生成前发现不合规的字段定义。
+
+:::tip
+许多 Swagger/OpenAPI 文档存在不符合规范的 schema 定义（例如在 schema 对象中使用 `required: false`），这些错误可能导致代码生成失败或生成错误的类型。`LintSchemaPlugin` 可以在构建阶段提前发现这些问题，帮助你快速定位并反馈给 API 提供方修复。
+:::
+
+## 配置方法
+
+```typescript title=".keqrc.ts"
+import { LintSchemaPlugin } from '@keq-request/cli/plugins'
+
+export default defineKeqConfig({
+  outdir: "./src/apis",
+  modules: {
+    catService: "./cat-service-swagger.json",
+  },
+  plugins: [new LintSchemaPlugin()],
+})
+```
+
+## 校验范围
+
+插件在 `beforeCompile` 阶段运行，会校验以下位置的 Schema 对象：
+
+- `components.schemas` 中定义的所有 Schema
+- 每个 Operation 的 `parameters` 参数 Schema
+- 每个 Operation 的 `requestBody` 请求体 Schema
+- 每个 Operation 的 `responses` 响应体 Schema
+
+## 输出示例
+
+当发现不合规的 Schema 时，插件会在控制台输出告警信息，包含具体的模块名、字段路径和错误描述：
+
+```
+WARN [catService] components.schemas.Cat/required: must be array
+WARN [catService] listCats parameter "status" schema/required: must be array
+WARN [catService] createCat requestBody application/json schema/properties/name/required: must be array
+```
+
+## 严格模式
+
+默认情况下，插件仅输出告警并继续构建。如果你希望在校验失败时终止构建，可以启用 `strict` 模式：
+
+```typescript title=".keqrc.ts"
+import { LintSchemaPlugin } from '@keq-request/cli/plugins'
+
+export default defineKeqConfig({
+  outdir: "./src/apis",
+  modules: {
+    catService: "./cat-service-swagger.json",
+  },
+  plugins: [
+    new LintSchemaPlugin({
+      strict: true,
+    }),
+  ],
+})
+```
+
+## 配置选项
+
+| **选项** | **类型**  | **默认值** | **描述**                                               |
+| :------- | :-------- | :--------- | :----------------------------------------------------- |
+| `strict` | `boolean` | `false`    | 启用后，校验失败时终止构建并抛出错误，而不是仅输出告警 |
