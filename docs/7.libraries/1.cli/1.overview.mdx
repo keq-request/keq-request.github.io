@@ -289,6 +289,7 @@ request
 | rendering.fileNamingStyle    | false        | -                                                   | 文件名风格                                                        |
 | rendering.esm                | false        | 若 `package.json` 是否设置了 `"type": "module"` 则为 `true` | 是否生成 ESM 风格的代码                                |
 | rendering.additionalPropertiesType | false  | `'unknown'`                                          | 控制 `additionalProperties: true`（或未声明时）在生成的 TypeScript 类型中渲染为 `unknown` 还是 `any` |
+| rendering.entrypoint               | false  | `false`                                              | 开启后会为每个模块生成 `index.ts` 入口文件，统一 re-export 该目录下的所有生成文件 |
 | translators        | false        | `[]`                                                        | [生成的代码风格](./4.translators.mdx)                                                    |
 | plugins            | false        | `[]`                                                        | [插件向第三方开发者提供了完整的自定义 cli 行为的能力](./2.plugin.mdx)               |
 
