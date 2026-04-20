@@ -309,25 +309,32 @@ request
 | `FileNamingStyle.sentenceCase` | `"Two words"` |
 | `FileNamingStyle.snakeCase`    | `"two_words"` |
 
-### `.keqignore`
+### `.keqfilter`
 
-还可以通过 `.keqignore` 文件忽略不需要生成代码的 HTTP 接口：
+还可以通过 `.keqfilter` 文件控制哪些 HTTP 接口需要生成代码。文件使用 INI Section 格式，`[deny]` 块声明需要忽略的接口，`[allow]` 块声明例外规则（优先级高于 `[deny]`）。
+
+每行格式为 `METHOD module:/pathname`，支持 glob 通配符。
 
 ```ini
-# 格式为
-# [moduleName] [method] [pathname]
+[deny]
+# 忽略所有模块的所有接口
+*       *:/**
 
-* * *                   # 忽略所有模块的所有接口
+# 忽略所有模块的 GET /cats 接口
+*       *:/cats
 
-* GET /cats             # 忽略所有模块的 GET /cats 接口
+# 忽略所有模块的 GET 接口
+GET     *:/**
 
-* GET *                 # 忽略所有模块的 GET 接口
+# 忽略 catService 模块的 /cats 接口
+*       catService:/cats
 
-catService * /cats      # 忽略 catService 模块的 /cats 接口
+# 忽略 catService 模块的 GET /cats 接口
+GET     catService:/cats
 
-catService GET /cats    # 忽略 catService 模块的 GET /cats 接口
-
-! dogService POST /dogs # 不忽略 dogService 模块的 POST /dogs 接口
+[allow]
+# 不忽略 dogService 模块的 POST /dogs 接口
+POST    dogService:/dogs
 ```
 
 
@@ -346,19 +353,19 @@ catService GET /cats    # 忽略 catService 模块的 GET /cats 接口
 | `--method <method...>`           | 仅生成匹配 method(`'get' \| 'post' \| 'put' \| 'patch' \| 'head' \| 'options' \| 'delete'`) 的 HTTP 接口 |
 | `--pathname <pathname...>`       | 仅生成匹配 pathname 的 HTTP 接口                                                                         |
 
-### `keq ignore <mode> [options]`
+### `keq filter <mode> [options]`
 
-添加忽略规则到 `.keqignore` 文件。使用 `--interactive` 可以通过命令行交互指定需要忽略的 HTTP 接口。
+添加过滤规则到 `.keqfilter` 文件。使用 `--interactive` 可以通过命令行交互指定需要过滤的 HTTP 接口。
 
 | **选项**                         | **描述**                                                                                                 |
 | :------------------------------- | :------------------------------------------------------------------------------------------------------- |
-| `<mode>`                         | `add`：添加忽略规则，`except`：添加不忽略规则
+| `<mode>`                         | `deny`：添加忽略规则；`allow`：添加例外规则（优先级高于 `deny`）；`all`：忽略所有接口
 | `-c --config <config_file_path>` | 配置文件的地址                                                                                         |
-| `--modules`                      | 设置添加的忽略规则的模块名称                                                                    |
-| `--method <method> `             | 设置添加的忽略规则的 HTTP 方法(`'get' \| 'post' \| 'put' \| 'patch' \| 'head' \| 'options' \| 'delete'`) |
-| `--pathname <pathname...>`       | 设置添加的忽略规则的 HTTP 接口路径                                                             |
-| `-i --interactive`               | 通过命令行交互，指定需要忽略的 HTTP 接口                                                               |
-| `--build`                        | 忽略规则添加完成后，自动执行 `keq build` 命令生成代码                                                  |
+| `--modules`                      | 设置添加的过滤规则的模块名称                                                                    |
+| `--method <method> `             | 设置添加的过滤规则的 HTTP 方法(`'get' \| 'post' \| 'put' \| 'patch' \| 'head' \| 'options' \| 'delete'`) |
+| `--pathname <pathname...>`       | 设置添加的过滤规则的 HTTP 接口路径                                                             |
+| `-i --interactive`               | 通过命令行交互，指定需要过滤的 HTTP 接口                                                               |
+| `--build`                        | 过滤规则添加完成后，自动执行 `keq build` 命令生成代码                                                  |
 
 ### `keq install-skill`
 

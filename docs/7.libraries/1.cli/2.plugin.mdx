@@ -39,7 +39,7 @@ export default defineKeqConfig({
 
 ### 1. Setup - 加载配置
 
-加载 `.keqrc` 配置文件和 `.keqignore` 忽略规则。
+加载 `.keqrc` 配置文件和 `.keqfilter` 过滤规则。
 
 **数据输出**：`context.rc`（配置信息）、`context.matcher`（匹配规则）
 
@@ -57,7 +57,7 @@ export default defineKeqConfig({
 
 ### 4. Persist - 写入文件
 
-将 `context.artifacts` 写入磁盘，并将 `context.matcher` 写入 `.keqignore` 文件。
+将 `context.artifacts` 写入磁盘，并将 `context.matcher` 写入 `.keqfilter` 文件。
 
 ## Hooks
 
