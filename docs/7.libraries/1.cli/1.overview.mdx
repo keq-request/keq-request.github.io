@@ -359,3 +359,22 @@ catService GET /cats    # 忽略 catService 模块的 GET /cats 接口
 | `--pathname <pathname...>`       | 设置添加的忽略规则的 HTTP 接口路径                                                             |
 | `-i --interactive`               | 通过命令行交互，指定需要忽略的 HTTP 接口                                                               |
 | `--build`                        | 忽略规则添加完成后，自动执行 `keq build` 命令生成代码                                                  |
+
+### `keq install-skill`
+
+将 `@keq-request/cli` 内置的 [Claude Code](https://docs.anthropic.com/en/docs/claude-code/overview) Skill 文件安装到当前项目的 `.claude/skills/` 目录中。
+Skill 文件为 Claude Code 提供了 `@keq-request/cli` 的上下文知识，使 AI 在辅助开发时能够正确地使用 `keq` 的命令、配置和插件。
+
+安装后的文件结构如下：
+
+```
+.claude/skills/
+└── keq/
+    ├── SKILL.md               # Skill 定义（触发条件、命令、工作流）
+    ├── CONFIGURATION.md       # CLI 配置参考
+    └── PLUGIN_DEVELOPMENT.md  # 插件开发指南
+```
+
+该命令无需任何参数或选项，可以安全地重复执行（会覆盖已有文件）。
+
+<ExecPackageCommandCode command="keq install-skill" />

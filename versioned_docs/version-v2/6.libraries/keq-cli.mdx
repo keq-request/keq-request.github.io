@@ -338,3 +338,17 @@ request
 | `--no-append`                    | 不生成新添加的 HTTP 接口（与上次生成做对比）                                                             |
 | `--no-update`                    | 不更新上次已生成的 HTTP 接口                                                                             |
 | `--skip-index`                   | 跳过生成 `index.ts` 文件                                                                                 |
+
+## install-skill
+
+`install-skill` 命令用于将 [Claude Code](https://docs.anthropic.com/en/docs/claude-code) 技能文件安装到当前项目中。
+
+<PackageManager command="keq-cli install-skill" />
+
+执行后，该命令会将内置的技能定义文件复制到项目的 `.claude/skills/keq-cli/SKILL.md` 路径下。
+
+该技能文件使 Claude Code 能够自动识别项目中的 `keq-cli` 配置，并在编写 HTTP 请求代码时智能地使用 `keq-cli` 生成的函数，而非手动编写原始的 HTTP 请求代码。
+
+:::tip 建议
+在新项目中初始化 `keq-cli` 后，建议执行此命令安装技能文件，以获得更好的 AI 辅助开发体验。
+:::

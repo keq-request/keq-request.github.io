@@ -335,3 +335,17 @@ You can specify the configuration file location with `-c --config <config_file_p
 | `--no-append`                    | Do not generate newly added HTTP interfaces (compared to the last generation)                                   |
 | `--no-update`                    | Do not update previously generated HTTP interfaces                                                              |
 | `--skip-index`                   | Skip generating `index.ts` files                                                                                |
+
+## install-skill
+
+The `install-skill` command installs a [Claude Code](https://docs.anthropic.com/en/docs/claude-code) skill file to the current project.
+
+<PackageManager command="keq-cli install-skill" />
+
+After execution, this command copies the built-in skill definition file to `.claude/skills/keq-cli/SKILL.md` in the project directory.
+
+The skill file enables Claude Code to automatically detect the `keq-cli` configuration in the project and intelligently use `keq-cli` generated functions when writing HTTP request code, instead of manually writing raw HTTP requests.
+
+:::tip Recommendation
+After initializing `keq-cli` in a new project, it is recommended to run this command to install the skill file for a better AI-assisted development experience.
+:::
