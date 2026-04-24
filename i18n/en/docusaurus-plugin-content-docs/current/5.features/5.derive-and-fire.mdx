@@ -1,0 +1,92 @@
+# Request Reuse
+
+## Deriving Requests - derive()
+
+**`.derive()`**
+
+Creates a new, unsent request instance that inherits all configuration (URL, Headers, Body, Query, middlewares, options) from the current request, but has its own independent lifecycle.
+
+### Example
+
+```typescript
+import { request } from "keq";
+
+const base = request
+  .get("/api/cats")
+  .set("Authorization", "Bearer token")
+  .query("breed", "british_shorthair");
+
+// Derive multiple independent requests
+const page1 = await base.derive()
+  .query("page", 1);
+
+const page2 = await base.derive()
+  .query("page", 2);
+
+const page3 = await base.derive()
+  .query("page", 3);
+```
+
+### Derive from Already-Sent Requests
+
+Even if the base request has already been `await`ed, you can still derive new requests:
+
+```typescript
+import { request } from "keq";
+
+const base = request.get("/api/cats");
+
+const firstResult = await base; // Already sent
+
+const secondResult = await base.derive()
+  .query("page", 2); // Still works
+```
+
+### Concurrent Derives
+
+```typescript
+import { request } from "keq";
+
+const base = request.get("/api/cats").set("Authorization", "Bearer token");
+
+const [page1, page2, page3] = await Promise.all([
+  base.derive().query("page", 1),
+  base.derive().query("page", 2),
+  base.derive().query("page", 3),
+]);
+```
+
+## Fire-and-Forget - fire()
+
+**`.fire()`**
+
+Triggers the request without returning a `Promise`. Returns `void`, useful for fire-and-forget scenarios like analytics.
+
+### Example
+
+```typescript
+import { request } from "keq";
+
+request
+  .post("/analytics/event")
+  .send({ event: "page_view", page: "/home" })
+  .fire();
+```
+
+### Combined with derive
+
+```typescript
+import { request } from "keq";
+
+const tracker = request
+  .post("/analytics/event")
+  .set("Authorization", "Bearer token");
+
+tracker.derive()
+  .send({ event: "page_view", page: "/home" })
+  .fire();
+
+tracker.derive()
+  .send({ event: "button_click", target: "submit" })
+  .fire();
+```

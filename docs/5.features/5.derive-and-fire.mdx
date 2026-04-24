@@ -1,0 +1,132 @@
+# 请求复用
+
+在实际开发中，经常需要基于同一组公共配置（如认证信息、基础查询参数）发送多个类似的请求。Keq 提供了 `.derive()` 和 `.fire()` 方法来支持请求复用和快捷触发。
+
+## 派生请求 - derive()
+
+`.derive()` 从当前请求派生出一个全新的、未发送的请求实例。派生的请求继承原始请求的所有配置（URL、Headers、Body、Query、中间件、选项等），但拥有完全独立的生命周期。
+
+### 基本用法
+
+```typescript
+import { request } from "keq"
+
+const base = request
+  .get("/api/cats")
+  .set("Authorization", "Bearer token")
+  .query("breed", "british_shorthair")
+
+const page1 = await base.derive()
+  .query("page", 1)
+
+const page2 = await base.derive()
+  .query("page", 2)
+
+const page3 = await base.derive()
+  .query("page", 3)
+```
+
+### 从已发送的请求派生
+
+即使基础请求已经被 `await` 过，仍然可以继续调用 `.derive()` 派生新请求：
+
+```typescript
+import { request } from "keq"
+
+const base = request
+  .get("/api/cats")
+  .set("Authorization", "Bearer token")
+
+// 先发送一次
+const firstPage = await base
+
+// 基础请求已发送，但仍可以派生
+const secondPage = await base.derive()
+  .query("page", 2)
+
+const thirdPage = await base.derive()
+  .query("page", 3)
+```
+
+### 并发派生
+
+多个派生请求可以并发执行，互不影响：
+
+```typescript
+import { request } from "keq"
+
+const base = request
+  .get("/api/cats")
+  .set("Authorization", "Bearer token")
+
+const [page1, page2, page3] = await Promise.all([
+  base.derive().query("page", 1),
+  base.derive().query("page", 2),
+  base.derive().query("page", 3),
+])
+```
+
+### 状态隔离
+
+派生的请求与原始请求完全独立——修改派生请求的参数不会影响原始请求，反之亦然：
+
+```typescript
+import { request } from "keq"
+
+const base = request
+  .get("/api/cats")
+  .set("Authorization", "Bearer token")
+
+const derived = base.derive()
+derived.query("page", 2)
+derived.set("X-Custom", "value")
+
+// base 的参数不会被修改
+```
+
+## 触发请求但不等待 - fire()
+
+当你只需要发送请求而不关心结果时（fire-and-forget），使用 `.fire()` 方法。它返回 `void`，可以直接调用而无需 `await`：
+
+```typescript
+import { request } from "keq"
+
+// 发送埋点请求，不需要等待结果
+request
+  .post("/analytics/event")
+  .send({ event: "page_view", page: "/home" })
+  .fire()
+```
+
+### 与 derive 结合使用
+
+```typescript
+import { request } from "keq"
+
+const tracker = request
+  .post("/analytics/event")
+  .set("Authorization", "Bearer token")
+
+// 在不同时机发送不同的埋点事件
+tracker.derive()
+  .send({ event: "page_view", page: "/home" })
+  .fire()
+
+tracker.derive()
+  .send({ event: "button_click", target: "submit" })
+  .fire()
+```
+
+### fire() 后仍可获取结果
+
+调用 `.fire()` 后，仍然可以通过 `await` 获取请求结果：
+
+```typescript
+import { request } from "keq"
+
+const req = request.get("/api/cats")
+
+req.fire()  // 触发请求
+
+const result = await req  // 仍然可以获取结果
+```
