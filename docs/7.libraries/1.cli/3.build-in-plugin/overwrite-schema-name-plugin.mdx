@@ -1,0 +1,40 @@
+# OverwriteSchemaNamePlugin
+
+`OverwriteSchemaNamePlugin` 用于重命名 OpenAPI 文档中 `components.schemas` 下的 Schema 名称。当后端生成的 Schema 名称包含包路径、版本号或其他冗余信息时，可以通过此插件统一命名风格。
+
+插件会自动更新文档中所有引用该 Schema 的 `$ref` 路径。
+
+## 配置方法
+
+```typescript title=".keqrc.ts"
+import { defineKeqConfig } from "@keq-request/cli"
+import { OverwriteSchemaNamePlugin } from '@keq-request/cli/plugins'
+
+export default defineKeqConfig({
+  outdir: "./src/apis",
+  modules: {
+    catService: "./cat-service-swagger.json",
+  },
+  plugins: [
+    new OverwriteSchemaNamePlugin(({ name, module }) => {
+      // 移除 Java 包路径前缀，例如 "com.example.model.Cat" → "Cat"
+      const simpleName = name.split('.').pop()
+      return simpleName
+    }),
+  ],
+})
+```
+
+## 工厂函数
+
+构造函数接受一个工厂函数：
+
+| **参数**         | **类型**           | **描述**             |
+| :--------------- | :----------------- | :------------------- |
+| `context.name`   | `string`           | 当前 Schema 的原始名称 |
+| `context.module` | `ModuleDefinition` | 当前模块的定义信息   |
+
+**返回值**：`string | undefined`
+
+- 返回 `string`：使用该字符串作为新的 Schema 名称
+- 返回 `undefined`：保持原始名称不变

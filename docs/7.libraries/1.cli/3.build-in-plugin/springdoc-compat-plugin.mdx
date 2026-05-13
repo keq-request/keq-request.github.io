@@ -1,0 +1,24 @@
+# SpringdocCompatPlugin
+
+`SpringdocCompatPlugin` 用于修复 [SpringDoc](https://springdoc.org/) 生成的 OpenAPI 文档中嵌套 `extensions` 对象的兼容性问题。
+
+SpringDoc 在某些版本中会将扩展字段（如 `x-*`）嵌套在一个额外的 `extensions` 对象中，而非直接放置在父对象上。这不符合 OpenAPI 规范，会导致解析和校验失败。`SpringdocCompatPlugin` 在 `beforeValidate` 阶段递归地将嵌套的 `extensions` 对象展平回其父对象。
+
+## 配置方法
+
+```typescript title=".keqrc.ts"
+import { defineKeqConfig } from "@keq-request/cli"
+import { SpringdocCompatPlugin } from '@keq-request/cli/plugins'
+
+export default defineKeqConfig({
+  outdir: "./src/apis",
+  modules: {
+    userService: "./user-service-swagger.json",
+  },
+  plugins: [new SpringdocCompatPlugin()],
+})
+```
+
+:::tip
+如果你在校验阶段遇到 `"Property extensions is not expected to be here"` 错误，说明你的 OpenAPI 文档由 SpringDoc 生成且存在此兼容性问题，添加此插件即可解决。
+:::

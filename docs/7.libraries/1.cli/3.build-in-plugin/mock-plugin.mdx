@@ -1,0 +1,56 @@
+# MockPlugin
+
+`MockPlugin` 在 `beforeValidate` 阶段向 OpenAPI Schema 中注入 mock 数据提示（examples、`x-faker` 注解、defaults），使 `keq mock` 命令能够生成更贴近真实业务场景的模拟数据。
+
+## 配置方法
+
+```typescript title=".keqrc.ts"
+import { defineKeqConfig } from "@keq-request/cli"
+import { MockPlugin } from '@keq-request/cli/plugins'
+
+export default defineKeqConfig({
+  outdir: "./src/apis",
+  modules: {
+    catService: "./cat-service-swagger.json",
+  },
+  plugins: [
+    new MockPlugin([
+      {
+        given: '$.components.schemas.Cat.properties.name',
+        then: { faker: 'person.firstName' },
+      },
+      {
+        given: '$.components.schemas.Cat.properties.age',
+        when: { type: 'number' },
+        then: { faker: 'number.int', args: [{ min: 1, max: 20 }] },
+      },
+      {
+        given: '$.components.schemas.Cat.properties.breed',
+        then: { example: 'Siamese' },
+      },
+    ]),
+  ],
+})
+```
+
+## 规则定义
+
+每条规则由 `given`、`when`（可选）和 `then` 三部分组成：
+
+| **字段**      | **类型**             | **必填** | **描述**                                     |
+| :------------ | :------------------- | :------- | :------------------------------------------- |
+| `given`       | `string`             | 是       | JSONPath 表达式，定位目标 Schema 节点        |
+| `when`        | `object`             | 否       | 匹配条件，仅当 Schema 满足条件时应用规则     |
+| `when.type`   | `string \| string[]` | 否       | 匹配 Schema 的 `type` 字段                   |
+| `when.format` | `string`             | 否       | 匹配 Schema 的 `format` 字段                 |
+| `then`        | `object`             | 是       | 注入的 mock 数据提示，支持三种模式           |
+
+### `then` 支持的模式
+
+- **`{ example: unknown }`** — 直接指定固定示例值
+- **`{ faker: string; args?: unknown }`** — 使用 [json-schema-faker](https://github.com/json-schema-faker/json-schema-faker) 的 faker 方法生成数据
+- **`{ default: unknown }`** — 设置默认值
+
+:::tip
+`MockPlugin` 仅对未显式定义 `example`、`examples`、`enum`、`const` 或 `x-faker` 的 Schema 节点生效，不会覆盖已有的值。
+:::
