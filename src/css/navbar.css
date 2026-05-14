@@ -1,8 +1,9 @@
 @import "tailwindcss/theme.css";
+@custom-variant dark (&:is([data-theme="dark"] *));
 
 
 nav.navbar {
-  @apply shadow-none border-b-gray-50 border-b;
+  @apply shadow-none border-b-gray-50 dark:border-b-gray-800 border-b;
 }
 
 /* Fix navbar GitHub link wrapping issue */

@@ -1,5 +1,6 @@
 @import "tailwindcss/theme.css";
 @plugin "@tailwindcss/typography";
+@custom-variant dark (&:is([data-theme="dark"] *));
 
 
 article .markdown {
@@ -19,31 +20,31 @@ article .markdown table th, article .markdown table td {
 }
 
 .theme-doc-toc-desktop > ul {
-  @apply border-l-gray-200! border-l;
+  @apply border-l-gray-200! dark:border-l-gray-700! border-l;
 }
 
 .theme-doc-toc-desktop .table-of-contents__link {
-  @apply text-gray-500!;
+  @apply text-gray-500! dark:text-gray-400!;
 }
 
 .theme-doc-toc-desktop .table-of-contents__link * {
-  @apply text-gray-500!;
+  @apply text-gray-500! dark:text-gray-400!;
 }
 
 .theme-doc-toc-desktop .table-of-contents__link:hover {
-  @apply text-gray-800!;
+  @apply text-gray-800! dark:text-gray-200!;
 }
 
 .theme-doc-toc-desktop .table-of-contents__link:hover * {
-  @apply text-gray-800!;
+  @apply text-gray-800! dark:text-gray-200!;
 }
 
 .theme-doc-toc-desktop .table-of-contents__link.table-of-contents__link--active {
-  @apply font-bold text-gray-800!;
+  @apply font-bold text-gray-800! dark:text-gray-100!;
 }
 
 .theme-doc-toc-desktop .table-of-contents__link.table-of-contents__link--active * {
-  @apply font-bold text-gray-800!;
+  @apply font-bold text-gray-800! dark:text-gray-100!;
 }
 
 
@@ -57,20 +58,20 @@ article .markdown table {
 }
 
 article .markdown table thead {
-  @apply bg-gray-100!;
+  @apply bg-gray-100! dark:bg-gray-800!;
 }
 
 article .markdown table tr {
-  @apply border-1!;
+  @apply border-1! border-gray-200 dark:border-gray-700;
 }
 
 article .markdown table th,
 article .markdown table td {
-  @apply border-gray-100!;
+  @apply border-gray-100! dark:border-gray-700!;
 }
 
 article .markdown table tr:nth-child(even) {
-  @apply bg-gray-50!;
+  @apply bg-gray-50! dark:bg-gray-800/50!;
 }
 
 /* Tabs */
