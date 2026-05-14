@@ -1,7 +1,7 @@
 import Tabs from '@theme/Tabs';
 import TabItem from '@theme/TabItem';
 import InstallPackagesCode from '@site/docs/components/_install-packages-code.mdx'
-import PackageManager from '@site/docs/components/_package-manager.mdx';
+import ExecPackageCommandCode from '@site/docs/components/_exec-package-command-code.mdx'
 
 # keq-cli
 
@@ -133,7 +133,7 @@ Prefer using `typescript` or `javascript` format for configuration files. Some a
 
 Next, execute the following command in the terminal:
 
-<PackageManager command="keq-cli build" />
+<ExecPackageCommandCode command="keq-cli build" />
 
 After execution, `keq-cli` will generate the following files in the `./src/api/cat_service/` directory:
 
@@ -340,7 +340,7 @@ You can specify the configuration file location with `-c --config <config_file_p
 
 The `install-skill` command installs a [Claude Code](https://docs.anthropic.com/en/docs/claude-code) skill file to the current project.
 
-<PackageManager command="keq-cli install-skill" />
+<ExecPackageCommandCode command="keq-cli install-skill" />
 
 After execution, this command copies the built-in skill definition file to `.claude/skills/keq-cli/SKILL.md` in the project directory.
 
