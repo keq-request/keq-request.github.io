@@ -412,3 +412,36 @@ Mock 服务器按以下优先级生成响应数据：
 1. OpenAPI Media Type 中定义的 `example` 字段
 2. `examples` 中的第一个可用条目
 3. 基于 Schema 使用 [json-schema-faker](https://github.com/json-schema-faker/json-schema-faker) 自动生成
+
+### `keq apis [options]`
+
+列出 OpenAPI 文档中定义的所有 API 接口和组件信息，包括接口的 summary/description 和 schema 的 description。
+
+| **选项**                         | **描述**                                                                                                 |
+| :------------------------------- | :------------------------------------------------------------------------------------------------------- |
+| `-c --config <config_file_path>` | 配置文件的地址                                                                                           |
+| `--includes <includes...>`       | 指定输出内容，可选值：`operations`、`components`                                                          |
+| `--module <moduleName...>`       | 仅列出匹配模块名称的模块                                                                                 |
+| `--method <method>`              | 仅列出匹配 HTTP 方法的接口                                                                               |
+| `--pathname <pathname>`          | 仅列出匹配路径的接口                                                                                     |
+| `--format <format>`              | 输出格式，可选值：`compact`、`json`                                                                       |
+| `--json`                         | 以 JSON 格式输出（等同于 `--format json`）                                                                |
+| `--tolerant`                     | 容错模式：忽略无效的 Swagger/OpenAPI 文档结构                                                             |
+| `--debug`                        | 打印调试信息                                                                                             |
+
+#### 输出示例
+
+```
+Module: catService
+──────────────────────────────────────────────────────────────────────────
+
+  APIs:
+    GET     /cats
+    获取所有猫咪信息
+    POST    /cats
+    创建一只新猫咪
+
+  Schemas:
+    Cat
+    猫咪数据模型
+```
