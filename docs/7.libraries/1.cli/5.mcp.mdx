@@ -1,0 +1,158 @@
+# MCP Server
+
+`@keq-request/cli` 内置了一个 [Model Context Protocol (MCP)](https://modelcontextprotocol.io/) 服务器，可以将项目的 API 目录暴露为 AI 助手（Claude、Cursor 等）可调用的工具。
+
+## 启动
+
+```bash
+keq mcp [options]
+```
+
+| **选项**                         | **描述**                                                                                                 |
+| :------------------------------- | :------------------------------------------------------------------------------------------------------- |
+| `-c --config <config_file_path>` | 配置文件的地址                                                                                           |
+| `--tolerant`                     | 容错模式：忽略无效的 Swagger/OpenAPI 文档结构                                                             |
+| `--debug`                        | 打印调试信息                                                                                             |
+
+MCP Server 通过 stdio 传输协议通信，适合作为 AI 编辑器的子进程启动。
+
+## 配置 AI 编辑器
+
+### Claude Code
+
+在项目的 `.claude/settings.json` 中添加：
+
+```json
+{
+  "mcpServers": {
+    "keq": {
+      "command": "npx",
+      "args": ["keq", "mcp"]
+    }
+  }
+}
+```
+
+### Cursor
+
+在项目的 `.cursor/mcp.json` 中添加：
+
+```json
+{
+  "mcpServers": {
+    "keq": {
+      "command": "npx",
+      "args": ["keq", "mcp"]
+    }
+  }
+}
+```
+
+### VS Code
+
+在项目的 `.vscode/mcp.json` 中添加：
+
+```json
+{
+  "servers": {
+    "keq": {
+      "command": "npx",
+      "args": ["keq", "mcp"]
+    }
+  }
+}
+```
+
+## 提供的工具
+
+MCP Server 注册了以下工具供 AI 助手调用：
+
+### `search_apis`
+
+使用自然语言语义搜索 API 接口，支持中英文跨语言匹配。
+
+| **参数**   | **类型**   | **必填** | **描述**                     |
+| :--------- | :--------- | :------- | :--------------------------- |
+| `query`    | `string`   | 是       | 自然语言搜索查询              |
+| `module`   | `string[]` | 否       | 按模块名称过滤               |
+| `limit`    | `number`   | 否       | 最大返回结果数量（默认：10）  |
+
+### `get_api_detail`
+
+获取指定 API 的完整定义，包括请求参数、请求体和响应体的 JSON Schema。
+
+| **参数**   | **类型** | **必填** | **描述**                                  |
+| :--------- | :------- | :------- | :---------------------------------------- |
+| `module`   | `string` | 是       | 模块名称                                  |
+| `method`   | `string` | 是       | HTTP 方法（GET、POST、PUT、DELETE 等）     |
+| `pathname` | `string` | 是       | API 路径（如 `/api/v1/users`）            |
+
+### `list_modules`
+
+列出 `.keqrc` 中配置的所有 API 模块。
+
+无需参数。
+
+### `list_apis`
+
+列出所有 API 接口的结构化信息（模块、方法、路径、operationId、summary）。
+
+| **参数**   | **类型**   | **必填** | **描述**                                                    |
+| :--------- | :--------- | :------- | :---------------------------------------------------------- |
+| `module`   | `string[]` | 否       | 按模块名称过滤                                              |
+| `method`   | `string`   | 否       | 按 HTTP 方法过滤                                            |
+| `pathname` | `string`   | 否       | 按路径过滤（支持 glob 通配符）                               |
+| `includes` | `string[]` | 否       | 包含内容，可选值：`operations`、`components`（默认：`['operations']`） |
+
+### `build_apis`
+
+为指定的 API 接口生成类型安全的 TypeScript 客户端代码。文件将写入 `.keqrc` 中配置的输出目录。
+
+| **参数**   | **类型**   | **必填** | **描述**                                          |
+| :--------- | :--------- | :------- | :------------------------------------------------ |
+| `module`   | `string[]` | 否       | 要生成代码的模块                                   |
+| `method`   | `string`   | 否       | 按 HTTP 方法过滤                                   |
+| `pathname` | `string`   | 否       | 按路径过滤（支持 glob 通配符，如 `/api/v1/users/**`）|
+| `fresh`    | `boolean`  | 否       | 构建前清空输出目录（默认：`false`）                 |
+
+### `list_generated_files`
+
+列出已生成的 TypeScript 客户端文件。可选择仅列出无效/过期的文件。
+
+| **参数**   | **类型**   | **必填** | **描述**                                              |
+| :--------- | :--------- | :------- | :---------------------------------------------------- |
+| `invalid`  | `boolean`  | 否       | 设为 `true` 时仅列出不在当前构建产物中的过期文件（默认：`false`） |
+
+### `get_filter_rules`
+
+查看当前 `.keqfilter` 文件的内容。过滤规则控制哪些 API 会生成代码。
+
+无需参数。
+
+### `add_filter_rule`
+
+向 `.keqfilter` 添加过滤规则。`deny` 规则排除 API 的代码生成，`allow` 规则包含 API 的代码生成。
+
+| **参数**   | **类型** | **必填** | **描述**                                    |
+| :--------- | :------- | :------- | :------------------------------------------ |
+| `mode`     | `string` | 是       | 规则模式：`deny` 或 `allow`                  |
+| `module`   | `string` | 否       | 模块名称模式（支持 glob，默认：`*`）          |
+| `method`   | `string` | 否       | HTTP 方法模式（默认：`*`）                    |
+| `pathname` | `string` | 是       | 路径模式（支持 glob）                         |
+| `build`    | `boolean`| 否       | 添加规则后是否自动重新构建（默认：`false`）    |
+
+### `remove_filter_rule`
+
+从 `.keqfilter` 中移除指定的过滤规则。
+
+| **参数**   | **类型** | **必填** | **描述**                          |
+| :--------- | :------- | :------- | :-------------------------------- |
+| `mode`     | `string` | 是       | 规则所在的区块：`deny` 或 `allow`  |
+| `module`   | `string` | 是       | 精确匹配的模块名称模式             |
+| `method`   | `string` | 是       | 精确匹配的方法模式                 |
+| `pathname` | `string` | 是       | 精确匹配的路径模式                 |
+| `build`    | `boolean`| 否       | 移除规则后是否自动重新构建（默认：`false`） |
+
+## 自动重载
+
+MCP Server 会监控 `.keqrc` 和 `.keqfilter` 文件的变更。当这些文件被修改时，服务器会自动重新编译 API 索引，无需手动重启。

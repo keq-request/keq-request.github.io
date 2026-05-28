@@ -413,6 +413,55 @@ Mock 服务器按以下优先级生成响应数据：
 2. `examples` 中的第一个可用条目
 3. 基于 Schema 使用 [json-schema-faker](https://github.com/json-schema-faker/json-schema-faker) 自动生成
 
+### `keq search <query> [options]`
+
+使用自然语言语义搜索 API 接口。基于 `intfloat/multilingual-e5-small` 嵌入模型，支持中英文跨语言匹配。
+
+| **选项**                         | **描述**                                                                                                 |
+| :------------------------------- | :------------------------------------------------------------------------------------------------------- |
+| `<query>`                        | 自然语言搜索查询（必填）                                                                                  |
+| `-c --config <config_file_path>` | 配置文件的地址                                                                                           |
+| `--module <moduleName...>`       | 仅在匹配模块名称的模块中搜索                                                                              |
+| `--limit <limit>`                | 最大返回结果数量（默认：`10`）                                                                            |
+| `--detail`                       | 在结果中包含完整的请求/响应 Schema（parameters、requestBody、responses）                                   |
+| `--format <format>`              | 输出格式，可选值：`json`、`compact`（默认：`json`）                                                        |
+| `--all`                          | 忽略 `.keqfilter` 规则，搜索所有接口                                                                      |
+| `--tolerant`                     | 容错模式：忽略无效的 Swagger/OpenAPI 文档结构                                                             |
+| `--debug`                        | 打印调试信息                                                                                             |
+
+:::tip
+首次运行时会自动下载嵌入模型到 `~/.cache/keq/models` 目录，后续运行将直接使用缓存。
+:::
+
+#### 输出示例
+
+**compact 格式：**
+
+```
+[0.92] GET  /cats  获取所有猫咪信息  (catService#getCats)
+[0.85] POST /cats  创建一只新猫咪    (catService#createCat)
+```
+
+**json 格式：**
+
+```json
+{
+  "results": [
+    {
+      "score": 0.92,
+      "module": "catService",
+      "method": "GET",
+      "pathname": "/cats",
+      "operationId": "getCats",
+      "summary": "获取所有猫咪信息",
+      "description": "",
+      "tags": ["cats"]
+    }
+  ],
+  "total": 1
+}
+```
+
 ### `keq apis [options]`
 
 列出 OpenAPI 文档中定义的所有 API 接口和组件信息，包括接口的 summary/description 和 schema 的 description。
