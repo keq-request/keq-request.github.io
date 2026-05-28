@@ -369,25 +369,6 @@ POST    dogService:/dogs
 | `--tolerant`                     | 容错模式：忽略下载失败和 Swagger 格式校验错误                                                          |
 | `--build`                        | 过滤规则添加完成后，自动执行 `keq build` 命令生成代码                                                  |
 
-### `keq install-skill`
-
-将 `@keq-request/cli` 内置的 [Claude Code](https://docs.anthropic.com/en/docs/claude-code/overview) Skill 文件安装到当前项目的 `.claude/skills/` 目录中。
-Skill 文件为 Claude Code 提供了 `@keq-request/cli` 的上下文知识，使 AI 在辅助开发时能够正确地使用 `keq` 的命令、配置和插件。
-
-安装后的文件结构如下：
-
-```
-.claude/skills/
-└── keq/
-    ├── SKILL.md               # Skill 定义（触发条件、命令、工作流）
-    ├── CONFIGURATION.md       # CLI 配置参考
-    └── PLUGIN_DEVELOPMENT.md  # 插件开发指南
-```
-
-该命令无需任何参数或选项，可以安全地重复执行（会覆盖已有文件）。
-
-<ExecPackageCommandCode command="keq install-skill" />
-
 ### `keq mock [options]`
 
 根据 OpenAPI 文档启动一个 Mock HTTP 服务器，自动生成符合 Schema 定义的模拟数据。适用于前端开发阶段在后端接口尚未就绪时进行联调。
