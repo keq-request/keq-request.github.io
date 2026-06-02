@@ -89,6 +89,29 @@ import { validateStatusCode } from "@keq-request/exception"
 request.use(validateStatusCode())
 ```
 
+### clarifyFetchFailed
+
+Node.js 原生 `fetch` 在网络错误时抛出 `TypeError`，其 `message` 仅为 `"fetch failed"`，真正的原因（如 `ECONNREFUSED`、`ENOTFOUND`、`ETIMEDOUT`）藏在 `.cause` 属性中。`clarifyFetchFailed` 中间件会将 `.cause` 链中的信息展开拼接到错误的 `message` 中，使日志和错误信息更具可读性。
+
+**效果**
+
+```
+// Before
+TypeError: fetch failed
+
+// After
+TypeError: fetch failed: connect ECONNREFUSED 127.0.0.1:3000
+```
+
+**示例**
+
+```typescript
+import { request } from "keq"
+import { clarifyFetchFailed } from "@keq-request/exception"
+
+request.use(clarifyFetchFailed())
+```
+
 ## Plugin
 
 ### ValidateStatusCode
