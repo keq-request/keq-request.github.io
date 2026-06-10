@@ -37,16 +37,15 @@ console.log(`找到了 ${cats.length} 只猫咪`);
 ```typescript
 // @keq-request/cli 根据 Swagger 文档自动生成
 import { getCats, createCat } from "./api/cat_service";
+import { request as catServiceRequest } from "./api/cat_service/request";
 
 // 完整的类型提示，参数错误会在编译时发现
 const cats = await getCats({ breed: "siamese" })
   .retry(3, 1000)
   .timeout(5000);
 
-// 所有接口共享统一的中间件逻辑
-request
-  .useRouter()
-  .module("catService", errorHandler());
+// 全局设置错误处理，所有请求自动生效
+catServiceRequest.use(errorHandler());
 ```
 
 [koa]: https://github.com/koajs/koa
@@ -106,7 +105,6 @@ request
   .useRouter()
   .host("api.example.com", authMiddleware())
   .pathname("/admin/**", adminAuthMiddleware())
-  .module("catService", errorHandler())
   .method("POST", logMiddleware());
 ```
 

@@ -27,14 +27,19 @@ interface Translator {
 **生成的代码示例：**
 
 ```typescript
-import { request } from 'keq'
+import { KeqRequest } from 'keq'
+
+export const request = new KeqRequest()
+```
+
+```typescript
+import { request } from './request'
 
 // 生成的函数式 API
 export function getCats<STATUS extends keyof GetCatsResponseBodies>(
   args?: GetCatsRequestParameters
 ): Keq<GetCatsOperation<STATUS>> {
   const req = request.get<GetCatsResponseBodies[STATUS]>("/api/cats")
-    .option('module', { name: 'catService', pathname: '/api/cats', method: 'get' })
 
   if (args && "breed" in args) {
     req.query("breed", args["breed"], { arrayFormat: "repeat" })

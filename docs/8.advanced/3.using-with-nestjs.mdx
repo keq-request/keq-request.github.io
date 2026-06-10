@@ -98,7 +98,7 @@ import { CatServiceModule } from './apis/cat_service/cat_service.module' // [!co
       ]
     }),
 
-    // 注册生成的模块
+    // 注册生成的模块（fork 自全局 KeqRequest，继承全局中间件）
     CatServiceModule.register({                                   // [!code ++]
       // 模块级中间件配置                                            [!code ++]
       middlewares: [                                              // [!code ++]
@@ -113,6 +113,32 @@ export class AppModule {}
 
 :::tip 中间件执行顺序
 请求发送时，中间件的执行顺序为：全局中间件 → 模块级中间件。
+:::
+
+### 隔离模式
+
+如果你不希望生成的模块继承全局中间件，可以设置 `isolate: true` 创建独立的 `KeqRequest` 实例：
+
+```typescript
+@Module({
+  imports: [
+    CatServiceModule.register({
+      isolate: true,   // 不继承全局中间件，创建独立实例
+      middlewares: [
+        setBaseUrl('https://cat-api.example.com'),
+        appendHeader('Authorization', 'Bearer YOUR_TOKEN_HERE'),
+      ]
+    }),
+  ]
+})
+export class SomeFeatureModule {}
+```
+
+:::info 实例获取策略
+- 未设置 `isolate`（默认）：从全局 `KeqModule` 提供的 `KeqRequest` fork，继承全局中间件
+- `isolate: true`：创建全新的 `KeqRequest` 实例，不继承任何全局配置
+
+如果未注册 `KeqModule` 且未设置 `isolate: true`，模块会自动创建独立实例并输出警告。
 :::
 
 ### 使用生成的客户端

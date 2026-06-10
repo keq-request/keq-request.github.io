@@ -149,18 +149,16 @@ import ExecPackageCommandCode from '@site/docs/components/_exec-package-command-
   <TabItem value="services_get_cats" label="请求函数" default>
     ```typescript title="./src/apis/cat_service/get_cats.request.ts"
     import { Keq } from "keq"
-    import { request } from '../../request'
-    import type { GetCatsOperation, GetCatsResponseBodies, GetCatsRequestParameters } from "../types/operations/get_cats.type.js"
-    export type { GetCatsRequestQuery, GetCatsRequestHeaders, GetCatsRequestBodies } from "../types/operations/get_cats.type.js"
+    import { request } from './request'
+    import type { GetCatsOperation, GetCatsResponseBodies, GetCatsRequestParameters } from "./types/operations/get_cats.type.js"
+    export type { GetCatsRequestQuery, GetCatsRequestHeaders, GetCatsRequestBodies } from "./types/operations/get_cats.type.js"
 
 
-    const moduleName = "catService"
     const method = "get"
     const pathname = "/cats"
 
     export function getCats<STATUS extends keyof GetCatsResponseBodies, CONTENT_TYPE extends never = never>(args?: GetCatsRequestParameters): Keq<GetCatsOperation<STATUS, CONTENT_TYPE>> {
-      const req = request.post<GetCatsResponseBodies[STATUS]>("/cats")
-        .option('module', { name: moduleName, pathname, method })
+      const req = request.get<GetCatsResponseBodies[STATUS]>("/cats")
 
       if (args && "breed" in args) req.query("breed", args["breed"], {"arrayFormat":"repeat"})
 
@@ -171,6 +169,16 @@ import ExecPackageCommandCode from '@site/docs/components/_exec-package-command-
     getCats.method = method
     ```
 
+  </TabItem>
+
+  <TabItem value="request" label="模块 Request 实例">
+    ```typescript title="./src/apis/cat_service/request.ts"
+    import { KeqRequest } from "keq"
+
+    export const request = new KeqRequest()
+    ```
+
+    每个模块拥有独立的 `KeqRequest` 实例，中间件相互隔离。
   </TabItem>
 
   <TabItem value="type_cat" label="接口类型定义">
@@ -239,24 +247,34 @@ console.log(`请求路径：${getCats.pathname}`)
 :::
 
 
-最后，我们可以为 `catService` 模块的所有接口添加统一的错误处理逻辑：
+最后，我们可以为 `catService` 模块的所有接口添加统一的错误处理逻辑。由于每个模块拥有独立的 `request` 实例，直接 import 即可：
 
 ```typescript
-import { request } from './api/request'
-import { throwException, RequestException } from 'keq-exception'
+import { request as catServiceRequest } from './src/apis/cat_service/request'
+import { validateStatusCode } from '@keq-request/exception'
 
+// 直接为模块的 request 实例挂载中间件，无需 useRouter
+catServiceRequest.use(validateStatusCode())
+```
 
-request
+如果你希望多个模块共享全局中间件（如鉴权、日志），可以创建一个业务核心 `KeqRequest`，然后让模块通过 `inherit` 继承：
+
+```typescript
+import { KeqRequest } from 'keq'
+import { validateStatusCode } from '@keq-request/exception'
+import { request as catServiceRequest } from './src/apis/cat_service/request'
+import { request as dogServiceRequest } from './src/apis/dog_service/request'
+
+// 创建业务核心 request，挂载全局中间件
+const coreRequest = new KeqRequest()
+coreRequest.use(validateStatusCode())
+coreRequest
   .useRouter()
-  .module('catService', throwException(context => {
-    if (context.response) {
-      if (context.response.status >= 400 && context.response.status < 500) {
-        throw new RequestException(context.response.status, context.response.statusText, false) // 客户端错误，不需要重试
-      } else if (context.response.status >= 500) {
-        throw new RequestException(context.response.status, context.response.statusText)
-      }
-    }
-  }))
+  .host('api.example.com', setHeader('Authorization', 'Bearer TOKEN'))
+
+// 让各模块继承全局中间件
+catServiceRequest.inherit(coreRequest)
+dogServiceRequest.inherit(coreRequest)
 ```
 
 :::note 为什么 `Keq` 采用 *链式调用* + *中间件* 的设计模式？
@@ -271,7 +289,7 @@ request
 `Keq` 便是为给予静态生成代码提供更强大的运行时 API 而设计的 HTTP 客户端：
 
 - *链式调用* 让我们在调用`请求函数`时，可以动态的修改请求参数，甚至设置违背 `swagger` 定义的参数。并且它完美地避免了臃肿的配置选项。
-- *中间件* 则提供了一种优雅的方式来为同一模块的所有接口添加统一的功能。并可以通过 *链式调用* 在不同场景下灵活的启用或禁用 *中间件*。
+- *中间件* 则提供了一种优雅的方式来为模块的所有接口添加统一的功能。每个模块拥有独立的 `KeqRequest` 实例，直接 import 即可挂载中间件；通过 `inherit` 可以继承全局中间件，实现中间件的分层管理。并可以通过 *链式调用* 在不同场景下灵活的启用或禁用 *中间件*。
 :::
 
 ## 配置文件

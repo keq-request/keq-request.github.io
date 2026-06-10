@@ -152,6 +152,38 @@ try {
 }
 ```
 
+### MutexException
+
+当请求被 `mutex` 并发控制拦截时抛出。表示同一队列中已有请求正在执行，新请求被拒绝。
+
+```typescript
+class MutexException extends Exception {
+  constructor(message?: string)
+}
+```
+
+**参数说明：**
+
+| 参数    | 类型     | 默认值 | 描述         |
+| :------ | :------- | :----- | :----------- |
+| message | `string` | -      | 错误消息     |
+
+**使用示例：**
+
+```typescript
+import { request, MutexException } from 'keq'
+
+try {
+  await request
+    .post('/api/orders')
+    .flowControl('mutex', 'create-order')
+} catch (err) {
+  if (err instanceof MutexException) {
+    console.error('请求被拒绝，已有相同请求正在进行中')
+  }
+}
+```
+
 ### TypeException
 
 参数类型错误异常，类似于标准的 `TypeError`，用于标识参数传递错误。

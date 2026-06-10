@@ -1,12 +1,12 @@
 # 并发控制
 
-并发控制用于管理多个请求同时发送时的行为。Keq 提供了两种控制策略：串行执行（`serial`）和中止旧请求（`abort`）。
+并发控制用于管理多个请求同时发送时的行为。Keq 提供了三种控制策略：串行执行（`serial`）、中止旧请求（`abort`）和互斥锁（`mutex`）。
 
 ## 为什么需要并发控制？
 
 1. **搜索框输入**：用户快速输入时会触发多个搜索请求，但我们只关心最新的搜索结果
 2. **批量请求**：处理大量请求时，受限于浏览器的并发连接数，需要控制并发量
-3. **防止重复提交**：用户连续点击按钮时，避免发送多个相同的请求
+3. **轮询保护**：定时轮询时，如果上一次请求尚未返回，需要跳过本次轮询避免堆积
 
 ## 串行执行 - serial
 
@@ -119,6 +119,67 @@ function SearchBox() {
 
 :::tip 错误处理
 当请求被中止时，会抛出一个 `AbortException`。在实际应用中，通常需要捕获并忽略这个错误。
+:::
+
+## 互斥锁 - mutex
+
+mutex 模式与 abort 相反：当同一队列中已有请求正在执行时，新发起的请求会立即被拒绝并抛出 `MutexException`，从而避免向后端发送重复请求。
+
+### 基本用法
+
+```typescript
+import { request } from "keq"
+
+await request
+  .get("/api/cats")
+  .flowControl("mutex"/*, context.locationId */)
+
+await request
+  .get("/api/cats")
+  .flowControl("mutex", "cat-api") // 命名队列
+```
+
+:::tip [`context.locationId` 是什么](../middleware/context#主要属性)
+:::
+
+### 实际场景：轮询保护
+
+定时轮询时，如果上一次请求还未返回就到了下一次触发时间，mutex 跳过本次轮询，避免请求堆积：
+
+```tsx
+import { request, MutexException } from "keq"
+import { useEffect, useState } from "react"
+
+function OrderStatus({ orderId }: { orderId: string }) {
+  const [status, setStatus] = useState<string>("pending")
+
+  useEffect(() => {
+    const poll = async () => {
+      try {
+        const res = await request
+          .get(`/api/orders/${orderId}/status`)
+          .flowControl("mutex", `poll-order-${orderId}`)
+
+        setStatus(res.status)
+      } catch (err) {
+        if (!(err instanceof MutexException)) {
+          console.error(err)
+        }
+      }
+    }
+
+    const timer = setInterval(poll, 3000)
+    poll()
+
+    return () => clearInterval(timer)
+  }, [orderId])
+
+  return <span>订单状态：{status}</span>
+}
+```
+
+:::tip 错误处理
+当请求被拒绝时，会抛出一个 `MutexException`。轮询场景下通常静默忽略即可，避免无意义的错误日志。
 :::
 
 ## 队列隔离

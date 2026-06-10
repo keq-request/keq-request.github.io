@@ -76,28 +76,6 @@ request
 - `method` - HTTP 方法（'GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'HEAD'）
 - `middlewares` - 一个或多个中间件函数
 
-## `.module(name, ...middlewares)`
-
-匹配模块名，配合 `@keq-request/cli` 使用。
-
-当使用 `@keq-request/cli` 从 Swagger/OpenAPI 生成请求代码时，每个接口会自动设置 `module` 信息。你可以通过此方法为特定模块添加中间件。
-
-```typescript
-import { request } from "keq"
-
-request
-  .useRouter()
-  .module("userService", async (context, next) => {
-    // 仅对 userService 模块的请求生效
-    context.request.headers.set("X-Service", "user")
-    await next()
-  })
-```
-
-**参数**：
-- `name` - 模块名称
-- `middlewares` - 一个或多个中间件函数
-
 ## `.location(...middlewares)`
 
 匹配当前域名（浏览器为 `window.location.origin`，Node.js 为 `127.0.0.1`）。
@@ -160,8 +138,6 @@ request
   .pathname("/admin/**", adminAuthMiddleware())
   // 为所有 POST 请求添加日志
   .method("POST", logMiddleware("[POST]"))
-  // 为通过 CLI 生成的 userService 模块添加错误处理
-  .module("userService", errorHandlerMiddleware())
   // 为同源请求添加 CSRF Token
   .location(csrfMiddleware())
   // 自定义条件：为包含敏感数据的请求添加加密

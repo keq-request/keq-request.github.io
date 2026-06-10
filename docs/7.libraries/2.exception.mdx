@@ -11,17 +11,16 @@ import InstallPackagesCode from '@site/docs/components/_install-packages-code.md
 ## 使用方法
 
 ```typescript
-import { request } from "keq"
+import { request, RequestException } from "keq"
 import {
   throwException,
   catchException,
-  RequestException,
-} from "keq-exception"
+} from "@keq-request/exception"
 
 request
   .use(
     catchException((err) => {
-      if (err instanceof RequestException && err.code === 401) {
+      if (err instanceof RequestException && err.statusCode === 401) {
         context.redirect("/login")
         return
       }
@@ -42,13 +41,14 @@ request
   )
 ```
 
-### RequestException(statusCode[, errorMessage[, retry]])
+### RequestException(statusCode[, errorMessage[, options]])
 
 | **参数**   | **默认值** | **描述**              |
 | :--------- | :--------- | --------------------- |
-| statusCode | -          | 错误码                |
+| statusCode | -          | HTTP 状态码           |
 | message    | `''`       | 错误信息              |
-| retry      | `true`     | 异常是否会触发`retry` |
+| options.fatal | `false` | 设置为 `true` 可以终止重试机制 |
+| options.response | - | 关联的 `Response` 对象 |
 
 ## Middleware
 
@@ -72,13 +72,13 @@ request
 - `status = 415` 时，抛出 `UnsupportedMediaTypeException(statusText)`
 - `status = 418` 时，抛出 `ImATeapotException(statusText)`
 - `status = 429` 时，抛出 `TooManyRequestsException(statusText)`
-- `status` 为其他 `400-499` 的数值时，抛出 `RequestException(status, statusText, false)`
-- `status = 500` 时，抛出 `InternalServerErrorException(statusText
+- `status` 为其他 `400-499` 的数值时，抛出 `RequestException(status, statusText, { fatal: true })`
+- `status = 500` 时，抛出 `InternalServerErrorException(statusText)`
 - `status = 501` 时，抛出 `NotImplementedException(statusText)`
 - `status = 502` 时，抛出 `BadGatewayException(statusText)`
 - `status = 503` 时，抛出 `ServiceUnavailableException(statusText)`
 - `status = 504` 时，抛出 `GatewayTimeoutException(statusText)`
-- `status` 为其他 `500-599` 的数值时，抛出 `RequestException(status, statusText, true)`
+- `status` 为其他 `500-599` 的数值时，抛出 `RequestException(status, statusText, { fatal: false })`
 
 **示例**
 
@@ -111,31 +111,3 @@ import { clarifyFetchFailed } from "@keq-request/exception"
 
 request.use(clarifyFetchFailed())
 ```
-
-## Plugin
-
-### ValidateStatusCode
-
-用于 `@keq-request/cli` 的 Plugin，其主要功能有：
-
-1. 删除 `openapi` / `swagger` 文档中的异常响应定义
-2. 添加 `validateStatusCode` Middleware
-
-**Options**
-
-| **参数** | **是否必填** | **类型** | **默认值** | **描述**               |
-| :------- | :----------- | :------- | :--------- | ---------------------- |
-| modules | 否           | string[] | `undefined` | 生效的 `module` 名称列表 |
-
-**示例**
-
-```typescript title=".keqrc.ts"
-import { DefineKeqConfig } from "@keq-request/cli"
-import { ValidateStatusCode } from "@keq-request/exception/plugins"
-
-const config: DefineKeqConfig = {
-  // ...
-  plugins: [
-    new ValidateStatusCode(/* { modules: [...] } */)
-  ],
-}
