@@ -52,6 +52,114 @@ export class AppService {
 }
 ```
 
+## configureKeqMiddleware 进阶配置
+
+除了通过 `register()` 直接配置全局中间件外，Keq 也提供了类似 NestJS `MiddlewareConsumer` 的编程式接口，支持**按路由注册中间件**以及**排除特定路由**。
+
+### 基本用法
+
+在任意 NestJS 模块中实现 `configureKeqMiddleware` 方法：
+
+```typescript title="src/some-feature.module.ts"
+import { Module } from '@nestjs/common'
+import { KeqModule, type KeqMiddlewareConsumer, KEQ_ROUTES } from '@keq-request/nestjs'
+
+@Module({
+  imports: [KeqModule],
+})
+export class SomeFeatureModule {
+  configureKeqMiddleware(consumer: KeqMiddlewareConsumer): void {
+    consumer
+      .apply(loggingMiddleware)
+      .forRoutes(KEQ_ROUTES.ALL)
+  }
+}
+```
+
+### apply() — 注册中间件
+
+`apply()` 方法接收 Keq 中间件或 NestJS 风格的中间件类：
+
+```typescript
+import { type KeqNestMiddleware, type KeqExecutionContext, type KeqNext } from '@keq-request/nestjs'
+
+// NestJS 风格中间件类（支持依赖注入）
+class AuthMiddleware implements KeqNestMiddleware {
+  use(ctx: KeqExecutionContext, next: KeqNext): Promise<void> {
+    // 鉴权逻辑
+    return next()
+  }
+}
+
+consumer.apply(AuthMiddleware, loggingMiddleware).forRoutes(KEQ_ROUTES.ALL)
+```
+
+:::tip 中间件类型
+`apply()` 支持两种类型：
+- **`KeqMiddleware`**：普通函数中间件 `(ctx, next) => void`
+- **`Type<KeqNestMiddleware>`**：NestJS 类中间件（支持依赖注入）
+:::
+
+### forRoutes() — 指定路由范围
+
+`forRoutes()` 控制中间件对哪些请求生效：
+
+```typescript
+// 全局生效
+consumer.apply(loggingMiddleware).forRoutes(KEQ_ROUTES.ALL)
+
+// 仅对特定路径生效（支持 picomatch 通配符）
+consumer.apply(authMiddleware).forRoutes({
+  pathname: '/api/**',  // 仅匹配 /api/* 路径
+  method: 'POST',       // 仅 POST 请求
+})
+
+// 仅对特定模块的请求生效
+consumer.apply(catMiddleware).forRoutes(CatServiceModule)
+```
+
+`forRoutes()` 接收三种路由目标：
+
+| 类型 | 说明 |
+|------|------|
+| `KEQ_ROUTES.ALL` | 匹配所有请求 |
+| `KeqRouteInfo` | `{ host?, method?, pathname? }` — 按 host / 方法 / 路径过滤 |
+| `KeqModuleClass` | 生成的 NestJS 模块类（仅该模块的请求生效） |
+
+:::info 路由匹配
+`KeqRouteInfo` 使用 [picomatch](https://github.com/micromatch/picomatch) 作为路径匹配引擎。当同时指定多个条件时（如 `pathname` + `method`），它们为 **AND** 关系，即所有条件都满足时才命中。
+:::
+
+### exclude() — 排除特定路由
+
+`exclude()` 可在 `forRoutes()` 之前调用，排除中间件作用范围内的特定路由：
+
+```typescript
+// 全局应用 auth 中间件，但排除 health check 和公开接口
+consumer.apply(AuthMiddleware)
+  .exclude(
+    { pathname: '/health' },
+    { pathname: '/public/**' },
+    { method: 'OPTIONS' },
+  )
+  .forRoutes(KEQ_ROUTES.ALL)
+```
+
+也可以在路由级中间件中使用，实现子路径排除：
+
+```typescript
+// 对 /api/** 应用日志中间件，但排除 /api/internal/**
+consumer.apply(LoggingMiddleware)
+  .exclude({ pathname: '/api/internal/**' })
+  .forRoutes({ pathname: '/api/**' })
+```
+
+:::tip exclude 语义
+- **单条 `KeqRouteInfo` 内的多个条件**（如 `{ pathname: '/api/**', method: 'GET' }`）为 **AND** 关系
+- **多次调用 `exclude()` 或多条参数**为 **OR** 累积关系（任何一条匹配即排除）
+- `exclude()` 返回 `KeqMiddlewareConfigProxy`，支持在 `forRoutes()` 之前链式调用
+:::
+
 ## 使用 OpenAPI 生成 NestJS 模块
 
 `@keq-request/cli` 支持从 OpenAPI 文档生成 NestJS 模块，提供完整的类型定义和依赖注入支持。
