@@ -76,6 +76,15 @@ export class SomeFeatureModule {
 }
 ```
 
+:::warning 必须导入 KeqModule
+
+实现 `configureKeqMiddleware` 的模块**必须**在 `@Module()` 装饰器中显式添加 `imports: [KeqModule]`。
+
+NestJS 按模块依赖图的顺序调用 `onModuleInit`。如果不显式导入 `KeqModule`，NestJS 无法保证 `KeqModule` 先于当前模块加载。一旦当前模块的 `onModuleInit` 先执行并发起 HTTP 请求，此时中间件尚未注册，请求将以缺少中间件的状态发出，导致难以排查的运行时错误。
+
+**无需担心重复导入**：`KeqModule` 使用 `@Global()` 装饰器标记，NestJS 会自动处理重复导入，确保全局只有一个实例。
+:::
+
 ### apply() — 注册中间件
 
 `apply()` 方法接收 Keq 中间件或 NestJS 风格的中间件类：
