@@ -368,7 +368,8 @@ POST    dogService:/dogs
 | `-c --config <config_file_path>` | 配置文件的地址                                                                                           |
 | `-i --interactive`               | 通过命令行交互，指定需要生成的 HTTP 接口                                                                 |
 | `--tolerant`                     | 容错模式：忽略下载失败和 Swagger 格式校验错误，尽可能生成代码。未设置时，任何错误都会导致构建失败（exit 1） |
-| `--fresh`                        | 构建前清空输出目录，适用于全量重新生成                                                               |
+| `--fresh`                        | 构建前清空输出目录和下载缓存，适用于全量重新生成                                                     |
+| `--no-cache`                     | 禁用下载缓存，每次构建都重新下载 OpenAPI 文档                                                         |
 | `--method <method...>`           | 仅生成匹配 method(`'get' \| 'post' \| 'put' \| 'patch' \| 'head' \| 'options' \| 'delete'`) 的 HTTP 接口 |
 | `--pathname <pathname...>`       | 仅生成匹配 pathname 的 HTTP 接口                                                                         |
 
