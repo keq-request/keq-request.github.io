@@ -12,22 +12,15 @@ import ExecPackageCommandCode from '@site/docs/components/_exec-package-command-
 
 ## 注册 KeqModule
 
-在应用的根模块中注册 `KeqModule`：
+在应用的根模块中导入 `KeqModule`。`KeqModule` 是一个 `@Global()` 模块，提供全局的 `KeqRequest` 实例和 `KeqMiddlewareConsumer`：
 
 ```typescript title="src/app.module.ts"
 import { Module } from '@nestjs/common'
 import { KeqModule } from '@keq-request/nestjs'
-import { validateStatusCode } from '@keq-request/exception'
 
 @Module({
   imports: [
-    KeqModule.register({                                       // [!code ++]
-      middlewares: [                                           // [!code ++]
-        // 配置全局中间件                                         [!code ++]
-        validateStatusCode(),                                  // [!code ++]
-        KeqRouter.host('example.com', setHeader('Authorization', 'Bearer YOUR_TOKEN_HERE')), // [!code ++]                                                    // [!code ++]
-      ]                                                        // [!code ++]
-    }),                                                        // [!code ++]
+    KeqModule,                                                // [!code ++]
 
     /* ...其他模块... */
   ]
@@ -52,42 +45,59 @@ export class AppService {
 }
 ```
 
-## configureKeqMiddleware 进阶配置
+## 中间件进阶配置
 
-除了通过 `register()` 直接配置全局中间件外，Keq 也提供了类似 NestJS `MiddlewareConsumer` 的编程式接口，支持**按路由注册中间件**以及**排除特定路由**。
+Keq 提供了类似 NestJS `MiddlewareConsumer` 的编程式接口，支持**按路由注册中间件**以及**排除特定路由**。中间件注册分为两种模式：全局中间件和模块级中间件。
 
-### 基本用法
+### 全局中间件 — KeqMiddlewareConsumer
 
-在任意 NestJS 模块中实现 `configureKeqMiddleware` 方法：
+`KeqMiddlewareConsumer` 是一个 `@Injectable()` 类，可直接注入到任意 Service 或 Controller 中。通过它注册的中间件会对**所有** `KeqRequest` 发出的请求生效：
 
-```typescript title="src/some-feature.module.ts"
-import { Module } from '@nestjs/common'
-import { KeqModule, type KeqMiddlewareConsumer, KEQ_ROUTES } from '@keq-request/nestjs'
+```typescript title="src/global-middleware.service.ts"
+import { Injectable } from '@nestjs/common'
+import { KeqMiddlewareConsumer, KEQ_ROUTES } from '@keq-request/nestjs'
+import { validateStatusCode } from '@keq-request/exception'
 
-@Module({
-  imports: [KeqModule],
-})
-export class SomeFeatureModule {
-  configureKeqMiddleware(consumer: KeqMiddlewareConsumer): void {
-    consumer
-      .apply(loggingMiddleware)
-      .forRoutes(KEQ_ROUTES.ALL)
+@Injectable()
+export class GlobalMiddlewareService {
+  constructor(consumer: KeqMiddlewareConsumer) {
+    // 全局应用 validateStatusCode 中间件
+    consumer.apply(validateStatusCode()).forRoutes(KEQ_ROUTES.ALL)
   }
 }
 ```
 
-:::warning 必须导入 KeqModule
+:::tip 注入时机
+`KeqMiddlewareConsumer` 由 `KeqModule` 全局提供，只要模块导入了 `KeqModule`（或任何依赖了 `KeqModule` 的模块），即可在任何地方注入。
+:::
 
-实现 `configureKeqMiddleware` 的模块**必须**在 `@Module()` 装饰器中显式添加 `imports: [KeqModule]`。
+### 模块级中间件 — @InjectKeqConsumer()
 
-NestJS 按模块依赖图的顺序调用 `onModuleInit`。如果不显式导入 `KeqModule`，NestJS 无法保证 `KeqModule` 先于当前模块加载。一旦当前模块的 `onModuleInit` 先执行并发起 HTTP 请求，此时中间件尚未注册，请求将以缺少中间件的状态发出，导致难以排查的运行时错误。
+当中间件只需要对**特定模块**（通常是由 CLI 生成的模块）的请求生效时，使用 `@InjectKeqConsumer()` 装饰器注入一个绑定到该模块的 `KeqConsumer<T>`：
 
-**无需担心重复导入**：`KeqModule` 使用 `@Global()` 装饰器标记，NestJS 会自动处理重复导入，确保全局只有一个实例。
+```typescript title="src/cat-service.middleware.ts"
+import { Injectable } from '@nestjs/common'
+import { InjectKeqConsumer, KeqConsumer } from '@keq-request/nestjs'
+import { CatServiceModule } from './apis/cat_service/cat_service.module'
+
+@Injectable()
+export class CatServiceMiddleware {
+  constructor(
+    @InjectKeqConsumer(CatServiceModule) consumer: KeqConsumer<typeof CatServiceModule>,
+  ) {
+    // 该中间件仅对 CatServiceModule 的请求生效
+    consumer.apply(authMiddleware).forRoutes('*')
+  }
+}
+```
+
+:::info 注入条件
+`@InjectKeqConsumer()` 要求目标模块类具有 `KEQ_CONSUMER` 静态属性。由 `@keq-request/cli` 生成的 NestJS 模块自动包含此属性，可直接用于注入。
 :::
 
 ### apply() — 注册中间件
 
-`apply()` 方法接收 Keq 中间件或 NestJS 风格的中间件类：
+`apply()` 方法接收 Keq 中间件函数或 NestJS 风格的中间件类：
 
 ```typescript
 import { type KeqNestMiddleware, type KeqExecutionContext, type KeqNext } from '@keq-request/nestjs'
@@ -106,7 +116,7 @@ consumer.apply(AuthMiddleware, loggingMiddleware).forRoutes(KEQ_ROUTES.ALL)
 :::tip 中间件类型
 `apply()` 支持两种类型：
 - **`KeqMiddleware`**：普通函数中间件 `(ctx, next) => void`
-- **`Type<KeqNestMiddleware>`**：NestJS 类中间件（支持依赖注入）
+- **`KeqNestMiddleware`**：NestJS 类中间件（支持依赖注入，可注入其他 NestJS Provider）
 :::
 
 ### forRoutes() — 指定路由范围
@@ -122,18 +132,18 @@ consumer.apply(authMiddleware).forRoutes({
   pathname: '/api/**',  // 仅匹配 /api/* 路径
   method: 'POST',       // 仅 POST 请求
 })
-
-// 仅对特定模块的请求生效
-consumer.apply(catMiddleware).forRoutes(CatServiceModule)
 ```
 
-`forRoutes()` 接收三种路由目标：
+`forRoutes()` 接收两种路由目标：
 
 | 类型 | 说明 |
 |------|------|
 | `KEQ_ROUTES.ALL` | 匹配所有请求 |
 | `KeqRouteInfo` | `{ host?, method?, pathname? }` — 按 host / 方法 / 路径过滤 |
-| `KeqModuleClass` | 生成的 NestJS 模块类（仅该模块的请求生效） |
+
+:::tip 模块级路由
+如需限定中间件仅对特定模块生效，请使用 `@InjectKeqConsumer(ModuleClass)` 注入 `KeqConsumer<T>`，而非在 `forRoutes()` 中传入模块类。
+:::
 
 :::info 路由匹配
 `KeqRouteInfo` 使用 [picomatch](https://github.com/micromatch/picomatch) 作为路径匹配引擎。当同时指定多个条件时（如 `pathname` + `method`），它们为 **AND** 关系，即所有条件都满足时才命中。
@@ -166,8 +176,32 @@ consumer.apply(LoggingMiddleware)
 :::tip exclude 语义
 - **单条 `KeqRouteInfo` 内的多个条件**（如 `{ pathname: '/api/**', method: 'GET' }`）为 **AND** 关系
 - **多次调用 `exclude()` 或多条参数**为 **OR** 累积关系（任何一条匹配即排除）
-- `exclude()` 返回 `KeqMiddlewareConfigProxy`，支持在 `forRoutes()` 之前链式调用
+- `exclude()` 返回 config proxy，支持在 `forRoutes()` 之前链式调用
 :::
+
+### 链式注册
+
+`KeqMiddlewareConsumer` 和 `KeqConsumer<T>` 均支持链式注册多个中间件规则：
+
+```typescript
+@Injectable()
+export class AppMiddleware {
+  constructor(consumer: KeqMiddlewareConsumer) {
+    consumer
+      .apply(validateStatusCode())
+      .forRoutes(KEQ_ROUTES.ALL)
+
+    consumer
+      .apply(AuthMiddleware)
+      .exclude({ pathname: '/public/**' })
+      .forRoutes({ pathname: '/api/**' })
+
+    consumer
+      .apply(LoggingMiddleware)
+      .forRoutes(KEQ_ROUTES.ALL)
+  }
+}
+```
 
 ## 使用 OpenAPI 生成 NestJS 模块
 
@@ -207,13 +241,8 @@ import { CatServiceModule } from './apis/cat_service/cat_service.module' // [!co
 
 @Module({
   imports: [
-    // 必须注册 KeqModule
-    KeqModule.register({
-      // 配置全局中间件
-      middlewares: [
-        validateStatusCode(),
-      ]
-    }),
+    // 全局 KeqModule（提供 KeqRequest 和 KeqMiddlewareConsumer）
+    KeqModule,
 
     // 注册生成的模块（fork 自全局 KeqRequest，继承全局中间件）
     CatServiceModule.register({                                   // [!code ++]
@@ -229,7 +258,7 @@ export class AppModule {}
 ```
 
 :::tip 中间件执行顺序
-请求发送时，中间件的执行顺序为：全局中间件 → 模块级中间件。
+请求发送时，中间件的执行顺序为：全局中间件 → `register()` 中的模块级中间件 → 通过 `KeqConsumer` 注册的中间件。
 :::
 
 ### 隔离模式
@@ -257,6 +286,33 @@ export class SomeFeatureModule {}
 
 如果未注册 `KeqModule` 且未设置 `isolate: true`，模块会自动创建独立实例并输出警告。
 :::
+
+### 使用 @InjectKeqConsumer 为生成模块注册中间件
+
+除了通过 `register()` 的 `middlewares` 选项配置模块级中间件外，还可以使用 `@InjectKeqConsumer()` 在模块外部动态注册：
+
+```typescript title="src/cat-service.middleware.ts"
+import { Injectable } from '@nestjs/common'
+import { InjectKeqConsumer, KeqConsumer } from '@keq-request/nestjs'
+import { CatServiceModule } from './apis/cat_service/cat_service.module'
+
+@Injectable()
+export class CatServiceMiddleware {
+  constructor(
+    @InjectKeqConsumer(CatServiceModule) consumer: KeqConsumer<typeof CatServiceModule>,
+  ) {
+    // 该中间件仅对 CatServiceModule 的请求生效
+    consumer.apply(catMiddleware).forRoutes('*')
+  }
+}
+```
+
+两种方式的区别：
+
+| 方式 | 适用场景 |
+|------|---------|
+| `register({ middlewares: [...] })` | 模块注册时静态配置，中间件在模块初始化时即生效 |
+| `@InjectKeqConsumer()` | 在其他 Service 中动态注册，支持依赖注入 NestJS Provider |
 
 ### 使用生成的客户端
 
