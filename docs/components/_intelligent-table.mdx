@@ -1,6 +1,9 @@
 | Content-Type             | 解析方式              | 返回类型    |
 |:------------------------|:---------------------|:-----------|
-| `application/json`      | `response.json()`    | 对象/数组   |
+| `application/json`、`application/*+json` | `response.json()` | 对象/数组 |
 | `multipart/form-data`   | `response.formData()`| `FormData` |
-| `text/plain`            | `response.text()`    | 字符串      |
-| 其他                     | -                    | `undefined`|
+| `text/*`（除 `text/event-stream`） | `response.text()` | `string` |
+| `text/event-stream`     | SSE 流解析            | `ReadableStream<ServerSentEvent>` |
+| `image/*`、`audio/*`、`video/*`、`font/*` | `response.arrayBuffer()` | `ArrayBuffer` |
+| `application/octet-stream`、`application/pdf` | `response.arrayBuffer()` | `ArrayBuffer` |
+| 其他                     | -                    | `undefined` |
