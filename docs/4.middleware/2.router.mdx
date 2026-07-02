@@ -2,161 +2,163 @@
 
 [minimatch]: https://www.npmjs.com/package/minimatch
 
-`.useRouter()` 提供了多种路由匹配方式，让中间件只对特定请求生效。
+keq 提供了灵活的路由机制，让中间件只对特定请求生效。通过 `.apply()` 链式 API，你可以精确控制中间件的作用范围。
 
-## `.host(host, ...middlewares)`
+## `.apply(...middlewares)`
 
-匹配特定域名。
-
-```typescript
-import { request } from "keq"
-
-request
-  .useRouter()
-  .host("api.example.com", async (context, next) => {
-    context.request.headers.set("X-API-Version", "v1")
-    await next()
-  })
-```
-
-**参数**：
-- `host` - 要匹配的域名
-- `middlewares` - 一个或多个中间件函数
-
-## `.pathname(pattern, ...middlewares)`
-
-匹配路径模式，支持 glob（[minimatch][minimatch]）和正则表达式。
+将一个或多个中间件应用到指定路由，返回链式配置对象，通过 `.exclude()` 和 `.forRoutes()` 定义匹配规则。
 
 ```typescript
 import { request } from "keq"
 
 request
-  .useRouter()
-  // 使用 glob 模式
-  .pathname("/api/**", async (context, next) => {
-    console.log("API 请求")
-    await next()
-  })
-  // 使用正则表达式
-  .pathname(/^\/users\/\d+$/, async (context, next) => {
-    console.log("用户详情请求")
-    await next()
-  })
+  .apply(authMiddleware, loggingMiddleware)
+  .forRoutes({ host: "api.example.com" })
 ```
 
 **参数**：
-- `pattern` - glob（[minimatch][minimatch]） 字符串或正则表达式
 - `middlewares` - 一个或多个中间件函数
 
-**Glob 模式示例**：
-- `/api/**` - 匹配 `/api/` 下的所有路径
-- `/users/*` - 匹配 `/users/` 下的一级路径
-- `/files/*.{jpg,png}` - 匹配特定扩展名的文件
+### `.forRoutes(...routes)`
 
-## `.method(method, ...middlewares)`
-
-匹配 HTTP 方法。
+指定中间件生效的路由。多个路由之间为 **OR** 关系（任一匹配即生效）。
 
 ```typescript
 import { request } from "keq"
 
 request
-  .useRouter()
-  .method("POST", async (context, next) => {
-    console.log("POST 请求")
-    await next()
-  })
-  .method("GET", async (context, next) => {
-    console.log("GET 请求")
-    await next()
-  })
+  .apply(rateLimitMiddleware)
+  .forRoutes(
+    { host: "api.example.com", method: "post" },
+    { host: "api.example.com", method: "put" },
+  )
 ```
 
 **参数**：
-- `method` - HTTP 方法（'GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'HEAD'）
-- `middlewares` - 一个或多个中间件函数
+- `routes` - 一个或多个 `KeqRoutePattern` 对象或 `KeqRoute` 谓词函数
 
-## `.location(...middlewares)`
+**`KeqRoutePattern` 字段**：
 
-匹配当前域名（浏览器为 `window.location.origin`，Node.js 为 `127.0.0.1`）。
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| `host` | `string` | 匹配域名 |
+| `method` | `string` | 匹配 HTTP 方法 |
+| `pathname` | `string` | glob（[minimatch][minimatch]）模式匹配路径 |
+
+单个 `KeqRoutePattern` 内多个字段之间为 **AND** 关系（所有字段都满足才匹配）。
+
+```typescript
+// host AND method AND pathname 都需要匹配
+request
+  .apply(middleware)
+  .forRoutes({ host: "api.example.com", method: "get", pathname: "/users/**" })
+```
+
+### `.forAllRoutes()`
+
+将中间件应用到所有路由。语义等价于无条件匹配，配合 `.exclude()` 可实现"全局生效但排除特定路由"。
+
+```typescript
+import { request } from "keq"
+
+// 全局应用
+request
+  .apply(loggingMiddleware)
+  .forAllRoutes()
+
+// 全局应用但排除健康检查
+request
+  .apply(loggingMiddleware)
+  .exclude({ pathname: "/health" }, { pathname: "/ready" })
+  .forAllRoutes()
+```
+
+### `.exclude(...routes)`
+
+排除特定路由。多个排除条件之间为 **OR** 关系（任一匹配则跳过）。
 
 ```typescript
 import { request } from "keq"
 
 request
-  .useRouter()
-  .location(async (context, next) => {
-    // 仅对当前域名的请求生效
-    context.request.headers.set("X-Same-Origin", "true")
-    await next()
-  })
+  .apply(authMiddleware)
+  .exclude({ pathname: "/health" }, { pathname: "/ready" })
+  .forRoutes({ host: "api.example.com" })
 ```
 
 **参数**：
-- `middlewares` - 一个或多个中间件函数
+- `routes` - 一个或多个 `KeqRoutePattern` 对象或 `KeqRoute` 谓词函数
 
-## `.route(matcher,...middlewares)`
+### 自定义 `KeqRoute` 谓词
 
-自定义路由条件。
+除了 `KeqRoutePattern` 对象，还可以传入自定义谓词函数：
 
 ```typescript
-import { request, KeqRoute, KeqRoute } from "keq"
+import { request } from "keq"
+import type { KeqRoute } from "keq"
 
-// 自定义匹配器
-const isExpectedApi: KeqRoute = (context: KeqContext) => {
-  // 匹配所有 API 请求且带有特定 header
-  return context.request.url.pathname.startsWith("/api")
-         && context.request.headers.has("X-Custom-Header")
+const hasDebugParam: KeqRoute = (ctx) => {
+  return ctx.request.url.searchParams.has("debug")
 }
 
 request
-  .useRouter()
-  .route(isExpectedApi, async (context, next) => {
-    console.log("匹配自定义条件")
-    await next()
-  })
-
-  .route()
+  .apply(debugMiddleware)
+  .forRoutes(hasDebugParam)
 ```
 
-**参数**：
-- `matcher` - 路由匹配函数，返回 `boolean` 表示是否匹配
-- `middlewares` - 一个或多个中间件函数
+## 链式调用
 
-## 综合示例
-
-多种路由方法可以组合使用：
+`.forRoutes()` 和 `.forAllRoutes()` 返回 `request` 实例本身，支持连续链式注册多组路由中间件：
 
 ```typescript
 import { request } from "keq"
 
 request
-  .useRouter()
-  // 为所有 example.com 的请求添加认证
-  .host("example.com", authMiddleware("token-1"))
-  // 为 /admin 路径下的请求添加额外认证
-  .pathname("/admin/**", adminAuthMiddleware())
-  // 为所有 POST 请求添加日志
-  .method("POST", logMiddleware("[POST]"))
-  // 为同源请求添加 CSRF Token
-  .location(csrfMiddleware())
-  // 自定义条件：为包含敏感数据的请求添加加密
-  .route(
-    (ctx) => ctx.request.headers.has("X-Sensitive-Data"),
-    encryptionMiddleware()
+  .apply(authMiddleware)
+    .forRoutes({ host: "api.example.com" })
+  .apply(cacheMiddleware)
+    .forRoutes({ host: "cdn.example.com" })
+  .apply(loggingMiddleware)
+    .exclude({ pathname: "/health" })
+    .forAllRoutes()
+```
+
+## 综合示例
+
+```typescript
+import { request } from "keq"
+
+// 为 API 请求添加认证，但排除健康检查
+request
+  .apply(authMiddleware)
+  .exclude({ pathname: "/health" }, { pathname: "/ready" })
+  .forRoutes({ host: "api.example.com" })
+
+// 为写操作添加请求日志
+request
+  .apply(logMiddleware)
+  .forRoutes(
+    { host: "api.example.com", method: "post" },
+    { host: "api.example.com", method: "put" },
+    { host: "api.example.com", method: "delete" },
   )
+
+// 全局添加限流，排除内部路径
+request
+  .apply(rateLimitMiddleware)
+  .exclude({ pathname: "/internal/**" })
+  .forAllRoutes()
 ```
 
 ## 执行顺序
 
-路由中间件按照添加的顺序执行。当请求匹配多个路由时，所有匹配的中间件都会执行：
+路由中间件按照注册的顺序执行。当请求匹配多个路由时，所有匹配的中间件都会按顺序执行：
 
 ```typescript
 request
-  .useRouter()
-  .host("api.example.com", middleware1)  // 第一个执行
-  .pathname("/users/**", middleware2)     // 第二个执行
-  .method("GET", middleware3)             // 第三个执行
+  .apply(middleware1).forRoutes({ host: "api.example.com" })
+  .apply(middleware2).forRoutes({ pathname: "/users/**" })
+  .apply(middleware3).forRoutes({ method: "get" })
 
 // 对于 GET https://api.example.com/users/123
 // 执行顺序：middleware1 -> middleware2 -> middleware3 -> 内置中间件

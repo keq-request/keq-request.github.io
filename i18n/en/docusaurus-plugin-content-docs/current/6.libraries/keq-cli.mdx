@@ -264,13 +264,12 @@ Now, we can call the `getCats` function to send HTTP requests:
 Finally, we can add unified error handling logic for all interfaces in the `catService` module:
 
 ```typescript
-import { request } from 'keq'
+import { request as catServiceRequest } from './src/apis/cat_service/request'
 import { throwException, RequestException } from 'keq-exception'
 
 
-request
-  .useRouter()
-  .module('catService', throwException(context => {
+catServiceRequest
+  .use(throwException(context => {
     if (context.response) {
       if (context.response.status >= 400 && context.response.status < 500) {
         throw new RequestException(context.response.status, context.response.statusText, false) // Client error, no retry needed
@@ -309,6 +308,7 @@ You can specify the configuration file location with `-c --config <config_file_p
 | rendering.fileNamingStyle    | false        | -                                | File naming style                                                                            |
 | rendering.esm                | false        | `false`                          | Whether to generate ESM-style code                                                           |
 | rendering.additionalPropertiesType | false  | `'unknown'`                      | Controls how `additionalProperties: true` (or undefined) is rendered as `unknown` or `any`   |
+| rendering.v2Compat                 | false  | `false`                          | (**Deprecated**) When enabled, emits `.option('module', { name, pathname, method })` in generated micro-functions for v2 backward compatibility |
 | operationIdFactory | false        | `({ operation }) => operation.operationId` | Custom function name generation rules, defaults to using `operationId` from swagger document |
 | strict             | false        | `false`                                    | Whether to clear the output directory                                                        |
 

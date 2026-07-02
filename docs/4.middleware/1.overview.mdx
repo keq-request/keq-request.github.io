@@ -181,9 +181,8 @@ await request
 import { request } from "keq"
 
 request
-  .useRouter()
-  .host("api.example.com", logMiddleware("[EXAMPLE API]"))
-  .host("admin.example.com", logMiddleware("[ADMIN]"))
+  .apply(logMiddleware("[EXAMPLE API]")).forRoutes({ host: "api.example.com" })
+  .apply(logMiddleware("[ADMIN]")).forRoutes({ host: "admin.example.com" })
 ```
 
 路由方法的详细说明请参考 [路由方法](./router)。

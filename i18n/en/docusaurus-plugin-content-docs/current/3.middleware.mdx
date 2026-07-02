@@ -75,8 +75,7 @@ However, in actual projects, we will face many different API providers and need 
 import { request } from "keq"
 
 request
-  .useRouter()
-  .host('example.com', async (context, next) => {
+  .apply(async (context, next) => {
     await next()
 
     if (context.response) {
@@ -86,6 +85,7 @@ request
       }
     }
   })
+  .forRoutes({ host: 'example.com' })
 
 try {
   await request.get("http://example.com/cat")
@@ -95,7 +95,7 @@ try {
 }
 ```
 
-Through `request.useRouter().host(hostName, middleware)`, the `Middleware` will only take effect when the request domain is `"example.com"`.
+Through `request.apply(middleware).forRoutes({ host: 'example.com' })`, the `Middleware` will only take effect when the request domain is `"example.com"`.
 Next, we can encapsulate the `Middleware` code into an independent function for easy reuse on different routes:
 
 ```typescript
@@ -115,12 +115,11 @@ function responseValidator(): KeqMiddleware {
 }
 
 request
-  .useRouter()
-  .host('example.com', responseValidator())
-  .pathname('/api/**', responseValidator())
+  .apply(responseValidator())
+  .forRoutes({ host: 'example.com' }, { pathname: '/api/**' })
 ```
 
-`.useRouter()` will match all requests that meet the rules. If we want individual requests not to run `alert`, we can add `option` to `Middleware`:
+`.apply()` will match all requests that meet the rules. If we want individual requests not to run `alert`, we can add `option` to `Middleware`:
 
 ```typescript
 import { KeqMiddleware, request } from 'keq'
@@ -169,8 +168,8 @@ function appendSiteHeader(site: string = 'us'): KeqMiddleware {
 }
 
 request
-  .useRouter()
-  .host('example.com', appendSiteHeader('cn'))
+  .apply(appendSiteHeader('cn'))
+  .forRoutes({ host: 'example.com' })
 ```
 
 ## Context
@@ -240,16 +239,58 @@ By interacting with `context`, `Middleware` can completely control request behav
 | `context.metadata.entryNextTimes` | How many times `next` was called before the current middleware ended. |
 | `context.metadata.outNextTimes`   | How many times `next` completed execution before the current middleware ended. |
 
-## Router (`.useRouter()`)
+## Router (`.apply()`)
 
-| **Method**                                               | **Description**                                                                                                                              |
-| :------------------------------------------------------- | :------------------------------------------------------------------------------------------------------------------------------------------- |
-| `.location(...middlewares)`                              | In browsers, routes requests to `window.location.origin` to `middlewares`. In Node.js, routes to `127.0.0.1`                                |
-| `.method(method: string[, ...middlewares])`              | Routes requests matching `method` to `middlewares`.                                                                                          |
-| `.pathname(matcher: string \| Regexp[, ...middlewares])` | `matcher` can be a glob（[minimatch][minimatch] expression or regular expression, and routes matching requests to `middlewares`.                                  |
-| `.host(host: string[, ...middlewares])`                  | Routes requests sent to `host` domain to `middlewares`.                                                                                      |
-| `.module(moduleName: string[, ...middlewares])`          | Routes requests of `moduleName` module to `middlewares`.                                                                                     |
-| `.route(...middlewares)`                                 | Custom routing strategy                                                                                                                      |
+`request.apply(...middlewares)` returns a chainable configuration object for route-scoped middleware registration:
+
+| **Method**                          | **Description**                                                                                     |
+| :---------------------------------- | :-------------------------------------------------------------------------------------------------- |
+| `.apply(...middlewares)`            | Specify one or more middlewares to apply, returns a config proxy                                    |
+| `.exclude(...routes)`               | Exclude routes from matching (OR logic among exclusions)                                            |
+| `.forRoutes(...routes)`             | Specify which routes the middleware applies to (OR logic among routes). Returns `request` for chaining |
+| `.forAllRoutes()`                   | Apply middleware to all routes (only exclusions take effect). Returns `request` for chaining         |
+
+**`KeqRoutePattern` fields** (AND logic within a single pattern):
+
+| **Field**   | **Type**   | **Description**                                      |
+| :---------- | :--------- | :--------------------------------------------------- |
+| `host`      | `string`   | Match domain                                         |
+| `method`    | `string`   | Match HTTP method                                    |
+| `pathname`  | `string`   | Glob ([minimatch][minimatch]) pattern to match path  |
+
+```typescript
+import { request } from "keq"
+
+// Apply auth middleware, exclude health checks
+request
+  .apply(authMiddleware)
+  .exclude({ pathname: '/health' }, { pathname: '/ready' })
+  .forRoutes({ host: 'api.example.com' })
+
+// Multiple route patterns (OR)
+request
+  .apply(logMiddleware)
+  .forRoutes(
+    { host: 'api.example.com', method: 'post' },
+    { host: 'api.example.com', method: 'put' },
+  )
+
+// Chained registration
+request
+  .apply(authMiddleware).forRoutes({ host: 'api.example.com' })
+  .apply(cacheMiddleware).forRoutes({ host: 'cdn.example.com' })
+
+// Apply to all routes
+request
+  .apply(logMiddleware)
+  .forAllRoutes()
+
+// Apply to all routes except specific ones
+request
+  .apply(logMiddleware)
+  .exclude({ pathname: '/health' }, { pathname: '/ready' })
+  .forAllRoutes()
+```
 
 ## `createRequest`
 

@@ -102,10 +102,9 @@ await getCats({ breed: "siamese" });
 
 ```typescript
 request
-  .useRouter()
-  .host("api.example.com", authMiddleware())
-  .pathname("/admin/**", adminAuthMiddleware())
-  .method("POST", logMiddleware());
+  .apply(authMiddleware()).forRoutes({ host: "api.example.com" })
+  .apply(adminAuthMiddleware()).forRoutes({ pathname: "/admin/**" })
+  .apply(logMiddleware()).forRoutes({ method: "POST" });
 ```
 
 ### 🛠️ 代码生成工具

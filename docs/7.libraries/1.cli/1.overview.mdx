@@ -269,8 +269,8 @@ import { request as dogServiceRequest } from './src/apis/dog_service/request'
 const coreRequest = new KeqRequest()
 coreRequest.use(validateStatusCode())
 coreRequest
-  .useRouter()
-  .host('api.example.com', setHeader('Authorization', 'Bearer TOKEN'))
+  .apply(setHeader('Authorization', 'Bearer TOKEN'))
+  .forRoutes({ host: 'api.example.com' })
 
 // 让各模块继承全局中间件
 catServiceRequest.inherit(coreRequest)
@@ -308,6 +308,7 @@ dogServiceRequest.inherit(coreRequest)
 | rendering.esm                | false        | 若 `package.json` 是否设置了 `"type": "module"` 则为 `true` | 是否生成 ESM 风格的代码                                |
 | rendering.additionalPropertiesType | false  | `'unknown'`                                          | 控制 `additionalProperties: true`（或未声明时）在生成的 TypeScript 类型中渲染为 `unknown` 还是 `any` |
 | rendering.entrypoint               | false  | `false`                                              | 开启后会为每个模块生成 `index.ts` 入口文件，统一 re-export 该目录下的所有生成文件 |
+| rendering.v2Compat                 | false  | `false`                                              | (**已废弃**) 开启后在生成的 micro-function 中添加 `.option('module', { name, pathname, method })`，仅用于 v2 兼容 |
 | translators        | false        | `[]`                                                        | [生成的代码风格](./4.translators.mdx)                                                    |
 | plugins            | false        | `[]`                                                        | [插件向第三方开发者提供了完整的自定义 cli 行为的能力](./2.plugin.mdx)               |
 
