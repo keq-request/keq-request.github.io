@@ -2,78 +2,108 @@
 
 ## Keq 是什么？
 
-Keq 是一个**现代化的 TypeScript HTTP 客户端**，基于 [Fetch API](https://developer.mozilla.org/en-US/docs/Web/API/Fetch_API) 构建，同时支持浏览器和 Node.js 环境。它融合了 [koa](https://github.com/koajs/koa) 的中间件设计理念和 [superagent](https://github.com/ladjs/superagent) 的链式调用体验，让 HTTP 请求变得优雅而强大。
+Keq 是一个**为 AI 编程时代设计的 TypeScript HTTP 客户端**。它基于 [Fetch API](https://developer.mozilla.org/en-US/docs/Web/API/Fetch_API) 构建，融合了 [Koa](https://github.com/koajs/koa) 的中间件设计和 [SuperAgent](https://github.com/ladjs/superagent) 的链式调用体验。
 
-### 为什么选择 Keq？
+与传统 HTTP 客户端不同，Keq 天然为 AI 编程助手提供了完整的 API 感知能力——你的 AI 助手不仅能理解项目中的每一个 API 接口，还能直接生成类型安全的调用代码。
 
-与传统的 HTTP 客户端不同，Keq 不仅仅是一个发送请求的工具——它是一个**可组合、可扩展的请求解决方案**：
+## 为 AI 编程而生
 
-- 🎯 **从 API 文档到代码**：通过 [@keq-request/cli](./libraries/cli) 将 Swagger/OpenAPI 文档直接转换为类型安全的请求函数，告别手写重复的请求代码
-- 🧩 **洋葱模型中间件**：像 Koa 一样优雅地组合功能，轻松实现超时控制、自动重试、错误处理、缓存等复杂逻辑
-- 🔗 **链式调用 API**：流畅的调用体验，无需臃肿的配置对象，所有参数一目了然
-- 📘 **完备的 TypeScript 支持**：从请求参数到响应体，全链路类型推断，让编辑器成为你的最佳文档
-- 🎨 **灵活的路由系统**：根据域名、路径、模块等条件精准应用中间件，实现细粒度的请求控制
+### 告诉 AI 你要什么，代码自己就写好了
 
-### 一个简单的例子
+当你的 AI 编程助手接入 Keq 后，开发体验会变成这样：
 
-```typescript
-import { request } from "keq";
+```text
+👤 开发者：帮我写一个猫咪领养页面，展示可领养的猫咪列表，支持按品种筛选
 
-// 简洁的链式调用
-const cats = await request
-  .get("/cats")
-  .query("breed", "british_shorthair")
-  .set("Authorization", "Bearer token")
-  .timeout(3000)
-  .retry(2);
-
-console.log(`找到了 ${cats.length} 只猫咪`);
+🤖 AI 助手：
+   → 搜索 API："猫咪"、"品种"
+   → 找到：GET /cats (catService#getCats)
+   → 找到：GET /breeds (catService#getBreeds)
+   → 生成请求代码并构建页面...
 ```
 
-### 使用 @keq-request/cli 让开发更高效
-
-想象一下，你不再需要为每个 API 接口手写请求代码：
-
 ```typescript
-// @keq-request/cli 根据 Swagger 文档自动生成
-import { getCats, createCat } from "./api/cat_service";
-import { request as catServiceRequest } from "./api/cat_service/request";
+import { getCats, getBreeds } from "./apis/cat_service"
 
-// 完整的类型提示，参数错误会在编译时发现
-const cats = await getCats({ breed: "siamese" })
-  .retry(3, 1000)
-  .timeout(5000);
+export function AdoptionPage() {
+  const [breed, setBreed] = useState("")
 
-// 全局设置错误处理，所有请求自动生效
-catServiceRequest.use(errorHandler());
+  const breeds = await getBreeds()
+  const cats = await getCats({ breed, status: "adoptable" })
+  //                           ^^^^^ 参数类型由 OpenAPI 文档推断，拼错字段编译器直接报错
+
+  return (/* 渲染猫咪列表... */)
+}
 ```
 
-[koa]: https://github.com/koajs/koa
-[superagent]: https://github.com/ladjs/superagent
+AI 在编写功能的过程中，自动通过语义搜索定位所需接口、生成类型安全的请求代码。TypeScript 编译器确保生成的代码类型正确——即使 AI 犯错，编译器也会拦住它。
+
+### 一行配置，解锁 AI 能力
+
+不需要学习新概念，只需在项目中添加一行配置，AI 助手就能自动理解你的所有 API：
+
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+
+<Tabs>
+  <TabItem value="claude" label="Claude Code" default>
+    ```json title=".claude/settings.json"
+    {
+      "mcpServers": {
+        "keq": { "command": "npx", "args": ["@keq-request/cli", "mcp"] }
+      }
+    }
+    ```
+  </TabItem>
+  <TabItem value="cursor" label="Cursor">
+    ```json title=".cursor/mcp.json"
+    {
+      "mcpServers": {
+        "keq": { "command": "npx", "args": ["keq", "mcp"] }
+      }
+    }
+    ```
+  </TabItem>
+  <TabItem value="vscode" label="VS Code">
+    ```json title=".vscode/mcp.json"
+    {
+      "servers": {
+        "keq": { "command": "npx", "args": ["keq", "mcp"] }
+      }
+    }
+    ```
+  </TabItem>
+</Tabs>
+
+配置完成后，AI 助手即刻获得以下能力：
+
+- 🔍 **自然语言搜索** — 用中文或英文描述你想要的接口，AI 从数百个 API 中语义匹配
+- 🏗️ **按需生成代码** — AI 判断需要哪些接口，自动生成类型安全的 TypeScript 请求函数
+- 📋 **过滤规则管理** — AI 自动维护 `.keqfilter`，只生成项目实际用到的接口代码
+- 🔄 **实时感知变更** — API 文档更新时自动同步，AI 始终基于最新接口信息工作
+
+### 为什么 AI 编程需要 Keq？
+
+AI 编程助手面对 HTTP 请求时，最大的问题是**缺乏 API 上下文**——它不知道项目有哪些接口、参数是什么结构。Keq 通过将 OpenAPI 文档转化为 AI 可感知的结构化知识，让 AI 精确掌握每个接口的路径、方法、参数和响应结构，生成的代码自带完整类型推断，编译器自动校验正确性。
 
 ## 核心特性
 
-### 🌐 跨平台支持
-
-在浏览器和 Node.js (≥20) 中使用同一套代码，基于标准 Fetch API，无需担心兼容性问题。
-
 ### ⚡ 链式调用
 
-流畅的 API 设计，让请求配置直观易读：
+流畅的 API 设计，让手写和 AI 生成的代码都直观易读：
 
 ```typescript
 await request
   .post("/cats")
   .send({ name: "mimi", age: 3 })
   .set("Content-Type", "application/json")
-  .query("lang", "zh-CN")
   .timeout(5000)
   .retry(2);
 ```
 
-### 🎯 中间件系统
+### 🧩 洋葱模型中间件
 
-通过中间件扩展 Keq 的能力，官方提供了丰富的开箱即用功能：
+通过中间件组合复杂功能，官方提供开箱即用：
 
 - **[超时控制](./features/timeout)** - 防止请求长时间挂起
 - **[失败重试](./features/retry)** - 灵活的重试策略
@@ -82,47 +112,44 @@ await request
 - **[异常处理](./libraries/exception)** - 统一的错误处理机制
 - **[请求缓存](https://github.com/keq-request/keq-cache)** - 减少不必要的网络请求
 
-### 📘 TypeScript First
+:::tip 为什么是中间件而非拦截器？
+拦截器的能力上限有限——它将请求和响应割裂为独立钩子，无法共享上下文，一些场景（如条件重试、请求计时、基于响应的二次请求）根本无法实现。中间件虽然编写更复杂，但它提供了一个能力上限极高的架构模型。在 AI 编程时代，编写复杂度已不再是瓶颈——让架构本身具备足够的灵活性，比降低手写门槛更重要。
+:::
 
-完整的类型定义和类型推断，配合 @keq-request/cli 生成的代码，获得极致的开发体验：
+### 📘 TypeScript 全链路类型推断
+
+从请求参数到响应体，类型一路贯通：
 
 ```typescript
 // 自动推断响应体类型
 const cat = await request.get<Cat>("/cats/1");
 //    ^? Cat
 
-// 严格的参数类型检查（getCats 由 @keq-request/cli 生成）
+// @keq-request/cli 生成的函数，参数类型严格校验
 await getCats({ breed: "siamese" });
-//              ^^^^^^ 类型提示和校验
+//              ^^^^^^ 未定义的参数会在编译时报错
 ```
 
-### 🎨 灵活的路由
+### 🎨 灵活的路由系统
 
 精准控制中间件的应用范围：
 
 ```typescript
 request
   .apply(authMiddleware()).forRoutes({ host: "api.example.com" })
-  .apply(adminAuthMiddleware()).forRoutes({ pathname: "/admin/**" })
+  .apply(adminAuth()).forRoutes({ pathname: "/admin/**" })
   .apply(logMiddleware()).forRoutes({ method: "POST" });
 ```
 
-### 🛠️ 代码生成工具
+### 🌐 跨平台
 
-**[@keq-request/cli](./libraries/cli)** 是 Keq 的杀手级功能，将 Swagger/OpenAPI 文档转换为类型安全的请求函数：
-
-- ✅ 自动生成请求函数和 TypeScript 类型
-- ✅ 完整的接口参数类型检查
-- ✅ 支持路由参数、查询参数、请求头、请求体
-- ✅ 通过模块化组织，统一管理不同服务的接口
-- ✅ 保持手写代码的灵活性，支持动态参数
+基于标准 Fetch API，在浏览器和 Node.js (≥20) 中使用同一套代码。
 
 ## 设计哲学
 
-Keq 的设计遵循以下原则：
-
-1. **优雅的 API**：链式调用让代码更易读易写
-2. **可组合性**：通过中间件组合复杂功能，而非臃肿的配置
-3. **类型安全**：充分利用 TypeScript，在编译期发现问题
-4. **开发效率**：通过 CLI 工具减少重复劳动
-5. **灵活可控**：提供足够的扩展点，满足各种定制需求
+1. **AI 协作优先** — 让 AI 助手能精确理解和操作项目的 API 层
+2. **优雅的 API** — 链式调用让代码更易读易写
+3. **可组合性** — 通过中间件组合复杂功能，而非臃肿的配置
+4. **类型安全** — 充分利用 TypeScript，在编译期发现问题
+5. **开发效率** — 通过 CLI 工具和 AI 集成减少重复劳动
+6. **灵活可控** — 提供足够的扩展点，满足各种定制需求
