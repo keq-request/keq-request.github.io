@@ -1,0 +1,373 @@
+---
+authors: val.istar.guo
+---
+
+import ExecPackageCommand from '@site/docs/components/_exec-package-command-code.mdx'
+
+# 从 v2 迁移至 v5
+
+本文档涵盖从 Keq v2 升级至 v5 的全部破坏性变更，建议按章节顺序逐项处理。
+
+{/* truncate */}
+
+## 版本说明
+
+keq 核心库此前为 v2，而 `keq-cli` 已独立发布过 v3 和 v4。为统一所有官方包的版本号，本次发布直接定为 v5。
+
+## 兼容性要求
+
+**Node.js：** 最低版本要求从 18 提升至 20。
+
+**浏览器：**
+
+import CompatibilityTable from '@site/docs/components/_compatibility-table.mdx'
+
+<CompatibilityTable />
+
+## 破坏性变更
+
+### 1. 包名与导入方式
+
+**Named export 替代 default export：**
+
+```typescript
+import request from "keq"          // ❌ v2: default export [!code --]
+import { request } from "keq"      // ✅ v5: named export [!code ++]
+```
+
+**`request` 不再是可调用函数，而是 `KeqRequest` 实例：**
+
+```typescript
+request("http://example.com")          // ❌ v2 [!code --]
+request.fetch("http://example.com")      // ✅ v5 [!code ++]
+```
+
+**官方包迁移至 `@keq-request` scope：**
+
+| v2 | v5 |
+|:---|:---|
+| `keq-cache` | `@keq-request/cache` |
+| `keq-headers` | `@keq-request/headers` |
+| `keq-cli` | `@keq-request/cli` |
+| `keq-url` | `@keq-request/url` |
+| `keq-exception` | `@keq-request/exception` |
+
+**`RequestException` 可直接从 `keq` 导入：**
+
+```typescript
+import { RequestException } from "keq-exception" // ❌ v2 [!code --]
+import { RequestException } from "keq"           // ✅ v5 [!code ++]
+```
+
+### 2. 路由参数语法
+
+v5 采用 [RFC 6570 URI Template](https://datatracker.ietf.org/doc/html/rfc6570) 语法，不再支持 Express 风格的 `:param`：
+
+```typescript
+request.get("/cats/:name/:age")    // ❌ v2 [!code --]
+request.get("/cats/{name}/{age}")  // ✅ v5 [!code ++]
+```
+
+### 3. Query 参数序列化
+
+数组序列化的默认格式从 `brackets` 变更为 `indices`（与 [`qs`](https://www.npmjs.com/package/qs) 库默认行为一致）。若后端依赖 `brackets` 格式，需显式指定：
+
+```typescript
+// v2 默认序列化为 ?a[]=1&a[]=2
+request.get("/api").query({ a: [1, 2] })
+
+// v5 默认序列化为 ?a[0]=1&a[1]=2，需显式指定以保持兼容
+request.get("/api").query({ a: [1, 2] }, { arrayFormat: "brackets" }) // [!code ++]
+```
+
+v5 支持的格式：
+
+| 格式 | 示例 |
+|:-----|:-----|
+| `indices`（v5 默认） | `?ids[0]=1&ids[1]=2` |
+| `brackets`（v2 默认） | `?ids[]=1&ids[]=2` |
+| `repeat` | `?ids=1&ids=2` |
+| `comma` | `?ids=1,2` |
+
+### 4. 路径参数编码
+
+v5 中 `.params(key, value)` 不再自动对 value 进行 URI 编码。包含特殊字符的路径参数需手动编码：
+
+```typescript
+request
+  .get("/files/{path}")
+  .params("path", encodeURIComponent("a/b/c"))
+```
+
+### 5. Options API
+
+**`resolveWithResponse` 已移除，使用 `resolveWith` 替代：**
+
+```typescript
+const response = await request
+  .get("/data")
+  .option("resolveWithResponse", true)  // ❌ v2 [!code --]
+  .resolveWith("response")              // ✅ v5 [!code ++]
+```
+
+**retry 选项合并为单一对象：**
+
+```typescript
+await request
+  .get("/data")
+  .option("retryTimes", 3)       // ❌ v2 [!code --]
+  .option("retryDelay", 1000)    // ❌ v2 [!code --]
+  .option("retryOn", () => true) // ❌ v2 [!code --]
+  .option("retry", {             // ✅ v5 [!code ++]
+    times: 3,                    // [!code ++]
+    delay: 1000,                 // [!code ++]
+    on: () => true,              // [!code ++]
+  })                             // [!code ++]
+```
+
+:::tip
+`.retry(times, delay, on)` 链式方法在 v5 中保持不变，无需修改。
+:::
+
+### 6. 中间件 API
+
+自定义中间件涉及以下变更：
+
+```typescript
+import { KeqMiddleware } from 'keq'
+
+function myMiddleware(): KeqMiddleware {
+  return async (context, next) => {
+    // context.metadata 已移除，使用 context.orchestration 替代
+    context.metadata      // ❌ v2 [!code --]
+    context.orchestration // ✅ v5 [!code ++]
+
+    // abort 方法移至 context.request
+    context.abort()         // ❌ v2 [!code --]
+    context.request.abort() // ✅ v5 [!code ++]
+
+    // routeParams 重命名为 pathParameters
+    context.request.routeParams    // ❌ v2 [!code --]
+    context.request.pathParameters // ✅ v5 [!code ++]
+
+    // retry 选项结构变更
+    context.options.retryTimes // ❌ v2 [!code --]
+    context.options.retryDelay // ❌ v2 [!code --]
+    context.options.retryOn    // ❌ v2 [!code --]
+    context.options.retry.times // ✅ v5 [!code ++]
+    context.options.retry.delay // ✅ v5 [!code ++]
+    context.options.retry.on    // ✅ v5 [!code ++]
+
+    // resolveWithResponse 替换为 resolveWith
+    context.options.resolveWithResponse = true // ❌ v2 [!code --]
+    context.options.resolveWith = "response"   // ✅ v5 [!code ++]
+
+    // fetch 事件拆分为 fetch:before 和 fetch:after
+    context.emitter.on('fetch', callback)        // ❌ v2 [!code --]
+    context.emitter.on('fetch:before', callback) // ✅ v5 [!code ++]
+    context.emitter.on('fetch:after', callback)  // ✅ v5 [!code ++]
+
+    // context.output 变更为 writeOnly，不可读取
+    const output = context.output // ❌ v2: 可读写 [!code --]
+    context.output = value        // ✅ v5: 仅可写入 [!code ++]
+
+    await next()
+  }
+}
+```
+
+### 7. TypeScript 类型
+
+**类型重命名：**
+
+| v2 | v5 | 备注 |
+|:---|:---|:-----|
+| `KeqOperations` | `KeqApiSchema` | 已移除，必须修改 |
+| `KeqBaseOperation` | `KeqDefaultOperation` | 已移除，必须修改 |
+| `KeqOptions<T>` | `KeqMiddlewareOptions<OP>` | `KeqOptions` 仍存在但语义已变更为构造函数选项类型 |
+
+**API Schema 定义需添加 index signature：**
+
+```typescript
+import { KeqOperations } from "keq" // ❌ v2 [!code --]
+import { KeqApiSchema, KeqQueryValue, KeqParamValue } from "keq" // ✅ v5 [!code ++]
+
+interface MyApi extends KeqOperations { // ❌ v2 [!code --]
+interface MyApi extends KeqApiSchema {  // ✅ v5 [!code ++]
+  "/cats": {
+    get: {
+      requestParams: {}                           // ❌ v2 [!code --]
+      requestQuery: { breed: string }             // ❌ v2 [!code --]
+      requestParams: {                            // ✅ v5 [!code ++]
+        [key: string]: KeqParamValue              // [!code ++]
+      }                                           // [!code ++]
+      requestQuery: {                             // [!code ++]
+        breed: string                             // [!code ++]
+        [key: string]: KeqQueryValue              // [!code ++]
+      }                                           // [!code ++]
+      requestHeaders: {
+        Authorization: string
+        [key: string]: string | number            // ✅ v5 [!code ++]
+      }
+      requestBody: {}
+      responseBody: { id: string; name: string }
+    }
+  }
+}
+```
+
+**默认返回类型变更：**
+
+v2 中 `request.get()` 返回 `Keq<any>`，v5 变更为 `Keq<unknown>`。建议显式指定类型：
+
+```typescript
+const body = await request.get<CatResponse>("/cats")
+```
+
+### 8. 异常处理
+
+`RequestException` 构造函数的第三个参数从布尔值变更为选项对象，且语义相反：
+
+```typescript
+// ❌ v2: 第三个参数为 retry（true = 允许重试）
+throw new RequestException(400, "Bad Request", true)  // [!code --]
+
+// ✅ v5: 第三个参数为选项对象（fatal = true 表示终止重试）
+throw new RequestException(400, "Bad Request", { fatal: false }) // [!code ++]
+```
+
+:::caution
+语义反转：v2 的 `true`（允许重试）等价于 v5 的 `{ fatal: false }`（不终止重试）。旧的布尔签名通过 deprecated overload 暂时保留，但由于语义相反，建议立即修改以避免逻辑错误。
+:::
+
+v5 新增的异常类型（均可从 `"keq"` 导入）：
+
+- `AbortException` — 请求被中止
+- `TimeoutException` — 请求超时
+- `MutexException` — 互斥流控拒绝
+- `TypeException` — 类型错误
+
+### 9. 移除的 API
+
+| 已移除 | 替代方案 |
+|:-------|:---------|
+| `appendMiddlewares()` | `.use()` 或 `.apply().forRoutes()` |
+| `prependMiddlewares()` | `.use()` 或 `.apply().forRoutes()` |
+| `retryMiddleware` | 已内置，无需手动引用 |
+| `proxyResponseMiddleware` | 已内置，无需手动引用 |
+| `fetchArgumentMiddleware` | 已内置，无需手动引用 |
+
+### 10. CLI 代码生成（@keq-request/cli）
+
+#### 目录结构对比
+
+`keq-cli@4` 生成结构：
+
+```text
+outdir
+└── animal-service
+    ├── components
+    │   └── schemas
+    │       ├── cat.ts
+    │       ├── dog.ts
+    │       └── index.ts
+    ├── types
+    │   ├── get-cat.ts
+    │   └── get-dog.ts
+    ├── get-cat.ts
+    ├── get-dog.ts
+    └── index.ts
+```
+
+`@keq-request/cli` 生成结构：
+
+```text
+outdir
+├── request.ts
+└── animal-service
+    ├── types
+    │   ├── components
+    │   │   └── schemas
+    │   │       ├── cat.schema.ts
+    │   │       ├── dog.schema.ts
+    │   │       └── index.ts
+    │   └── operations
+    │       ├── get-cat.type.ts
+    │       └── get-dog.type.ts
+    └── operations
+        ├── get-cat.fn.ts
+        ├── get-dog.fn.ts
+        └── index.ts
+```
+
+#### 迁移步骤
+
+1. 删除旧的 `outdir` 目录。
+
+2. 修改 `.keqrc.(yml|json|js|ts)` 配置文件：
+
+    ```typescript title=.keqrc.ts
+    import { defineKeqConfig, FileNamingStyle } from "keq-cli";           // [!code --]
+    import { defineConfig, FileNamingStyle } from "@keq-request/cli";     // [!code ++]
+    import { ChineseToPinyinPlugin, OverwriteAdditionalPropertiesPlugin, OverwriteOperationIdPlugin, OverwriteQueryOptionsPlugin, SpringdocCompatPlugin } from "@keq-request/cli/plugins"; // [!code ++]
+
+    export default defineKeqConfig({           // [!code --]
+    export default defineConfig({              // [!code ++]
+      outdir: './outdir',
+      // v5 不再提供默认 request 配置
+      request: './custom_request_file_path',   // [!code --]
+      fileNamingStyle: FileNamingStyle.snakeCase, // [!code --]
+      rendering: {                               // [!code ++]
+        fileNamingStyle: FileNamingStyle.snakeCase, // [!code ++]
+        // 兼容模式提供 keq 废弃的 .useRouter.module(...) API 支持          // [!code ++]
+        v2Compat: true,                            // [!code ++]
+        // v5 版本默认不生成 index.ts 文件，旧版本默认生成 index.ts         // [!code ++]
+        entrypoint: true,                         // [!code ++]
+        // v5 版本默认使用更严谨 unknown 类型，旧版本使用 any 类型          // [!code ++]
+        additionalPropertiesType: 'any',          // [!code ++]
+      },                                         // [!code ++]
+      modules: {
+        animalService: 'http://example.com/v1/swagger.json',
+      },
+      operationIdFactory: ({ operation }) => operation.operationId, // [!code --]
+      plugins: [                                                             // [!code ++]
+        // ChineseToPinyinPlugin 在旧版本中默认内置，v5 需显式添加          // [!code ++]
+        new ChineseToPinyinPlugin(),                                             // [!code ++]
+        // OverwriteAdditionalPropertiesPlugin 在旧版本中默认内置，v5 需显式添加 // [!code ++]
+        new OverwriteAdditionalPropertiesPlugin({                                // [!code ++]
+          disallowIfNotPresent: true,                                            // [!code ++]
+        }),                                                                      // [!code ++]
+        // v5 校验更严格，不严格符合规范的文档会报错，添加此插件做兼容性修正   // [!code ++]
+        new SpringdocCompatPlugin(),                                             // [!code ++]
+        // 代替 operationIdFactory                                           // [!code ++]
+        new OverwriteOperationIdPlugin(({ operation }) => operation.operationId), // [!code ++]
+        // v5 默认序列化为 indices，需显式指定以保持兼容                        // [!code ++]
+        new OverwriteQueryOptionsPlugin({ arrayFormat: 'brackets' }),             // [!code ++]
+      ],                                                                         // [!code ++]
+    });
+    ```
+
+3. 重新生成代码：
+
+    <ExecPackageCommand command="keq build" />
+
+4. 更新导入路径：
+
+    ```typescript
+    import { getCat } from '@outdir/animal-service'            // [!code --]
+    import { getCat } from '@outdir/animal-service/operations' // [!code ++]
+
+    import { request } from 'keq'             // [!code --]
+    import { request } from '@outdir/request' // [!code ++]
+    ```
+
+## v5 新增功能
+
+完成迁移后，可使用以下新特性（详见各功能文档）：
+
+| 功能 | 说明 |
+|:-----|:-----|
+| [生命周期事件](/docs/next/events) | 通过事件监听请求各阶段（发起、完成、重试、超时、中断、异常），实现日志、埋点等横切关注点 |
+| [NestJS 集成](/docs/next/advanced/using-with-nestjs) | 提供 `KeqModule` 支持在 NestJS 中以依赖注入方式管理 API 请求与中间件 |
+| [MCP Server](/docs/next/libraries/cli/mcp) | 内置 MCP 服务，使 AI 编程助手可语义搜索 API 定义并生成类型安全的调用代码 |
+| [CLI 插件系统](/docs/next/libraries/cli/plugin) | 基于 tapable 的编译钩子机制，支持自定义代码生成逻辑与输出格式 |
