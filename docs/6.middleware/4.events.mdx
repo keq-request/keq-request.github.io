@@ -19,6 +19,33 @@ await request
   })
 ```
 
+### 实例级事件监听
+
+除了在单个请求上监听事件，你还可以在 `KeqRequest` 实例上注册事件监听器，实现全局事件处理：
+
+```typescript
+import { request } from 'keq'
+
+// 监听所有请求的错误事件
+request.on('error', ({ context }) => {
+  console.error('请求失败:', context.request.__url__.href)
+})
+
+// 监听所有请求的超时事件
+request.on('timeout', ({ context }) => {
+  console.warn('请求超时:', context.request.__url__.href)
+})
+
+// 之后发出的所有请求都会触发上面的监听器
+await request.get('/cats')
+await request.get('/dogs')
+```
+
+:::info 事件 vs 中间件
+事件系统专为**观测**而设计：回调中的 `context` 是只读的，且回调不会阻塞请求执行。
+如果你需要修改请求或响应，请使用[中间件](./1.overview.mdx)。
+:::
+
 ## 内置事件
 
 ### fetch:before

@@ -1,0 +1,14 @@
+# 请求头
+
+使用 `.set()` 或 `.headers()` 方法设置请求头：
+
+```typescript
+import { request } from "keq"
+
+await request
+  .get("https://example.com/cats")
+  .set("Authorization", "Bearer token")                    // 单个请求头
+  .set({ "Accept": "application/json" })                   // 多个请求头
+  .headers("X-Custom-Header", "value")                     // .headers() 是 .set() 的别名
+  .set(new Headers({ "Cache-Control": "no-cache" }))      // 使用 Headers 对象
+```

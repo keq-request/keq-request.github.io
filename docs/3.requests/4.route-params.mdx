@@ -1,0 +1,21 @@
+# 路由参数
+
+Keq 支持 [URI Template (RFC 6570)](https://www.rfc-editor.org/rfc/rfc6570.html) 规范，可以方便地填充路由参数：
+
+```typescript
+import { request } from "keq"
+
+await request
+  .get("/cats/{catId}")
+  .params("catId", "123")
+
+// 或使用对象一次性设置多个参数
+await request
+  .get("/cats/{catId}/toys/{toyId}")
+  .params({
+    catId: "123",
+    toyId: "456",
+  })
+
+// 实际请求: /cats/123/toys/456
+```

@@ -1,0 +1,113 @@
+# 理解 Context
+
+[Response MDN]: https://developer.mozilla.org/en-US/docs/Web/API/Response
+
+`context` 是贯穿整个中间件执行链的共享上下文对象。理解它在洋葱模型中的生命周期，是写好中间件的关键。完整的属性列表请查阅 [API 参考 - Context](../api-reference/context)。
+
+## 核心属性
+
+| 属性 | 描述 |
+|:-----|:-----|
+| `context.request` | HTTP 请求参数（URL、方法、请求头、请求体等），`next()` 之前可读写 |
+| `context.response` | 响应代理对象，支持多次读取响应体 |
+| `context.res` | 原始 Fetch [Response][Response MDN] 对象 |
+| `context.output` | 覆盖请求的最终解析值（仅 intelligent 模式下生效） |
+| `context.options` | 通过 `.option()` 设置的自定义选项 |
+| `context.data` | 请求级共享数据，请求结束后自动清理 |
+| `context.global` | 全局共享数据，需手动清理 |
+
+## 生命周期
+
+`await next()` 是中间件的分界线——调用前操作请求，调用后处理响应：
+
+1. **请求创建** — context 初始化，`context.request` 可读写
+2. **`await next()` 之前** — 对 `context.request` 的修改会影响实际发出的 HTTP 请求
+3. **`await next()`** — 请求发出，控制权交给下一层中间件
+4. **`await next()` 之后** — `context.response` 可读，响应已返回
+5. **请求结束** — `context.data` 自动清理
+
+一个典型的中间件同时利用了两个阶段：
+
+```typescript
+import { KeqMiddleware } from "keq"
+
+const authMiddleware: KeqMiddleware = async (context, next) => {
+  // next() 之前：修改请求
+  context.request.headers.set("Authorization", `Bearer ${getToken()}`)
+
+  await next()
+
+  // next() 之后：检查响应
+  if (context.response?.status === 401) {
+    await refreshToken()
+  }
+}
+```
+
+:::warning 不要在 next() 之后修改 context.request
+`next()` 返回时请求已经发出，此时对 `context.request` 的修改不会产生任何效果。
+:::
+
+## 响应代理
+
+`context.response` 是原始 [Response][Response MDN] 的代理对象。原始 Response 的 `.json()`、`.text()` 等方法只能调用一次——这在多个中间件都需要读取响应体时会造成冲突。Keq 通过代理解决了这个问题。
+
+```typescript
+const middlewareA: KeqMiddleware = async (context, next) => {
+  await next()
+  const data = await context.response.json() // 第一次读取
+  console.log("A:", data)
+}
+
+const middlewareB: KeqMiddleware = async (context, next) => {
+  await next()
+  const data = await context.response.json() // 第二次读取，同样正常工作
+  console.log("B:", data)
+}
+```
+
+### 缓存与 Copy-on-Write
+
+- `.json()` 和 `.text()` 会缓存首次解析结果，重复调用不会重新解析
+- 对 `.json()` 返回的对象，Keq 采用 copy-on-write 策略：只读时零开销，修改时自动创建独立副本，不影响其他中间件
+- `.arrayBuffer()`、`.blob()`、`.formData()` 不会缓存，但同样支持多次读取
+
+### context.res
+
+`context.res` 是原始的 Fetch Response 对象。绝大多数场景应该使用 `context.response`，仅在需要流式读取（`body.getReader()`）等底层操作时才使用 `context.res`。
+
+## 中间件间的数据流动
+
+### context.data
+
+`context.data` 是请求级别的共享对象，用于中间件之间传递数据。请求结束后自动销毁。
+
+推荐使用 Symbol 作为 key，避免不同中间件之间的命名冲突：
+
+```typescript
+import { KeqMiddleware } from "keq"
+
+const START_TIME = Symbol("timer")
+
+const timerMiddleware: KeqMiddleware = async (context, next) => {
+  context.data[START_TIME] = Date.now()
+
+  await next()
+
+  const duration = Date.now() - context.data[START_TIME]
+  console.log(`请求耗时: ${duration}ms`)
+}
+```
+
+### 三种共享机制对比
+
+| 特性 | context.data | context.options | context.global |
+|:-----|:-------------|:----------------|:---------------|
+| **生命周期** | 请求结束自动清理 | 请求结束自动清理 | 手动清理 |
+| **作用域** | 单个请求 | 单个请求 | 全局共享 |
+| **典型用途** | 中间件间传递临时状态 | 向中间件传递配置 | 跨请求共享状态（如缓存） |
+
+选择依据：
+- 中间件之间协作传递临时数据 → `context.data`
+- 让使用者通过 `.option()` 控制中间件行为 → `context.options`
+- 跨请求持久化状态（如 token 缓存、请求计数） → `context.global`（注意手动清理，避免内存泄漏）

@@ -1,0 +1,101 @@
+# 查询参数
+
+使用 `.query()` 方法添加 URL 查询参数：
+
+```typescript
+import { request } from "keq"
+
+// 基础用法
+await request
+  .get("https://example.com/cats")
+  .query("breed", "british_shorthair")  // 单个参数
+  .query({ order: "desc", limit: 10 })  // 多个参数
+// 实际请求: https://example.com/cats?breed=british_shorthair&order=desc&limit=10
+
+// 数组参数
+await request
+  .get("https://example.com/cats")
+  .query({ breeds: ["british_shorthair", "persian"] })
+// 实际请求: https://example.com/cats?breeds[0]=british_shorthair&breeds[1]=persian
+
+// 嵌套对象
+await request
+  .get("https://example.com/cats")
+  .query({ filter: { breed: "british", age: { min: 1, max: 5 } } })
+// 实际请求: https://example.com/cats?filter[breed]=british&filter[age][min]=1&filter[age][max]=5
+```
+
+## 数组序列化格式（arrayFormat）
+
+通过 `arrayFormat` 选项可以控制数组参数的序列化方式：
+
+| arrayFormat 值 | 序列化结果示例 | 说明 |
+|:--------------|:-------------|:-----|
+| `"indices"`（默认） | `breeds[0]=a&breeds[1]=b` | 使用索引形式 |
+| `"brackets"` | `breeds[]=a&breeds[]=b` | 使用空括号形式 |
+| `"repeat"` | `breeds=a&breeds=b` | 重复键名 |
+| `"comma"` | `breeds=a,b` | 逗号分隔 |
+| `"pipe"` | `breeds=a\|b` | 管道符分隔 |
+| `"space"` | `breeds=a+b` | 空格分隔 |
+
+```typescript
+import { request } from "keq"
+
+await request
+  .get("/cats")
+  .query({ breeds: ["british_shorthair", "persian"] }, { arrayFormat: "repeat" })
+// 实际请求: /cats?breeds=british_shorthair&breeds=persian
+
+await request
+  .get("/cats")
+  .query({ breeds: ["british_shorthair", "persian"] }, { arrayFormat: "pipe" })
+// 实际请求: /cats?breeds=british_shorthair|persian
+```
+
+:::tip
+不同的后端框架可能期望不同的数组序列化格式。例如，某些 PHP 框架偏好 `brackets` 格式，而 Express.js 通常使用 `repeat` 格式。
+:::
+
+## 点号格式（allowDots）
+
+通过 `allowDots` 选项可以使用点号代替方括号来表示嵌套对象，某些后端框架（如 Spring Boot）偏好这种格式：
+
+```typescript
+import { request } from "keq"
+
+// 默认方括号格式
+await request
+  .get("/cats")
+  .query({ filter: { breed: "british", age: 3 } })
+// 实际请求: /cats?filter[breed]=british&filter[age]=3
+
+// 点号格式
+await request
+  .get("/cats")
+  .query({ filter: { breed: "british", age: 3 } }, { allowDots: true })
+// 实际请求: /cats?filter.breed=british&filter.age=3
+```
+
+## 设置实例默认选项
+
+通过 `KeqRequest` 构造函数的 `qs` 选项，可以为所有请求设置默认的序列化行为：
+
+```typescript
+import { KeqRequest } from "keq"
+
+const api = new KeqRequest({
+  baseOrigin: "https://api.example.com",
+  qs: {
+    arrayFormat: "repeat",
+    allowDots: true,
+  }
+})
+
+// 该实例的所有请求都会使用 repeat + allowDots 格式
+await api.get("/cats").query({ breeds: ["british", "persian"], filter: { age: 3 } })
+// 实际请求: https://api.example.com/cats?breeds=british&breeds=persian&filter.age=3
+```
+
+:::tip
+单个请求的 `.query(obj, options)` 中传入的选项会覆盖实例默认值。
+:::

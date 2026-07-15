@@ -54,8 +54,8 @@ import { request, KeqMiddleware } from 'keq'
 function withTimeout(milliseconds: number): KeqMiddleware {
   return async (context, next) => {
     // 如果未设置超时，使用默认值
-    if (!context.request.timeout || context.request.timeout === Infinity) {
-      context.request.timeout = milliseconds
+    if (!context.options.timeout || context.options.timeout.millisecond <= 0) {
+      context.options.timeout = { millisecond: milliseconds }
     }
     await next()
   }

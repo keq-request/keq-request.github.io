@@ -126,6 +126,20 @@ request
   .use(logMiddleware("[API]"))
 ```
 
+:::tip 中间件应该遵循职责单一原则：
+
+```typescript
+// ✅ 好的做法：功能单一
+function authMiddleware(token: string): KeqMiddleware { /* ... */ }
+function logMiddleware(): KeqMiddleware { /* ... */ }
+
+// ❌ 不好的做法：功能混杂
+function megaMiddleware(): KeqMiddleware {
+  // 既做认证，又做日志
+}
+```
+:::
+
 ### 添加自定义选项
 
 中间件可以通过 TypeScript 模块扩展添加自定义选项，让使用者在调用时灵活控制行为。
@@ -215,23 +229,69 @@ await Promise.all([
 |:-----|:-----|
 | `baseOrigin` | 默认的请求域名（浏览器默认为 `window.location.origin`，Node.js 默认为 `http://127.0.0.1`） |
 | `qs` | 查询参数序列化选项 |
+| `middlewares` | 初始中间件数组 |
+| `terminalMiddlewares` | 自定义终端中间件（替换内置的 flowControl/timeout/fetch 管线） |
 
 :::tip `keq` 导出的 `request` 对象也是一个默认的 `KeqRequest` 实例。
 :::
 
-:::tip 中间件应该遵循职责单一原则：
+## 共享与继承中间件
+
+当多个 API 客户端需要共用一些中间件（如认证、日志），又各自有独立的配置时，可以通过实例继承来避免重复注册。
+
+### fork() - 派生子实例
+
+`fork()` 从当前实例派生出一个子实例，子实例会自动继承父实例的所有中间件：
 
 ```typescript
-// ✅ 好的做法：功能单一
-function authMiddleware(token: string): KeqMiddleware { /* ... */ }
-function logMiddleware(): KeqMiddleware { /* ... */ }
+import { request } from "keq"
 
-// ❌ 不好的做法：功能混杂
-function megaMiddleware(): KeqMiddleware {
-  // 既做认证，又做日志
-}
+// 父实例添加全局中间件
+request.use(authMiddleware())
+request.use(logMiddleware())
+
+// 派生子实例，继承父实例的 authMiddleware 和 logMiddleware
+const catAPI = request.fork({ baseOrigin: "https://cat-api.example.com" })
+const dogAPI = request.fork({ baseOrigin: "https://dog-api.example.com" })
+
+// 子实例可以添加自己的中间件，不影响父实例和其他子实例
+catAPI.use(catCacheMiddleware())
+
+await catAPI.get("/cats")   // 执行：authMiddleware → logMiddleware → catCacheMiddleware → fetch
+await dogAPI.get("/dogs")   // 执行：authMiddleware → logMiddleware → fetch
 ```
-:::
+
+### inherit() / adopt() - 跨实例复用中间件
+
+`fork()` 在派生时自动共享中间件。对于已独立创建的实例，`inherit()` 和 `adopt()` 提供了相同的能力：
+
+```typescript
+import { KeqRequest } from "keq"
+
+const shared = new KeqRequest()
+shared.use(authMiddleware())
+
+const userAPI = new KeqRequest({ baseOrigin: "https://api.example.com" })
+
+// 以下两种写法等价：
+userAPI.inherit(shared)
+// 或
+shared.adopt(userAPI)
+```
+
+关联之后，`shared` 上的中间件会对 `userAPI` 的所有请求生效，而 `userAPI` 自身注册的中间件不会影响 `shared`：
+
+```typescript
+// shared 后续添加的中间件，同样会对 userAPI 生效
+shared.use(logMiddleware())
+
+// userAPI 自身的中间件，仅在 userAPI 内部生效
+userAPI.use(cacheMiddleware())
+
+await userAPI.get("/me")
+// 执行顺序：authMiddleware → logMiddleware → cacheMiddleware → fetch
+```
+
 
 {/* ## 最佳实践
 

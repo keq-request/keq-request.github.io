@@ -19,6 +19,27 @@ await request
 实际请求次数为 `retryTimes + 1`。例如 `.retry(3, 1000)` 表示最多会发起 4 次请求（1 次原始请求 + 3 次重试）。
 :::
 
+:::caution 重试执行范围
+每次重试会**重新执行整个中间件管线**，而非仅重新发起 fetch 请求。如果你的中间件有副作用（如日志记录、计数器递增、Token 刷新等），需要通过 `context.data.retry.attempt` 判断当前是否为重试请求：
+
+```typescript
+import { KeqMiddleware } from 'keq'
+
+const logMiddleware: KeqMiddleware = async (context, next) => {
+  const attempt = context.data.retry?.attempt ?? 0
+
+  if (attempt === 0) {
+    // 仅在首次请求时执行
+    console.log("发起请求:", context.request.__url__.href)
+  } else {
+    console.log(`第 ${attempt} 次重试`)
+  }
+
+  await next()
+}
+```
+:::
+
 ## 参数说明
 
 | 参数       | 类型                           | 默认值                        | 描述                           |

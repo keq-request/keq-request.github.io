@@ -2,15 +2,14 @@
   "version": "2.0.0",
   "tasks": [
     {
-      "label": "Start Docusaurus Dev Server",
       "type": "shell",
       "command": "pnpm start",
-      "problemMatcher": [],
       "isBackground": true,
-      "presentation": {
-        "reveal": "always",
-        "panel": "new",
-        "focus": false
+      "label": "pnpm start",
+      "detail": "pnpm start",
+      "group": {
+        "kind": "build",
+        "isDefault": true
       }
     }
   ]

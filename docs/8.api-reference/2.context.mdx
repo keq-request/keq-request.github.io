@@ -1,0 +1,125 @@
+# Context 属性参考
+
+[Fetch MDN]: https://developer.mozilla.org/en-US/docs/Web/API/Fetch
+[Headers MDN]: https://developer.mozilla.org/en-US/docs/Web/API/Headers
+[Response MDN]: https://developer.mozilla.org/en-US/docs/Web/API/Response
+[URL MDN]: https://developer.mozilla.org/en-US/docs/Web/API/URL
+
+本页列出 `context` 对象的完整属性定义，供中间件开发时查阅。
+
+## 顶层属性
+
+| 属性 | 描述 |
+|:-----|:-----|
+| `context.request` | HTTP 请求参数（URL、方法、请求头、请求体等） |
+| `context.response` | **[Readonly]** HTTP 响应代理对象，可多次读取响应体 |
+| `context.res` | 原始 Fetch [Response][Response MDN] 对象 |
+| `context.options` | 通过 `.option()` 设置的自定义选项 |
+| `context.output` | **[Writeonly]** 覆盖 `await request.get(...)` 的最终解析值，仅在默认解析模式下生效 |
+| `context.data` | 请求级别的共享数据，在请求完成后自动清理 |
+| `context.global` | 全局共享数据，不会随请求结束而销毁 |
+| `context.orchestration` | **[Readonly]** 详见[进阶 - 中间件调度与执行](../advanced/middleware-orchestrator#contextorchestration-属性详解) |
+| `context.locationId` | **[Readonly]** 请求代码的位置标识（文件路径+行号） |
+
+## context.request
+
+包含发送 HTTP 请求所需的所有参数：
+
+| 属性 | 描述 |
+|:-----|:-----|
+| `context.request.url` | 请求 [URL][URL MDN] 对象 |
+| `context.request.__url__` | **只读** 合并了路由参数后的完整请求 [URL][URL MDN] |
+| `context.request.method` | HTTP 方法（'get', 'post', 'put', 'patch', 'delete', 'head', 'options'） |
+| `context.request.headers` | 请求头（[Headers][Headers MDN] 对象） |
+| `context.request.body` | 请求体 |
+| `context.request.pathParameters` | 路由参数对象 |
+| `context.request.abort()` | 中止当前请求 |
+| `context.request.credentials` | [Fetch API][Fetch MDN] 的 credentials 选项 |
+| `context.request.mode` | [Fetch API][Fetch MDN] 的 mode 选项 |
+| `context.request.cache` | [Fetch API][Fetch MDN] 的 cache 选项 |
+| `context.request.redirect` | [Fetch API][Fetch MDN] 的 redirect 选项 |
+| `context.request.referrer` | [Fetch API][Fetch MDN] 的 referrer 选项 |
+| `context.request.referrerPolicy` | [Fetch API][Fetch MDN] 的 referrerPolicy 选项 |
+| `context.request.integrity` | [Fetch API][Fetch MDN] 的 integrity 选项 |
+| `context.request.keepalive` | [Fetch API][Fetch MDN] 的 keepalive 选项 |
+
+### 路由参数
+
+使用 `context.request.pathParameters` 和 `context.request.__url__` 处理路由参数：
+
+```typescript
+import { request } from "keq"
+
+request.use(async (context, next) => {
+  console.log("原始 URL:", context.request.url.href)
+  console.log("路由参数:", context.request.pathParameters)
+  console.log("实际 URL:", context.request.__url__.href)
+
+  await next()
+})
+
+await request.get("/users/{id}").params("id", "123")
+// 原始 URL: /users/{id}
+// 路由参数: { id: "123" }
+// 实际 URL: /users/123
+```
+
+## context.response
+
+`context.response` 是原始 [Response][Response MDN] 对象的代理，解决了 [Response][Response MDN] 对象的方法（如 `.json()`、`.text()`）只能调用一次的限制，允许多个中间件安全地读取响应体。
+
+### context.res
+
+`context.res` 是原始的 Fetch [Response][Response MDN] 对象。大多数情况下应该使用 `context.response`，只有在需要访问原始 Response 对象时才使用 `context.res`。
+
+## context.output
+
+**[Writeonly]** 允许中间件覆盖 `await request.get(...)` 的最终解析值。
+
+默认情况下，Keq 根据响应的 `Content-Type` 自动解析响应体（intelligent 模式）。设置 `context.output` 后，自动解析被跳过，调用者直接拿到该值。
+
+仅当 `resolveWith` 未设置或为 `'intelligent'` 时生效。若调用者使用了 `.resolveWith('json')` 等指定模式，`context.output` 会被忽略。
+
+## context.options
+
+通过 `.option()` 方法设置的自定义选项。
+
+**内置选项及其默认值：**
+
+| 选项 | 默认值 | 描述 |
+|:-----|:------|:-----|
+| `context.options.fetchAPI` | `global.fetch` | 用于发送请求的 [Fetch API][Fetch MDN] 实现 |
+| `context.options.resolveWith` | `"intelligent"` | 响应体解析方式 |
+| `context.options.retry.times` | `undefined` | 重试次数 |
+| `context.options.retry.delay` | `undefined` | 重试延迟时间（毫秒） |
+| `context.options.retry.on` | `undefined` | 自定义重试条件函数 |
+| `context.options.timeout` | `undefined` | 超时配置对象（`{ millisecond: number }`） |
+| `context.options.flowControl` | `undefined` | 并发控制模式 |
+
+## context.data
+
+请求级别的共享数据对象，用于在同一请求的多个中间件之间共享数据。请求完成后自动销毁。
+
+## context.global
+
+全局共享数据，不会随请求结束而销毁。使用时需要特别注意内存管理。
+
+```typescript
+import { KeqMiddleware } from "keq"
+
+const key = Symbol('myMiddleware')
+
+const middleware: KeqMiddleware = async (context, next) => {
+  context.global[key] = { startTime: Date.now() }
+
+  try {
+    await next()
+  } finally {
+    delete context.global[key]
+  }
+}
+```
+
+## context.orchestration
+
+中间件编排器，提供中间件执行状态和 fork 能力，详见[进阶 - 中间件调度与执行](../advanced/middleware-orchestrator)。

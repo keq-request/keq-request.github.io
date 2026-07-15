@@ -34,6 +34,7 @@ KeqContext (TypeScript Interface)
 |:---------|:-----|:-----|
 | `context.orchestration.middlewares` | `KeqMiddlewareContext[]` | 中间件执行状态数组，记录所有中间件的执行情况 |
 | `context.orchestration.fork()` | `Function` | 创建独立的中间件执行分支，用于并行或后台执行 |
+| `context.orchestration.merge(source)` | `Function` | 将分支执行的结果合并回当前上下文 |
 
 ### `context.orchestration.middlewares`
 
@@ -121,6 +122,26 @@ const swrCacheMiddleware: KeqMiddleware = async (context: KeqExecutionContext, n
 - 分叉的执行会触发后续完整的中间件链，包括所有副作用（如重试、日志记录等）
 - `fork()` 也复制了当前的执行状态。你不可能执行已经执行过的中间件。
 :::
+
+### `context.orchestration.merge(source)`
+
+将一个已完成的分支执行器的结果（`response`、`res`、`output` 等）合并回当前上下文。通常与 `fork()` 配合使用，当你需要在后台执行请求，然后将结果同步回主链路时非常有用：
+
+```typescript
+import { KeqMiddleware, KeqExecutionContext } from 'keq'
+
+const backgroundRefresh: KeqMiddleware = async (context: KeqExecutionContext, next) => {
+  const forkedExecutor = context.orchestration.fork()
+
+  // 执行分支
+  await forkedExecutor.execute()
+
+  // 将分支结果合并回当前上下文
+  context.orchestration.merge(forkedExecutor)
+
+  // 此时 context.response 已更新为分支执行的结果
+}
+```
 
 
 

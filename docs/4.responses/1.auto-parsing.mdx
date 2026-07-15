@@ -1,0 +1,75 @@
+# 响应解析
+
+## 自动解析
+
+Keq 会根据响应的 `Content-Type` 自动选择合适的解析方式：
+
+import IntelligentTable from '@site/docs/components/_intelligent-table.mdx'
+
+<IntelligentTable />
+
+
+```typescript
+import { request } from "keq"
+
+// 假设响应的 Content-Type 是 application/json
+const cats = await request.get("/cats")
+
+console.log(`找到了 ${cats.length} 只猫咪`)
+console.log(`第一只猫咪叫：${cats[0].name}`)
+```
+
+## 手动指定解析方式
+
+使用 `.resolveWith()` 可以手动指定如何解析响应体，忽略 `Content-Type`：
+
+```typescript
+import { request } from "keq"
+
+// 强制解析为 JSON（即使 Content-Type 不是 application/json）
+const cats = await request
+  .get("/cats")
+  .resolveWith("json")
+
+// 强制解析为文本
+const text = await request
+  .get("/cats")
+  .resolveWith("text")
+
+// 解析为 FormData
+const form = await request
+  .get("/cats")
+  .resolveWith("form-data")
+
+// 解析为 Blob
+const blob = await request
+  .get("/cats")
+  .resolveWith("blob")
+
+// 解析为 ArrayBuffer
+const buffer = await request
+  .get("/cats")
+  .resolveWith("array-buffer")
+```
+
+## 获取原始 Response 对象
+
+如果需要访问原始的 `Response` 对象（例如读取响应头、状态码等），可以使用 `.resolveWith("response")`：
+
+```typescript
+import { request } from "keq"
+
+// 获取原始 Response 对象
+const response = await request
+  .get("/cats")
+  .resolveWith("response")
+
+// 访问响应信息
+console.log(response.status)        // 200
+console.log(response.statusText)    // "OK"
+console.log(response.headers.get("content-type"))
+
+// 手动解析响应体
+const cats = await response.json()
+console.log(cats)
+```

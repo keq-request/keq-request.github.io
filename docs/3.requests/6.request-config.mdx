@@ -1,0 +1,90 @@
+# 请求配置
+
+Keq 封装了 Fetch API 的配置选项，提供了更便捷的链式 API。本节介绍认证、请求模式等进阶配置。
+
+## HTTP Basic 认证
+
+使用 `.auth()` 方法设置 HTTP Basic 认证，自动编码为 Base64 格式：
+
+```typescript
+import { request } from "keq"
+
+await request
+  .get("https://api.example.com/admin/users")
+  .auth("username", "password")
+// 等价于 .set("Authorization", "Basic dXNlcm5hbWU6cGFzc3dvcmQ=")
+```
+
+## 凭证模式（credentials）
+
+控制浏览器是否在跨域请求中发送 Cookie：
+
+```typescript
+import { request } from "keq"
+
+// 跨域请求携带 Cookie
+await request
+  .get("https://api.example.com/cats")
+  .credentials("include")
+
+// 仅同源请求携带（默认）
+await request
+  .get("https://api.example.com/cats")
+  .credentials("same-origin")
+
+// 不发送 Cookie
+await request
+  .get("https://api.example.com/cats")
+  .credentials("omit")
+```
+
+## 请求模式（mode）
+
+控制请求的跨域行为：
+
+```typescript
+import { request } from "keq"
+
+// CORS 模式（默认）
+await request
+  .get("https://api.example.com/cats")
+  .mode("cors")
+
+// 不允许跨域
+await request
+  .get("/api/cats")
+  .mode("same-origin")
+
+// 简单跨域（不触发预检，限制可用方法和头）
+await request
+  .get("https://api.example.com/cats")
+  .mode("no-cors")
+```
+
+## 重定向处理（redirect）
+
+控制如何处理 HTTP 重定向响应：
+
+```typescript
+import { request } from "keq"
+
+// 自动跟随重定向（默认）
+await request
+  .get("https://api.example.com/cats")
+  .redirect("follow")
+
+// 手动处理重定向（返回重定向响应本身）
+const response = await request
+  .get("https://api.example.com/cats")
+  .redirect("manual")
+  .resolveWith("response")
+
+if (response.status === 302) {
+  console.log("重定向到:", response.headers.get("Location"))
+}
+
+// 遇到重定向时报错
+await request
+  .get("https://api.example.com/cats")
+  .redirect("error")
+```

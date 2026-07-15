@@ -1,0 +1,136 @@
+# 错误处理
+
+统一错误处理是中间件的核心应用场景之一。通过中间件，你可以集中处理所有请求的错误，避免在每个请求中重复编写 try/catch 逻辑。
+
+## 使用 instanceof 判断错误类型
+
+```typescript
+import { request, RequestException, TimeoutException } from 'keq'
+
+try {
+  await request.get('/cats').timeout(5000)
+} catch (err) {
+  if (err instanceof TimeoutException) {
+    console.error('请求超时，请稍后重试')
+  } else if (err instanceof RequestException) {
+    console.error(`请求失败: ${err.statusCode} ${err.message}`)
+  } else {
+    console.error('未知错误:', err)
+  }
+}
+```
+
+:::tip
+异常类的完整定义和参数说明，请参阅 [API 参考 - 异常类型](../api-reference/exceptions)。
+:::
+
+## 在中间件中统一处理错误
+
+```typescript
+import { request, KeqMiddleware, RequestException } from 'keq'
+
+function errorHandler(): KeqMiddleware {
+  return async (context, next) => {
+    await next()
+
+    if (context.response) {
+      const { status, statusText } = context.response
+
+      if (status === 401) {
+        throw new RequestException(401, statusText, { fatal: true })
+      } else if (status === 403) {
+        throw new RequestException(403, statusText, { fatal: true })
+      } else if (status === 404) {
+        throw new RequestException(404, statusText, { fatal: true })
+      } else if (status >= 400 && status < 500) {
+        // 其他客户端错误不重试
+        throw new RequestException(status, statusText, { fatal: true })
+      } else if (status >= 500) {
+        // 服务器错误可重试
+        const message = await context.response.text()
+        throw new RequestException(status, message)
+      }
+    }
+  }
+}
+
+request.use(errorHandler())
+```
+
+## 精确捕获不同类型的错误
+
+```typescript
+import { request, RequestException } from 'keq'
+
+try {
+  await request.get('/cats')
+} catch (err) {
+  if (err instanceof RequestException) {
+    switch (err.statusCode) {
+      case 401:
+        console.error('未授权，请先登录')
+        break
+      case 403:
+        console.error('没有权限访问该资源')
+        break
+      case 404:
+        console.error('资源不存在')
+        break
+      default:
+        console.error(`请求失败: ${err.statusCode} ${err.message}`)
+    }
+  }
+}
+```
+
+## 使用自定义异常类
+
+```typescript
+import { request, KeqMiddleware, RequestException } from 'keq'
+
+// 自定义异常类
+export class UnauthorizedException extends RequestException {
+  constructor(message?: string) {
+    super(401, message || 'Unauthorized', { fatal: true })
+    this.name = 'UnauthorizedException'
+  }
+}
+
+export class ForbiddenException extends RequestException {
+  constructor(message?: string) {
+    super(403, message || 'Forbidden', { fatal: true })
+    this.name = 'ForbiddenException'
+  }
+}
+
+function errorHandler(): KeqMiddleware {
+  return async (context, next) => {
+    await next()
+
+    if (context.response) {
+      const { status, statusText } = context.response
+
+      if (status === 401) {
+        throw new UnauthorizedException(statusText)
+      } else if (status === 403) {
+        throw new ForbiddenException(statusText)
+      } else if (status >= 400) {
+        throw new RequestException(status, statusText)
+      }
+    }
+  }
+}
+
+request.use(errorHandler())
+
+// 使用时可以精确捕获不同类型的错误
+try {
+  await request.get('/cats')
+} catch (err) {
+  if (err instanceof UnauthorizedException) {
+    // 跳转到登录页
+  } else if (err instanceof ForbiddenException) {
+    // 显示权限不足提示
+  }
+}
+```

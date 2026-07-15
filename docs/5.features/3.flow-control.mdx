@@ -1,6 +1,6 @@
 # 并发控制
 
-并发控制用于管理多个请求同时发送时的行为。Keq 提供了三种控制策略：串行执行（`serial`）、中止旧请求（`abort`）和互斥锁（`mutex`）。
+并发控制用于管理多个请求同时发送时的行为。Keq 提供了四种控制策略：串行执行（`serial`）、并发限流（`concurrent`）、中止旧请求（`abort`）和互斥锁（`mutex`）。
 
 ## 为什么需要并发控制？
 
@@ -26,9 +26,6 @@ await request
   .flowControl("serial", "cat-api") // 命名队列
 ```
 
-:::tip [`context.locationId` 是什么](../middleware/context#主要属性)
-:::
-
 ### 实际场景：批量请求
 
 处理多个请求时，确保它们按顺序执行：
@@ -52,6 +49,47 @@ await Promise.all(
 浏览器对同一域名的并发 HTTP 连接数有限制（通常为 6 个）。使用 `serial` 模式可以精确控制并发数，避免请求排队。
 :::
 
+## 并发限流 - concurrent
+
+concurrent 模式允许同一队列中最多同时执行指定数量的请求，超出的请求会排队等待。相比 `serial` 的逐个执行，`concurrent` 在控制并发量的同时保留了并行能力。
+
+### 基本用法
+
+```typescript
+import { request } from "keq"
+
+await request
+  .get("/api/cats")
+  .flowControl("concurrent", 3/*, context.locationId */)
+
+await request
+  .get("/api/cats/random")
+  .flowControl("concurrent", 3, "cat-api") // 命名队列，最多 3 个并发
+```
+
+### 实际场景：批量下载
+
+处理大量请求时，限制并发数避免服务端过载：
+
+```typescript
+import { request } from "keq";
+
+const catIds = Array.from({ length: 100 }, (_, i) => i + 1);
+
+// 最多同时发送 5 个请求，其余排队等待
+await Promise.all(
+  catIds.map((id) =>
+    request
+      .get(`/api/cats/${id}`)
+      .flowControl("concurrent", 5, "cat-download")
+  )
+);
+```
+
+:::tip serial vs concurrent
+`serial` 等价于 `concurrent` 并发数为 1 的情况。当需要严格顺序时用 `serial`，当只需限流时用 `concurrent`。
+:::
+
 ## 中止旧请求 - abort
 
 abort 模式在发送新请求时会自动中止同一队列中未完成的旧请求，确保只有最新的请求在执行。
@@ -69,9 +107,6 @@ await request
   .get("/api/cats/search")
   .flowControl("abort", "cat-search"); // 命名队列
 ```
-
-:::tip [`context.locationId` 是什么](../middleware/context#主要属性)
-:::
 
 ### 实际场景：搜索建议
 
@@ -138,9 +173,6 @@ await request
   .get("/api/cats")
   .flowControl("mutex", "cat-api") // 命名队列
 ```
-
-:::tip [`context.locationId` 是什么](../middleware/context#主要属性)
-:::
 
 ### 实际场景：轮询保护
 

@@ -1,0 +1,80 @@
+# 请求体
+
+## JSON 格式
+
+发送 JSON 数据是最常见的场景，只需调用 `.send()` 并传入对象：
+
+```typescript
+import { request } from "keq"
+
+await request
+  .post("/cats")
+  .send({
+    name: "mimi",
+    age: 3,
+    breed: "british_shorthair"
+  })
+```
+
+:::tip 自动设置 Content-Type
+当 `.send()` 的参数是普通对象时，Keq 会自动将 `Content-Type` 设置为 `application/json`。
+:::
+
+## FormData 格式
+
+### 使用链式 API
+
+Keq 提供了便捷的 API 来构造 FormData：
+
+```typescript
+import { request } from "keq"
+
+await request
+  .post("/cats")
+  .field("name", "mimi")
+  .field("age", 3)
+  .attach("avatar", imageBlob)  // 上传文件
+```
+
+:::tip 自动设置 Content-Type
+调用 `.field()` 或 `.attach()` 时，Keq 会自动将 `Content-Type` 设置为 `multipart/form-data`。
+:::
+
+### 使用原生 FormData
+
+你也可以直接传入 `FormData` 对象：
+
+```typescript
+import { request } from "keq"
+
+const form = new FormData()
+form.append("name", "mimi")
+form.append("age", "3")
+form.append("avatar", imageBlob)
+
+await request
+  .post("/cats")
+  .send(form)
+```
+
+:::tip 自动设置 Content-Type
+当 `.send()` 的参数是 `FormData` 实例时，Keq 会自动将 `Content-Type` 设置为 `multipart/form-data`。
+:::
+
+## URL 编码格式
+
+要发送 `application/x-www-form-urlencoded` 格式的数据，需要使用 `.type()` 方法显式指定：
+
+```typescript
+import { request } from "keq"
+
+await request
+  .post("/cats")
+  .type("form")
+  .send({ name: "mimi", age: 3 })
+  .send("breed=british_shorthair")  // 也可以追加字符串
+```
+
+:::info Content-Type 优先级
+`.type()` 显式设置的 `Content-Type` 优先级最高，会覆盖 `.send()`、`.field()`、`.attach()` 的自动推断。
+:::

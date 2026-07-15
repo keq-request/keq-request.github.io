@@ -25,7 +25,7 @@ console.log(response.name)
 1. 如果中间件设置了 `context.output`，则直接返回该值
 2. 否则，根据响应的 `Content-Type` 自动选择序列化方式
 
-import IntelligentTable from '../components/_intelligent-table.mdx'
+import IntelligentTable from '@site/docs/components/_intelligent-table.mdx'
 
 <IntelligentTable />
 
@@ -133,6 +133,36 @@ const formData = await request
 console.log(formData.get("name"))
 console.log(formData.get("breed"))
 ```
+
+### sse
+
+将响应体解析为 [Server-Sent Events](https://developer.mozilla.org/en-US/docs/Web/API/Server-sent_events) 流，返回 `ReadableStream<ServerSentEvent>` 对象。适合处理 `text/event-stream` 类型的响应，例如 AI 对话流式输出、实时通知推送等场景：
+
+```typescript
+import { request } from "keq"
+
+const stream = await request
+  .get("/api/notifications")
+  .resolveWith("sse")
+
+for await (const event of stream) {
+  console.log(event.event) // 事件类型，如 "message"、"update" 等
+  console.log(event.data)  // 事件数据
+  console.log(event.id)    // 事件 ID（可选）
+}
+```
+
+:::tip intelligent 模式自动处理
+当响应的 `Content-Type` 为 `text/event-stream` 时，`intelligent` 模式会自动使用 SSE 解析，无需手动指定 `.resolveWith("sse")`。
+:::
+
+Keq 内部使用 [eventsource-parser](https://github.com/rexxars/eventsource-parser) 将原始字节流通过 `TextDecoderStream` 和 `EventSourceParserStream` 管道处理，解析为结构化的 `ServerSentEvent` 对象。每个事件对象包含以下字段：
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| `event` | `string \| undefined` | 事件类型（对应 SSE 的 `event:` 字段，未声明时为 `undefined`） |
+| `data` | `string` | 事件数据（对应 SSE 的 `data:` 字段） |
+| `id` | `string \| undefined` | 事件 ID（对应 SSE 的 `id:` 字段） |
 
 ### response
 

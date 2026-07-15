@@ -1,0 +1,35 @@
+# HTTP 方法
+
+Keq 支持所有常见的 HTTP 方法，API 简洁明了：
+
+```typescript
+import { request } from "keq"
+
+// GET 请求
+await request.get("https://example.com/cats")
+
+// POST 请求
+await request.post("https://example.com/cats")
+
+// PUT 请求
+await request.put("https://example.com/cats/1")
+
+// PATCH 请求
+await request.patch("https://example.com/cats/1")
+
+// DELETE 请求
+await request.delete("https://example.com/cats/1")
+await request.del("https://example.com/cats/1") // .del() 是 .delete() 的别名
+
+// HEAD 请求
+await request.head("https://example.com/cats")
+
+// OPTIONS 请求（常用于 CORS 预检调试）
+await request.options("https://api.example.com/cats")
+```
+
+:::tip 自动补全 URL
+如果 URL 只包含路径（如 `/cats`），Keq 会自动补全域名：
+- **浏览器环境**：使用 `window.location.origin`
+- **Node.js 环境**：使用 `http://127.0.0.1`
+:::
