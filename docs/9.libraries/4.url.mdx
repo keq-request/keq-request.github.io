@@ -21,11 +21,24 @@ await request.get("/test")
 // 请求将发送至 'http://example.com/api/test'
 ```
 
+`setBaseUrl` 也可以接收一个相对路径，此时仅作为路径前缀拼接，不改变请求的 origin：
+
+```typescript
+import { request } from "keq"
+import { setBaseUrl } from "@keq-request/url"
+
+request
+  .use(setBaseUrl("/api/v1"))
+
+await request.get("/test")
+// 请求将发送至 '/api/v1/test'
+```
+
 ## `setOrigin(origin)`
 
 ```typescript
 import { request } from "keq"
-import { setOrigin } from "keq-url"
+import { setOrigin } from "@keq-request/url"
 
 request
   .use(setOrigin("http://example.com:8080"))
@@ -38,7 +51,7 @@ await request.get("http://test.com/test")
 
 ```typescript
 import { request } from "keq"
-import { setHost } from "keq-url"
+import { setHost } from "@keq-request/url"
 
 request
   .use(setHost("example.com"))

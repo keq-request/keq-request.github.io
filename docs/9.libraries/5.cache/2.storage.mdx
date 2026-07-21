@@ -11,12 +11,13 @@
 | 参数名          | 类型                                   | 默认值                    | 说明                                                           |
 | :-------------- | :------------------------------------- | :------------------------ | :------------------------------------------------------------- |
 | size            | `number`                               | `Infinity`                | 最大存储容量（字节），当容量不足时会根据淘汰策略删除缓存数据    |
-| eviction        | `Eviction`                             | `Eviction.VOLATILE_TTL`   | 内存不足时的淘汰策略，[查看详情](#淘汰策略)                    |
-| onCacheGet      | `(event: OnCacheGetEvent) => void`     | `undefined`               | 缓存被获取时的回调函数                                         |
-| onCacheSet      | `(event: OnCacheSetEvent) => void`     | `undefined`               | 缓存被添加/更新时的回调函数                                    |
-| onCacheRemove   | `(event: OnCacheRemoveEvent) => void`  | `undefined`               | 缓存被删除时的回调函数                                         |
-| onCacheEvict    | `(event: OnCacheEvictEvent) => void`   | `undefined`               | 缓存被淘汰时的回调函数                                         |
-| onCacheExpired  | `(event: OnCacheExpiredEvent) => void` | `undefined`               | 缓存过期时的回调函数                                           |
+| eviction        | `Eviction`                             | `Eviction.LRU`            | 内存不足时的淘汰策略，[查看详情](#淘汰策略)                    |
+| debug           | `boolean`                              | `false`                   | 是否开启调试日志输出                                           |
+| onCacheGet      | `(event: OnCacheGetEvent) => void`     | `undefined`               | 缓存被获取时的回调函数。事件包含 `key: string`                 |
+| onCacheSet      | `(event: OnCacheSetEvent) => void`     | `undefined`               | 缓存被添加/更新时的回调函数。事件包含 `key: string`            |
+| onCacheRemove   | `(event: OnCacheRemoveEvent) => void`  | `undefined`               | 缓存被删除时的回调函数。事件包含 `key: string`                 |
+| onCacheEvict    | `(event: OnCacheEvictEvent) => void`   | `undefined`               | 缓存被淘汰时的回调函数。事件包含 `keys: string[]`              |
+| onCacheExpired  | `(event: OnCacheExpiredEvent) => void` | `undefined`               | 缓存过期时的回调函数。事件包含 `keys: string[]`                |
 
 ### 使用示例
 
@@ -32,6 +33,17 @@ const storage = new MemoryStorage({
 request.use(cache({ storage }))
 ```
 
+### 调试
+
+`MemoryStorage` 提供了 `print()` 方法，可以将缓存中所有条目以表格形式打印到控制台，方便调试：
+
+```typescript
+const storage = new MemoryStorage({ debug: true })
+
+// 打印所有缓存条目的信息（key、大小、过期时间、访问次数、最后访问时间、响应状态等）
+await storage.print()
+```
+
 ## IndexedDBStorage
 
 `IndexedDBStorage` 将缓存数据存储在 IndexedDB 中，数据持久化，页面刷新后仍然保留。
@@ -41,13 +53,14 @@ request.use(cache({ storage }))
 | 参数名          | 类型                                   | 默认值                             | 说明                                                           |
 | :-------------- | :------------------------------------- | :--------------------------------- | :------------------------------------------------------------- |
 | size            | `number`                               | `Infinity`                         | 最大存储容量（字节），当容量不足时会根据淘汰策略删除缓存数据    |
-| eviction        | `Eviction`                             | `Eviction.VOLATILE_TTL`            | 存储空间不足时的淘汰策略，[查看详情](#淘汰策略)                |
+| eviction        | `Eviction`                             | `Eviction.LRU`                     | 存储空间不足时的淘汰策略，[查看详情](#淘汰策略)                |
 | tableName       | `string`                               | `'keq_cache_indexed_db_storage'`   | IndexedDB 的表名，**使用相同表名的多个实例将共享缓存数据**     |
-| onCacheGet      | `(event: OnCacheGetEvent) => void`     | `undefined`                        | 缓存被获取时的回调函数                                         |
-| onCacheSet      | `(event: OnCacheSetEvent) => void`     | `undefined`                        | 缓存被添加/更新时的回调函数                                    |
-| onCacheRemove   | `(event: OnCacheRemoveEvent) => void`  | `undefined`                        | 缓存被删除时的回调函数                                         |
-| onCacheEvict    | `(event: OnCacheEvictEvent) => void`   | `undefined`                        | 缓存被淘汰时的回调函数                                         |
-| onCacheExpired  | `(event: OnCacheExpiredEvent) => void` | `undefined`                        | 缓存过期时的回调函数                                           |
+| debug           | `boolean`                              | `false`                            | 是否开启调试日志输出                                           |
+| onCacheGet      | `(event: OnCacheGetEvent) => void`     | `undefined`                        | 缓存被获取时的回调函数。事件包含 `key: string`                 |
+| onCacheSet      | `(event: OnCacheSetEvent) => void`     | `undefined`                        | 缓存被添加/更新时的回调函数。事件包含 `key: string`            |
+| onCacheRemove   | `(event: OnCacheRemoveEvent) => void`  | `undefined`                        | 缓存被删除时的回调函数。事件包含 `key: string`                 |
+| onCacheEvict    | `(event: OnCacheEvictEvent) => void`   | `undefined`                        | 缓存被淘汰时的回调函数。事件包含 `keys: string[]`              |
+| onCacheExpired  | `(event: OnCacheExpiredEvent) => void` | `undefined`                        | 缓存过期时的回调函数。事件包含 `keys: string[]`                |
 
 ### 使用示例
 
@@ -138,6 +151,23 @@ const storage = new TierStorage({
 })
 
 request.use(cache({ storage }))
+```
+
+## Size 常量
+
+`Size` 枚举提供了常用的字节单位常量，用于方便地配置存储容量：
+
+| 常量      | 值                | 说明    |
+| :-------- | :---------------- | :------ |
+| `Size.B`  | `1`               | 字节    |
+| `Size.KB` | `1024`            | 千字节  |
+| `Size.MB` | `1024 * 1024`     | 兆字节  |
+| `Size.GB` | `1024 * 1024 * 1024` | 吉字节  |
+
+```typescript
+import { Size } from "@keq-request/cache"
+
+const size = 10 * Size.MB // 10485760 字节
 ```
 
 ## 淘汰策略

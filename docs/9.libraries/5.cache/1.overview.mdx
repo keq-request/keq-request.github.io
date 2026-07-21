@@ -2,15 +2,16 @@
 
 ## 简介
 
-`@keq-request/cache` 是一个为 Keq 请求库提供缓存功能的中间件。它为无法使用 [Service Worker](https://developer.mozilla.org/en-US/docs/Web/API/Service_Worker_API) 的项目提供了一个简单而强大的缓存解决方案。
+`@keq-request/cache` 是一个轻量的传输层请求缓存中间件。它在请求发出前后介入，独立于 UI 框架和运行时环境工作——无论是浏览器、Node.js、React Native 还是小程序，都能提供一致的缓存能力。
 
 ### 核心特性
 
-- 🚀 **零配置启动** - 开箱即用的缓存功能
-- 🎯 **多种缓存策略** - 支持网络优先、缓存优先、仅网络等多种策略
-- 💾 **灵活的存储方案** - 支持内存、IndexedDB 以及多层缓存
-- 🎨 **规则化配置** - 通过规则灵活控制不同请求的缓存行为
-- 🔧 **可扩展** - 支持自定义缓存策略和存储实现
+- 🎯 **多种缓存策略** - Network First、Cache First、Stale-While-Revalidate、Network Only，并支持自定义策略和策略组合
+- 💾 **多层存储架构** - 内存、IndexedDB、多级缓存联动，内置 LRU/LFU/TTL/Random 淘汰策略
+- 🔒 **请求串行化** - 同一缓存键的并发请求自动排队，避免缓存击穿和重复请求
+- 📡 **可观测** - cache:hit / cache:miss / cache:update 事件 + Server-Timing 响应头
+- 🎨 **规则化配置** - 全局规则匹配 + 请求级覆盖，灵活控制粒度
+- 🔧 **可扩展** - 自定义缓存策略函数、自定义存储实现
 
 ## 快速开始
 
@@ -112,6 +113,7 @@ request
 | key                     | `(ctx) => string`                                  | 使用全局 `keyFactory`                              | 自定义缓存键生成函数                                           |
 | strategy                | `Strategy`                                         | `Strategy.NETWORK_FIRST`                           | 缓存策略，[详见 缓存策略](./strategies)                        |
 | ttl                     | `number`                                           | `Infinity`                                         | 缓存有效期（秒）                                               |
+| concurrent              | `boolean`                                          | `false`                                            | 是否允许同 key 请求并发执行。为 `false` 时同 key 请求排队串行执行 |
 | exclude                 | `(response) => boolean \| Promise<boolean>`        | -                                                  | 排除函数，返回 `true` 时不缓存该响应                           |
 | serverTiming            | `boolean`                                          | `false`                                            | 是否在响应头中添加 `Server-Timing`                             |
 
@@ -133,5 +135,6 @@ request
 | debug             | `boolean`                                          | 打印调试日志                                                   |
 | strategy          | `Strategy`                                         | 缓存策略，[详见 缓存策略](./strategies)                        |
 | ttl               | `number`                                           | 缓存有效期（秒）                                               |
+| concurrent        | `boolean`                                          | 是否允许同 key 请求并发执行。默认 `false`，同 key 请求将排队串行执行以避免缓存击穿 |
 | exclude           | `(response) => boolean \| Promise<boolean>`        | 排除函数，返回 `true` 时不缓存该响应                           |
 | serverTiming      | `boolean`                                          | 是否在响应头中添加 `Server-Timing`                             |

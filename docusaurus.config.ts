@@ -50,9 +50,10 @@ const config: Config = {
               rehypeShikiOptions,
             ],
           ],
+          lastVersion: 'current',
           versions: {
             current: {
-              label: '5.x (Next)',
+              label: '5.x',
               badge: false,
             },
             v2: {

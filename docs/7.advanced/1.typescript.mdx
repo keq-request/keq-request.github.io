@@ -146,3 +146,166 @@ await request
   .get("/api/data")
   .option("silent", true)  // ✅ 有类型提示
 ```
+
+## 扩展 KeqContextData
+
+`KeqContextData` 是请求级别的共享数据接口，用于中间件之间传递数据。通过模块扩展，可以为其添加强类型字段：
+
+```typescript
+import { KeqMiddleware } from "keq"
+
+// 扩展 KeqContextData，添加自定义字段
+declare module "keq" {
+  interface KeqContextData {
+    startTime?: number
+    metrics?: {
+      duration: number
+      size: number
+    }
+  }
+}
+
+// 中间件中读写 context.data 时会有完整的类型提示
+const metricsMiddleware: KeqMiddleware = async (context, next) => {
+  context.data.startTime = Date.now()  // ✅ 类型安全
+
+  await next()
+
+  context.data.metrics = {             // ✅ 结构有类型约束
+    duration: Date.now() - context.data.startTime,
+    size: Number(context.response?.headers.get("content-length") || 0),
+  }
+}
+```
+
+## 扩展 KeqGlobal
+
+`KeqGlobal` 是跨请求共享的全局数据接口。当你需要在请求之间共享状态（如 token 缓存、请求计数器）时，可以扩展它来获得类型约束：
+
+```typescript
+declare module "keq" {
+  interface KeqGlobal {
+    tokenCache?: {
+      accessToken: string
+      expiresAt: number
+    }
+    requestCount?: number
+  }
+}
+
+// 在中间件中类型安全地访问全局数据
+const tokenMiddleware: KeqMiddleware = async (context, next) => {
+  const cache = context.global.tokenCache  // ✅ 类型推导正确
+
+  if (!cache || cache.expiresAt < Date.now()) {
+    // 刷新 token...
+  }
+
+  context.request.headers.set("Authorization", `Bearer ${cache?.accessToken}`)
+  await next()
+}
+```
+
+## 扩展 KeqEvents
+
+通过扩展 `KeqEvents` 接口定义自定义事件的类型签名，使事件的触发和监听都是类型安全的：
+
+```typescript
+import { KeqContext } from "keq"
+
+declare module "keq" {
+  interface KeqEvents {
+    "cache:hit": { context: KeqContext; key: string }
+    "cache:miss": { context: KeqContext; key: string }
+  }
+}
+
+// 触发事件时，参数结构受类型约束
+const cacheMiddleware: KeqMiddleware = async (context, next) => {
+  const key = context.request.url.toString()
+  const cached = getCache(key)
+
+  if (cached) {
+    context.emitter.emit("cache:hit", { context, key })  // ✅ 参数类型正确
+    context.output = cached
+    return
+  }
+
+  context.emitter.emit("cache:miss", { context, key })
+  await next()
+}
+
+// 监听事件时，回调参数有完整的类型提示
+await request
+  .get("/api/cats")
+  .use(cacheMiddleware)
+  .on("cache:hit", ({ key }) => {    // ✅ key 被推导为 string
+    console.log("命中缓存:", key)
+  })
+```
+
+## KeqOperation 字段类型详解
+
+`KeqOperation` 定义了单个 API 操作的完整类型结构。各字段支持的值类型如下：
+
+| 字段 | 类型 | 说明 |
+|:-----|:-----|:-----|
+| `requestParams` | `{ [key: string]: KeqPathParameterInit }` | 路由参数，值支持 URI Template 变量类型（string、number、数组等） |
+| `requestQuery` | `{ [key: string]: KeqQueryInit }` | 查询参数，支持 `string \| number \| bigint \| null \| undefined \| 嵌套对象 \| 数组` |
+| `requestHeaders` | `{ [key: string]: string \| number }` | 请求头 |
+| `requestBody` | `KeqBodyInit` | 请求体，支持 JSON 对象、FormData、URLSearchParams、Blob、ReadableStream、ArrayBuffer、string |
+| `responseBody` | `any` | 响应体，可以是任意类型 |
+
+:::tip 索引签名是必须的
+在定义 `KeqApiSchema` 时，`requestParams`、`requestQuery`、`requestHeaders` 字段都**必须包含索引签名**。这是因为 Keq 的链式 API 同时支持类型约束的已知 key 和动态的任意 key。缺少索引签名会导致编译错误。
+:::
+
+```typescript
+import { KeqApiSchema, KeqQueryValue, KeqPathParameterInit } from "keq"
+
+interface MyApiSchema extends KeqApiSchema {
+  "/users/{id}/posts": {
+    get: {
+      requestParams: {
+        id: string
+        [key: string]: KeqPathParameterInit  // 必须
+      }
+      requestQuery: {
+        page: number
+        limit: number
+        tags: string[]                       // 支持数组类型
+        filter: { status: string }           // 支持嵌套对象
+        [key: string]: KeqQueryValue         // 必须
+      }
+      requestHeaders: {
+        "X-Request-ID": string
+        [key: string]: string | number       // 必须
+      }
+      requestBody: {}
+      responseBody: {
+        data: Array<{ id: string; title: string }>
+        total: number
+      }
+    }
+  }
+}
+```
+
+## 与 keq-cli 配合使用
+
+对于大型项目，手动编写 `KeqApiSchema` 并不现实。[keq-cli](../libraries/cli/overview) 能够从 OpenAPI/Swagger 文档自动生成完整的类型定义，包括所有请求参数、请求体和响应体的类型约束。
+
+```bash
+npx keq-cli build -o ./src/api -m userService ./openapi.json
+```
+
+生成的代码会自动包含完整的 `KeqApiSchema` 类型，开箱即用：
+
+```typescript
+import { request } from "./src/api/user-service"
+
+// 自动拥有完整的类型提示和检查
+const users = await request.get("/users")
+  .query("page", 1)       // ✅ 类型检查
+  .query("limit", 20)     // ✅ 类型检查
+```
