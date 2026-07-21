@@ -1,0 +1,155 @@
+# Introduction
+
+## What is Keq?
+
+Keq is a **TypeScript HTTP client designed for the AI programming era**. Built on the [Fetch API](https://developer.mozilla.org/en-US/docs/Web/API/Fetch_API), it combines [Koa](https://github.com/koajs/koa)'s middleware architecture with [SuperAgent](https://github.com/ladjs/superagent)'s chainable API experience.
+
+Unlike traditional HTTP clients, Keq natively provides complete API awareness for AI programming assistants — your AI assistant can understand every API endpoint in your project and directly generate type-safe calling code.
+
+## Built for AI Programming
+
+### Tell the AI what you want, and the code writes itself
+
+When your AI programming assistant integrates with Keq, the development experience becomes:
+
+```text
+👤 Developer: Build me a cat adoption page showing adoptable cats with breed filtering
+
+🤖 AI Assistant:
+   → Searching APIs: "cats", "breeds"
+   → Found: GET /cats (catService#getCats)
+   → Found: GET /breeds (catService#getBreeds)
+   → Generating request code and building the page...
+```
+
+```typescript
+import { getCats, getBreeds } from "./apis/cat_service"
+
+export function AdoptionPage() {
+  const [breed, setBreed] = useState("")
+
+  const breeds = await getBreeds()
+  const cats = await getCats({ breed, status: "adoptable" })
+  //                           ^^^^^ Parameter types inferred from OpenAPI docs — typos caught at compile time
+
+  return (/* render cat list... */)
+}
+```
+
+While building features, the AI automatically locates required endpoints through semantic search and generates type-safe request code. The TypeScript compiler ensures the generated code is type-correct — even if the AI makes a mistake, the compiler catches it.
+
+### One line of configuration to unlock AI capabilities
+
+No new concepts to learn — just add one configuration to your project and your AI assistant instantly understands all your APIs:
+
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+
+<Tabs>
+  <TabItem value="claude" label="Claude Code" default>
+    ```json title=".mcp.json"
+    {
+      "mcpServers": {
+        "keq": { "command": "npx", "args": ["@keq-request/cli", "mcp"] }
+      }
+    }
+    ```
+  </TabItem>
+  <TabItem value="cursor" label="Cursor">
+    ```json title=".cursor/mcp.json"
+    {
+      "mcpServers": {
+        "keq": { "command": "npx", "args": ["keq", "mcp"] }
+      }
+    }
+    ```
+  </TabItem>
+  <TabItem value="vscode" label="VS Code">
+    ```json title=".vscode/mcp.json"
+    {
+      "servers": {
+        "keq": { "command": "npx", "args": ["keq", "mcp"] }
+      }
+    }
+    ```
+  </TabItem>
+</Tabs>
+
+Once configured, your AI assistant gains these capabilities:
+
+- 🔍 **Natural language search** — Describe the endpoint you need in any language, and the AI semantically matches from hundreds of APIs
+- 🏗️ **On-demand code generation** — The AI determines which endpoints are needed and automatically generates type-safe TypeScript request functions
+- 📋 **Filter rule management** — The AI automatically maintains `.keqfilter`, only generating code for endpoints your project actually uses
+- 🔄 **Real-time change awareness** — Automatically syncs when API docs are updated, so the AI always works with the latest endpoint information
+
+### Why does AI programming need Keq?
+
+The biggest challenge AI programming assistants face with HTTP requests is **lack of API context** — they don't know what endpoints exist in the project or what the parameter structures look like. Keq transforms OpenAPI documents into structured knowledge that AI can perceive, giving it precise understanding of every endpoint's path, method, parameters, and response structure. The generated code comes with full type inference, and the compiler automatically validates correctness.
+
+## Core Features
+
+### ⚡ Chainable API
+
+A fluent API design that makes both handwritten and AI-generated code intuitive and readable:
+
+```typescript
+await request
+  .post("/cats")
+  .send({ name: "mimi", age: 3 })
+  .set("Content-Type", "application/json")
+  .timeout(5000)
+  .retry(2);
+```
+
+### 🧩 Onion Model Middleware
+
+Compose complex functionality through middleware, with official packages ready to use:
+
+- **[Timeout](./features/timeout)** - Prevent requests from hanging indefinitely
+- **[Retry](./features/retry)** - Flexible retry strategies
+- **[Flow Control](./features/flow-control)** - Manage concurrent request volume
+- **[Smart Serialization](./responses/serialization)** - Automatically process responses based on Content-Type
+- **[Exception Handling](./libraries/exception)** - Unified error handling mechanism
+- **[Request Caching](https://github.com/keq-request/keq-cache)** - Reduce unnecessary network requests
+
+:::tip Why middleware instead of interceptors?
+Interceptors have a limited ceiling — they split request and response into isolated hooks that cannot share context. Some scenarios (conditional retry, request timing, follow-up requests based on responses) simply cannot be implemented. Middleware is more complex to write, but it provides an architectural model with a much higher capability ceiling. In the AI programming era, writing complexity is no longer a bottleneck — having an architecture with sufficient flexibility matters more than lowering the barrier for hand-coding.
+:::
+
+### 📘 Full-Chain TypeScript Type Inference
+
+Types flow seamlessly from request parameters to response body:
+
+```typescript
+// Response body type is automatically inferred
+const cat = await request.get<Cat>("/cats/1");
+//    ^? Cat
+
+// Functions generated by @keq-request/cli have strictly validated parameter types
+await getCats({ breed: "siamese" });
+//              ^^^^^^ Undefined parameters trigger compile-time errors
+```
+
+### 🎨 Flexible Routing System
+
+Precisely control the scope of middleware application:
+
+```typescript
+request
+  .apply(authMiddleware()).forRoutes({ host: "api.example.com" })
+  .apply(adminAuth()).forRoutes({ pathname: "/admin/**" })
+  .apply(logMiddleware()).forRoutes({ method: "POST" });
+```
+
+### 🌐 Cross-Platform
+
+Built on the standard Fetch API, use the same code in both browsers and Node.js (≥20).
+
+## Design Philosophy
+
+1. **AI Collaboration First** — Enable AI assistants to precisely understand and operate your project's API layer
+2. **Elegant API** — Chainable calls make code more readable and writable
+3. **Composability** — Compose complex functionality through middleware, not bloated configurations
+4. **Type Safety** — Leverage TypeScript fully to catch issues at compile time
+5. **Developer Efficiency** — Reduce repetitive work through CLI tools and AI integration
+6. **Flexible & Controllable** — Provide sufficient extension points to meet any customization need

@@ -1,0 +1,95 @@
+# Examples
+
+This article demonstrates two different usage patterns — choose the one that fits your needs.
+
+## Global Middleware + Global Rules + `.options` Control
+
+Suitable for scenarios where you need to apply a unified caching strategy to all qualifying requests.
+
+```typescript
+import { request } from "keq"
+import { cache, Strategy, MemoryStorage } from "@keq-request/cache"
+
+request.use(
+  cache({
+    storage: new MemoryStorage(),
+    rules: [
+      {
+        // Only matches GET /example requests
+        pattern: (ctx) => ctx.request.method === "get" && ctx.request.url.pathname === "/example",
+        strategy: Strategy.STALE_WHILE_REVALIDATE,
+        ttl: 5 * 60,
+        key: (ctx) => ctx.request.__url__.href,
+        exclude: async (response) => response.status !== 200,
+      },
+    ],
+  })
+)
+
+// This request will be cached
+request.get("/example")
+
+// This request won't be cached (doesn't match the rule)
+request.post("/cat")
+
+// Manually disable cache for special scenarios
+request
+  .get("/example")
+  .option("cache", false)
+
+// Modify cache rules for special scenarios
+request
+  .get("/example")
+  .options({
+    cache: {
+      strategy: Strategy.NETWORK_FIRST,
+      key: "custom-cache-key",
+      ttl: 60,
+    },
+  })
+```
+
+:::danger Note
+- Configuring many `rules` will impact performance on every request. Even when no `Rule` matches, all rules are traversed and pattern functions executed.
+- Additionally, adjusting global Rules carries greater risk — poor planning can make code difficult to maintain.
+
+You can also completely abandon global `rules` configuration and use only `.options` to configure caching strategies for each request individually, avoiding both issues above.
+:::
+
+## One-Shot Middleware
+
+This usage pattern lets you encapsulate commonly used cache parameters into a convenient middleware, making business code more readable:
+
+```typescript title="./shortcut/swr.ts"
+import { request, KeqMiddleware } from "keq"
+import { cache, Strategy, MemoryStorage } from "@keq-request/cache"
+
+const storage = new MemoryStorage()
+
+export function swr(): KeqMiddleware {
+  return cache({
+    storage,
+    rules: [
+      {
+        strategy: Strategy.STALE_WHILE_REVALIDATE,
+        ttl: 5 * 60,
+        key: (ctx) => ctx.request.__url__.href,
+        exclude: async (response) => response.status !== 200,
+      },
+    ],
+  })
+}
+```
+
+```typescript title="./example.ts"
+import { request } from "keq"
+import { swr } from "./shortcut/swr"
+
+// This request will be cached
+request
+  .get("/example")
+  .use(swr())
+
+// This request won't be cached
+request.get("/example")
+```

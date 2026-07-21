@@ -1,0 +1,101 @@
+# Query Parameters
+
+Use the `.query()` method to add URL query parameters:
+
+```typescript
+import { request } from "keq"
+
+// Basic usage
+await request
+  .get("https://example.com/cats")
+  .query("breed", "british_shorthair")  // single parameter
+  .query({ order: "desc", limit: 10 })  // multiple parameters
+// Actual request: https://example.com/cats?breed=british_shorthair&order=desc&limit=10
+
+// Array parameters
+await request
+  .get("https://example.com/cats")
+  .query({ breeds: ["british_shorthair", "persian"] })
+// Actual request: https://example.com/cats?breeds[0]=british_shorthair&breeds[1]=persian
+
+// Nested objects
+await request
+  .get("https://example.com/cats")
+  .query({ filter: { breed: "british", age: { min: 1, max: 5 } } })
+// Actual request: https://example.com/cats?filter[breed]=british&filter[age][min]=1&filter[age][max]=5
+```
+
+## Array Serialization Format (arrayFormat)
+
+Use the `arrayFormat` option to control how array parameters are serialized:
+
+| arrayFormat value | Serialization example | Description |
+|:--------------|:-------------|:-----|
+| `"indices"` (default) | `breeds[0]=a&breeds[1]=b` | Uses index notation |
+| `"brackets"` | `breeds[]=a&breeds[]=b` | Uses empty brackets |
+| `"repeat"` | `breeds=a&breeds=b` | Repeats the key |
+| `"comma"` | `breeds=a,b` | Comma-separated |
+| `"pipe"` | `breeds=a\|b` | Pipe-separated |
+| `"space"` | `breeds=a+b` | Space-separated |
+
+```typescript
+import { request } from "keq"
+
+await request
+  .get("/cats")
+  .query({ breeds: ["british_shorthair", "persian"] }, { arrayFormat: "repeat" })
+// Actual request: /cats?breeds=british_shorthair&breeds=persian
+
+await request
+  .get("/cats")
+  .query({ breeds: ["british_shorthair", "persian"] }, { arrayFormat: "pipe" })
+// Actual request: /cats?breeds=british_shorthair|persian
+```
+
+:::tip
+Different backend frameworks may expect different array serialization formats. For example, some PHP frameworks prefer `brackets`, while Express.js typically uses `repeat`.
+:::
+
+## Dot Notation (allowDots)
+
+Use the `allowDots` option to use dots instead of brackets for nested objects. Some backend frameworks (like Spring Boot) prefer this format:
+
+```typescript
+import { request } from "keq"
+
+// Default bracket notation
+await request
+  .get("/cats")
+  .query({ filter: { breed: "british", age: 3 } })
+// Actual request: /cats?filter[breed]=british&filter[age]=3
+
+// Dot notation
+await request
+  .get("/cats")
+  .query({ filter: { breed: "british", age: 3 } }, { allowDots: true })
+// Actual request: /cats?filter.breed=british&filter.age=3
+```
+
+## Setting Instance Default Options
+
+Use the `qs` option in the `KeqRequest` constructor to set default serialization behavior for all requests:
+
+```typescript
+import { KeqRequest } from "keq"
+
+const api = new KeqRequest({
+  baseOrigin: "https://api.example.com",
+  qs: {
+    arrayFormat: "repeat",
+    allowDots: true,
+  }
+})
+
+// All requests from this instance will use repeat + allowDots format
+await api.get("/cats").query({ breeds: ["british", "persian"], filter: { age: 3 } })
+// Actual request: https://api.example.com/cats?breeds=british&breeds=persian&filter.age=3
+```
+
+:::tip
+Options passed in `.query(obj, options)` on individual requests will override instance defaults.
+:::

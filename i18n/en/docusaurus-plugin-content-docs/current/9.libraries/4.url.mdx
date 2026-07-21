@@ -1,0 +1,61 @@
+# @keq-request/url
+
+Provides middleware for modifying HTTP request URLs.
+
+## Installation
+
+import InstallPackagesCode from '@site/docs/components/_install-packages-code.mdx'
+
+<InstallPackagesCode packages="@keq-request/url" />
+
+## `setBaseUrl(baseUrl)`
+
+```typescript
+import { request } from "keq"
+import { setBaseUrl, setHost } from "@keq-request/url"
+
+request
+  .use(setBaseUrl("http://example.com/api"))
+
+await request.get("/test")
+// Request will be sent to 'http://example.com/api/test'
+```
+
+`setBaseUrl` can also accept a relative path, in which case it only prepends as a path prefix without changing the request's origin:
+
+```typescript
+import { request } from "keq"
+import { setBaseUrl } from "@keq-request/url"
+
+request
+  .use(setBaseUrl("/api/v1"))
+
+await request.get("/test")
+// Request will be sent to '/api/v1/test'
+```
+
+## `setOrigin(origin)`
+
+```typescript
+import { request } from "keq"
+import { setOrigin } from "@keq-request/url"
+
+request
+  .use(setOrigin("http://example.com:8080"))
+
+await request.get("http://test.com/test")
+// Request will be sent to 'http://example.com:8080/test'
+```
+
+## `setHost(host)`
+
+```typescript
+import { request } from "keq"
+import { setHost } from "@keq-request/url"
+
+request
+  .use(setHost("example.com"))
+
+await request.get("http://test.com/test")
+// Request will be sent to 'http://example.com/test'
+```

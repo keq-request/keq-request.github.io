@@ -1,0 +1,68 @@
+# ChineseToPinyinPlugin
+
+In real projects, OpenAPI documents may contain Chinese interface names, parameter names, or Schema names. `ChineseToPinyinPlugin` automatically converts these Chinese identifiers to pinyin, ensuring the generated TypeScript code follows naming conventions.
+
+:::warning
+If you have the ability to modify the OpenAPI document, it's recommended to use English identifiers directly. `ChineseToPinyinPlugin` is mainly for scenarios where the document cannot be modified, ensuring smooth code generation.
+:::
+
+## Use Case
+
+Suppose your OpenAPI document defines interfaces like this:
+
+```json
+{
+  "paths": {
+    "/users": {
+      "get": {
+        "operationId": "获取用户列表",
+        "parameters": [
+          {
+            "name": "用户名",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "用户信息": {
+        "type": "object",
+        "properties": {
+          "姓名": { "type": "string" },
+          "年龄": { "type": "number" }
+        }
+      }
+    }
+  }
+}
+```
+
+Without `ChineseToPinyinPlugin`, some interfaces/data structures cannot be generated or the generated code would contain illegal identifiers.
+
+## Configuration
+
+```typescript title=".keqrc.ts"
+import { ChineseToPinyinPlugin } from '@keq-request/cli/plugins'
+
+export default defineKeqConfig({
+  outdir: "./src/apis",
+  modules: {
+    userService: "./user-service-swagger.json",
+  },
+  plugins: [new ChineseToPinyinPlugin()],
+})
+```
+
+Once configured, `ChineseToPinyinPlugin` automatically converts all Chinese identifiers:
+
+- `operationId: "获取用户列表"` → function name: `huoQuYongHuLieBiao`
+- Parameter name: `用户名` → `yongHuMing`
+- Schema name: `用户信息` → `YongHuXinXi`
+- Property name: `姓名` → `xingMing`, `年龄` → `nianLing`
+
+The generated code will use pinyin identifiers throughout, ensuring compilability and naming convention compliance.

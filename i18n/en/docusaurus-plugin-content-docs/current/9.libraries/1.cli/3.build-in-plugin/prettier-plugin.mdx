@@ -1,0 +1,15 @@
+# PrettierPlugin
+
+`PrettierPlugin` automatically runs `prettier --write` to format code after generation.
+
+```typescript title=".keqrc.ts"
+import { PrettierPlugin } from '@keq-request/cli/plugins'
+
+export default defineKeqConfig({
+  outdir: "./src/apis",
+  modules: {
+    catService: "./cat-service-swagger.json",
+  },
+  plugins: [new PrettierPlugin()],
+})
+```

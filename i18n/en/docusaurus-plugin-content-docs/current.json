@@ -3,9 +3,29 @@
     "message": "5.x",
     "description": "The label for version current"
   },
-  "sidebar.tutorialSidebar.category.功能": {
+  "sidebar.tutorialSidebar.category.构建请求": {
+    "message": "Requests",
+    "description": "The label for category '构建请求' in sidebar 'tutorialSidebar'"
+  },
+  "sidebar.tutorialSidebar.category.处理响应": {
+    "message": "Responses",
+    "description": "The label for category '处理响应' in sidebar 'tutorialSidebar'"
+  },
+  "sidebar.tutorialSidebar.category.特性": {
     "message": "Features",
-    "description": "The label for category '功能' in sidebar 'tutorialSidebar'"
+    "description": "The label for category '特性' in sidebar 'tutorialSidebar'"
+  },
+  "sidebar.tutorialSidebar.category.中间件": {
+    "message": "Middleware",
+    "description": "The label for category '中间件' in sidebar 'tutorialSidebar'"
+  },
+  "sidebar.tutorialSidebar.category.进阶": {
+    "message": "Advanced",
+    "description": "The label for category '进阶' in sidebar 'tutorialSidebar'"
+  },
+  "sidebar.tutorialSidebar.category.API 参考": {
+    "message": "API Reference",
+    "description": "The label for category 'API 参考' in sidebar 'tutorialSidebar'"
   },
   "sidebar.tutorialSidebar.category.生态": {
     "message": "Libraries",

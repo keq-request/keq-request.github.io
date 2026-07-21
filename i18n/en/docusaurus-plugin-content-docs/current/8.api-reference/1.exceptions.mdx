@@ -1,0 +1,107 @@
+# Exception Types
+
+Keq provides a set of built-in exception types for handling different request error scenarios. These exception classes inherit from standard JavaScript error classes, providing more precise error categorization and handling capabilities.
+
+## RequestException
+
+The base class for request exceptions, representing errors that occur during HTTP requests.
+
+```typescript
+class RequestException extends Error {
+  constructor(
+    statusCode: number,
+    message?: string,
+    options?: { fatal?: boolean, response?: Response } = {},
+  )
+}
+```
+
+**Parameters:**
+
+| Parameter         | Type      | Default | Description                                   |
+| :---------------- | :-------- | :------ | :------------------------------------- |
+| statusCode        | `number`  | -       | HTTP status code                            |
+| message           | `string`  | -       | Error message                               |
+| options.fatal     | `boolean` | `false` | Set to `true` to terminate the retry mechanism         |
+| options.response  | `Response`| -       | Associated `Response` object (if available)   |
+
+## AbortException
+
+Inherits from `DOMException`, thrown when a request is actively aborted.
+
+```typescript
+class AbortException extends DOMException {
+  constructor(message?: string)
+}
+```
+
+| Parameter | Type     | Default | Description         |
+| :------ | :------- | :----- | :----------- |
+| message | `string` | -      | Error message     |
+
+## TimeoutException
+
+Inherits from `AbortException`, thrown when a request times out. Typically triggered by the `.timeout()` method.
+
+```typescript
+class TimeoutException extends AbortException {
+  constructor(message?: string)
+}
+```
+
+| Parameter | Type     | Default | Description         |
+| :------ | :------- | :----- | :----------- |
+| message | `string` | -      | Error message     |
+
+## MutexException
+
+Thrown when a request is blocked by `mutex` flow control. Indicates that a request in the same queue is already executing and the new request was rejected.
+
+```typescript
+class MutexException extends Exception {
+  constructor(message?: string)
+}
+```
+
+| Parameter | Type     | Default | Description         |
+| :------ | :------- | :----- | :----------- |
+| message | `string` | -      | Error message     |
+
+## TypeException
+
+A parameter type error exception, similar to the standard `TypeError`, used to identify parameter passing errors.
+
+```typescript
+class TypeException extends TypeError {}
+```
+
+:::info
+In TypeScript projects, you typically won't encounter this exception since the TypeScript compiler catches type errors at compile time. This exception is mainly used for runtime type checking or pure JavaScript projects.
+:::
+
+## HTTP Status Code Exceptions
+
+Keq provides common HTTP Exceptions, all inheriting from `RequestException`:
+
+| Exception Class | Status Code |
+| :------- | :----- |
+| `BadRequestException` | 400 |
+| `UnauthorizedException` | 401 |
+| `ForbiddenException` | 403 |
+| `NotFoundedException` | 404 |
+| `MethodNotAllowedException` | 405 |
+| `NotAcceptableException` | 406 |
+| `ProxyAuthenticationRequiredException` | 407 |
+| `RequestTimeoutException` | 408 |
+| `ConflictException` | 409 |
+| `PreconditionFailedException` | 412 |
+| `ContentTooLargeException` | 413 |
+| `UriTooLongException` | 414 |
+| `UnsupportedMediaTypeException` | 415 |
+| `ImATeapotException` | 418 |
+| `TooManyRequestsException` | 429 |
+| `InternalServerErrorException` | 500 |
+| `NotImplementedException` | 501 |
+| `BadGatewayException` | 502 |
+| `ServiceUnavailableException` | 503 |
+| `GatewayTimeoutException` | 504 |

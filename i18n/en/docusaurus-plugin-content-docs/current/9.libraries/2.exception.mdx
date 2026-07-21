@@ -1,0 +1,113 @@
+# @keq-request/exception
+
+Middleware for throwing/catching exceptions, with control over whether thrown exceptions trigger `retry`.
+
+## Installation
+
+import InstallPackagesCode from '@site/docs/components/_install-packages-code.mdx'
+
+<InstallPackagesCode packages="@keq-request/exception" />
+
+## Usage
+
+```typescript
+import { request, RequestException } from "keq"
+import {
+  throwException,
+  catchException,
+} from "@keq-request/exception"
+
+request
+  .use(
+    catchException((err) => {
+      if (err instanceof RequestException && err.statusCode === 401) {
+        context.redirect("/login")
+        return
+      }
+
+      throw err
+    })
+  )
+
+  // throwException's callback always runs after `await next()`
+  // You can access the Response in the callback
+  .use(
+    throwException(async (ctx) => {
+      if (ctx.response && ctx.response.status >= 400) {
+        const body = await ctx.response.json()
+        throw new RequestException(ctx.response.status, body.message)
+      }
+    })
+  )
+```
+
+### RequestException(statusCode[, errorMessage[, options]])
+
+| **Parameter** | **Default** | **Description**              |
+| :--------- | :--------- | --------------------- |
+| statusCode | -          | HTTP status code           |
+| message    | `''`       | Error message              |
+| options.fatal | `false` | Set to `true` to terminate the retry mechanism |
+| options.response | - | Associated `Response` object |
+
+## Middleware
+
+### validateStatusCode
+
+Validates the `Response` `status` and throws the corresponding `RequestException`:
+
+- `status` in range `200-399`: no exception thrown
+- `status = 400`: throws `BadRequestException(statusText)`
+- `status = 401`: throws `UnauthorizedException(statusText)`
+- `status = 403`: throws `ForbiddenException(statusText)`
+- `status = 404`: throws `NotFoundedException(statusText)`
+- `status = 405`: throws `MethodNotAllowedException(statusText)`
+- `status = 406`: throws `NotAcceptableException(statusText)`
+- `status = 407`: throws `ProxyAuthenticationRequiredException(statusText)`
+- `status = 408`: throws `RequestTimeoutException(statusText)`
+- `status = 409`: throws `ConflictException(statusText)`
+- `status = 412`: throws `PreconditionFailedException(statusText)`
+- `status = 413`: throws `ContentTooLargeException(statusText)`
+- `status = 414`: throws `UriTooLongException(statusText)`
+- `status = 415`: throws `UnsupportedMediaTypeException(statusText)`
+- `status = 418`: throws `ImATeapotException(statusText)`
+- `status = 429`: throws `TooManyRequestsException(statusText)`
+- `status` is other `400-499` value: throws `RequestException(status, statusText, { fatal: true })`
+- `status = 500`: throws `InternalServerErrorException(statusText)`
+- `status = 501`: throws `NotImplementedException(statusText)`
+- `status = 502`: throws `BadGatewayException(statusText)`
+- `status = 503`: throws `ServiceUnavailableException(statusText)`
+- `status = 504`: throws `GatewayTimeoutException(statusText)`
+- `status` is other `500-599` value: throws `RequestException(status, statusText, { fatal: false })`
+
+**Example**
+
+```typescript
+import { request } from "keq"
+import { validateStatusCode } from "@keq-request/exception"
+
+request.use(validateStatusCode())
+```
+
+### clarifyFetchFailed
+
+Node.js native `fetch` throws a `TypeError` on network errors with a `message` of just `"fetch failed"` — the real cause (e.g., `ECONNREFUSED`, `ENOTFOUND`, `ETIMEDOUT`) is hidden in the `.cause` property. The `clarifyFetchFailed` middleware expands the `.cause` chain into the error's `message`, making logs and error messages more readable.
+
+**Effect**
+
+```
+// Before
+TypeError: fetch failed
+
+// After
+TypeError: fetch failed: connect ECONNREFUSED 127.0.0.1:3000
+```
+
+**Example**
+
+```typescript
+import { request } from "keq"
+import { clarifyFetchFailed } from "@keq-request/exception"
+
+request.use(clarifyFetchFailed())
+```

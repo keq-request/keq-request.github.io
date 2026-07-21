@@ -1,0 +1,184 @@
+# Response Serialization
+
+Response serialization controls how the HTTP response body is processed. Keq provides multiple serialization methods that you can choose from based on your needs.
+
+## Basic Usage
+
+Use the `.resolveWith(type)` method to specify the serialization method for the response body:
+
+```typescript
+import { request } from "keq"
+
+const response = await request
+  .get("/api/cats/1")
+  .resolveWith("json")
+
+console.log(response.name)
+```
+
+## Serialization Types
+
+### intelligent (default)
+
+The automatic serialization mode selects the best processing method based on the actual situation:
+
+1. If middleware has set `context.output`, that value is returned directly
+2. Otherwise, the serialization method is chosen automatically based on the response's `Content-Type`
+
+import IntelligentTable from '@site/docs/components/_intelligent-table.mdx'
+
+<IntelligentTable />
+
+
+```typescript
+import { request } from "keq"
+
+// Automatically handled based on Content-Type
+const cat = await request.get("/api/cats/1")
+// Content-Type: application/json → automatically parsed as object
+// Content-Type: text/plain → returns string
+```
+
+:::tip Recommended
+For most scenarios, the default `intelligent` mode is sufficient — it intelligently handles various response types.
+:::
+
+### json
+
+Parses the response body as a JSON object:
+
+```typescript
+import { request } from "keq"
+
+interface Cat {
+  id: number
+  name: string
+  breed: string
+}
+
+const cat = await request
+  .get("/api/cats/1")
+  .resolveWith("json") as Cat
+
+console.log(`${cat.name} is a ${cat.breed}`)
+```
+
+### text
+
+Parses the response body as a plain text string:
+
+```typescript
+import { request } from "keq"
+
+const description = await request
+  .get("/api/cats/1/description")
+  .resolveWith("text")
+
+console.log(description)
+```
+
+### blob
+
+Parses the response body as a [Blob](https://developer.mozilla.org/en-US/docs/Web/API/Blob) object, suitable for file downloads:
+
+```typescript
+import { request } from "keq"
+
+const imageBlob = await request
+  .get("/api/cats/1/photo")
+  .resolveWith("blob")
+
+// Create a download link
+const url = URL.createObjectURL(imageBlob)
+const link = document.createElement("a")
+link.href = url
+link.download = "cat-photo.jpg"
+link.click()
+
+// Clean up the URL
+URL.revokeObjectURL(url)
+```
+
+### array-buffer
+
+Parses the response body as an [ArrayBuffer](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/ArrayBuffer), suitable for binary data:
+
+```typescript
+import { request } from "keq"
+
+const buffer = await request
+  .get("/api/cats/1/audio")
+  .resolveWith("array-buffer")
+
+// Play audio using Web Audio API
+const audioContext = new AudioContext()
+const audioBuffer = await audioContext.decodeAudioData(buffer)
+const source = audioContext.createBufferSource()
+source.buffer = audioBuffer
+source.connect(audioContext.destination)
+source.start()
+```
+
+### form-data
+
+Parses the response body as a [FormData](https://developer.mozilla.org/en-US/docs/Web/API/FormData) object:
+
+```typescript
+import { request } from "keq"
+
+const formData = await request
+  .get("/api/cats/1/form")
+  .resolveWith("form-data")
+
+console.log(formData.get("name"))
+console.log(formData.get("breed"))
+```
+
+### sse
+
+Parses the response body as a [Server-Sent Events](https://developer.mozilla.org/en-US/docs/Web/API/Server-sent_events) stream, returning a `ReadableStream<ServerSentEvent>` object. Suitable for `text/event-stream` responses such as AI chat streaming output, real-time notification pushes, etc.:
+
+```typescript
+import { request } from "keq"
+
+const stream = await request
+  .get("/api/notifications")
+  .resolveWith("sse")
+
+for await (const event of stream) {
+  console.log(event.event) // Event type, e.g., "message", "update", etc.
+  console.log(event.data)  // Event data
+  console.log(event.id)    // Event ID (optional)
+}
+```
+
+:::tip Automatic Handling in intelligent Mode
+When the response `Content-Type` is `text/event-stream`, the `intelligent` mode automatically uses SSE parsing — no need to manually specify `.resolveWith("sse")`.
+:::
+
+Internally, Keq uses [eventsource-parser](https://github.com/rexxars/eventsource-parser) to pipe the raw byte stream through `TextDecoderStream` and `EventSourceParserStream`, parsing it into structured `ServerSentEvent` objects. Each event object contains the following fields:
+
+| Field | Type | Description |
+|------|------|------|
+| `event` | `string \| undefined` | Event type (corresponds to the SSE `event:` field, `undefined` when not declared) |
+| `data` | `string` | Event data (corresponds to the SSE `data:` field) |
+| `id` | `string \| undefined` | Event ID (corresponds to the SSE `id:` field) |
+
+### response
+
+Returns the raw [Response](https://developer.mozilla.org/en-US/docs/Web/API/Response) object, giving you full control over response handling:
+
+```typescript
+import { request } from "keq"
+
+const response = await request
+  .get("/api/cats/1")
+  .resolveWith("response")
+
+console.log(response.status)
+console.log(response.headers.get("content-type"))
+
+// Manually parse the response body
+const cat = await response.json()
+console.log(cat.name)
+```

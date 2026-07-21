@@ -1,0 +1,496 @@
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+import InstallPackagesCode from '@site/docs/components/_install-packages-code.mdx'
+import ExecPackageCommandCode from '@site/docs/components/_exec-package-command-code.mdx'
+
+# Overview
+
+`Keq`'s command-line tool compiles `swagger` documents into `typescript` code, allowing you to send HTTP requests as if calling functions.
+
+:::warning Node.js version must be >= 20.19.0
+:::
+
+## Installation
+
+<InstallPackagesCode packages="@keq-request/cli" />
+
+:::caution
+It's recommended to lock the version of `@keq-request/cli` in package.json.
+Minor version upgrades of `@keq-request/cli` may modify code templates to fix bugs. There's a very small chance this could introduce backward-incompatible changes.
+:::
+
+## Usage
+
+First, we need a `swagger` document. For example, the following `cat-service-swagger.json` file describes an HTTP endpoint for getting cat information.
+
+<details>
+  <summary> cat-service-swagger.json </summary>
+
+  ```json title="cat-service-swagger.json"
+  {
+    "openapi": "3.0.0",
+    "info": {
+      "title": "Cat Service",
+      "version": "0.0.1"
+    },
+    "paths": {
+      "/cats": {
+        "get": {
+          "operationId": "getCats",
+          "parameters": [
+            {
+              "name": "breed",
+              "required": false,
+              "in": "query",
+              "schema": {
+                "type": "string"
+              }
+            }
+          ],
+          "responses": {
+            "200": {
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "type": "array",
+                    "items": {
+                      "$ref": "#/components/schemas/Cat"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "components": {
+      "schemas": {
+        "Cat": {
+          "type": "object",
+          "properties": {
+            "name": {
+              "type": "string"
+            },
+            "age": {
+              "type": "number"
+            }
+          }
+        }
+      }
+    }
+  }
+  ```
+</details>
+
+Then, create the `@keq-request/cli` configuration file specifying the swagger document location and compilation parameters:
+
+<Tabs>
+  <TabItem value="ts" label="Typescript" default>
+    ```typescript title=".keqrc.ts"
+    import { defineKeqConfig, FileNamingStyle } from "@keq-request/cli"
+
+    export default defineKeqConfig({
+      outdir: "./src/apis", // Output directory for compiled results
+      rendering: {
+        fileNamingStyle: FileNamingStyle.snakeCase,
+      },
+      modules: {
+        catService: "./cat-service-swagger.json",
+        // You can also fetch swagger documents from the network:
+        // dogService: "http://dog.example.com/swagger.json"
+      },
+    })
+    ```
+  </TabItem>
+
+  <TabItem value="js" label="Javascript">
+    ```javascript title=".keqrc.js"
+    const { defineKeqConfig, FileNamingStyle } = require("@keq-request/cli")
+
+    module.exports = defineKeqConfig({
+      outdir: "./src/apis", // Output directory for compiled results
+      rendering: {
+        fileNamingStyle: FileNamingStyle.snakeCase,
+      },
+      modules: {
+        catService: "./cat-service-swagger.json",
+        // You can also fetch swagger documents from the network:
+        // dogService: "http://dog.example.com/swagger.json"
+      },
+    })
+    ```
+  </TabItem>
+
+  <TabItem value="yml" label="YAML">
+    ```yaml title=".keqrc.yml"
+    outdir: ./src/apis # Output directory for compiled results
+    rendering:
+      fileNamingStyle: snake_case
+    modules:
+      catService: ./cat-service-swagger.json
+      # You can also fetch swagger documents from the network:
+      # dogService: http://dog.example.com/swagger.json
+    ```
+  </TabItem>
+</Tabs>
+
+:::tip Recommendation
+Prefer `typescript` or `javascript` configuration files. Some advanced features (like `operationIdFactory`) can only be implemented through code.
+:::
+
+Next, run the following command in the terminal:
+
+<ExecPackageCommandCode command="keq build" />
+
+After execution, `@keq-request/cli` generates the following files under `./src/apis/cat_service/`:
+
+<Tabs>
+  <TabItem value="services_get_cats" label="Request Function" default>
+    ```typescript title="./src/apis/cat_service/get_cats.request.ts"
+    import { Keq } from "keq"
+    import { request } from './request'
+    import type { GetCatsOperation, GetCatsResponseBodies, GetCatsRequestParameters } from "./types/operations/get_cats.type.js"
+    export type { GetCatsRequestQuery, GetCatsRequestHeaders, GetCatsRequestBodies } from "./types/operations/get_cats.type.js"
+
+
+    const method = "get"
+    const pathname = "/cats"
+
+    export function getCats<STATUS extends keyof GetCatsResponseBodies, CONTENT_TYPE extends never = never>(args?: GetCatsRequestParameters): Keq<GetCatsOperation<STATUS, CONTENT_TYPE>> {
+      const req = request.get<GetCatsResponseBodies[STATUS]>("/cats")
+
+      if (args && "breed" in args) req.query("breed", args["breed"], {"arrayFormat":"repeat"})
+
+      return req
+    }
+
+    getCats.pathname = pathname
+    getCats.method = method
+    ```
+
+  </TabItem>
+
+  <TabItem value="request" label="Module Request Instance">
+    ```typescript title="./src/apis/cat_service/request.ts"
+    import { KeqRequest } from "keq"
+
+    export const request = new KeqRequest()
+    ```
+
+    Each module has its own independent `KeqRequest` instance with isolated middleware.
+  </TabItem>
+
+  <TabItem value="type_cat" label="Interface Type Definitions">
+
+    ```typescript title="./src/apis/cat_service/types/operations/get_cats.type.ts"
+    import type { KeqOperation, KeqPathParameterInit, KeqQueryInit, ServerSentEvent } from "keq"
+    import type { Cat as CatSchema } from "../components/schemas/cat.schema.js"
+
+    export interface GetCatsResponseBodies {
+      200: CatSchema[] | CatSchema[]
+    }
+
+    export interface GetCatsRequestBodies {}
+
+    export type GetCatsRequestQuery = {
+      "breed"?: string
+    }
+
+    export type GetCatsRouteParameters = {}
+
+    export type GetCatsRequestHeaders = {}
+
+    export type GetCatsRequestParameters = GetCatsRequestQuery & GetCatsRouteParameters & GetCatsRequestHeaders
+
+    export interface GetCatsOperation<STATUS extends keyof GetCatsResponseBodies, CONTENT_TYPE extends string > extends KeqOperation {
+      requestParams: GetCatsRouteParameters & { [key: string]: KeqPathParameterInit }
+      requestQuery: GetCatsRequestQuery & { [key: string]: KeqQueryInit }
+      requestHeaders: GetCatsRequestHeaders & { [key: string]: string | number }
+      requestBody: object | BodyInit
+      responseBody: GetCatsResponseBodies[STATUS]
+    }
+    ```
+
+  </TabItem>
+
+  <TabItem value="schema_cat" label="Data Model Definitions">
+    ```typescript title="./src/apis/cat_service/types/components/schemas/cat.schema.ts"
+    export interface Cat {
+      "name"?: string
+      "age"?: number
+    }
+    ```
+  </TabItem>
+</Tabs>
+
+Now we can call the `getCats` function to send HTTP requests:
+
+```typescript
+import { getCats } from "./src/apis/cat_service/operations"
+
+const cats = await getCats({ breed: "siamese", unknownKey: 'value' }) // unknownKey is not in swagger, will be discarded
+  .retry(3, 1000)
+  .timeout(1000)
+  // Append additional request parameters
+  .query('extraQuery', 'extra')
+  .set('Authorization', 'TOKEN')
+  .send({ extraBody: 'extra' })
+
+// Actual request URL: /cats?breed=siamese&extraQuery=extra
+
+console.log(`My cats are: ${cats.map(cat => cat.name).join(', ')}`)
+console.log(`Request path: ${getCats.pathname}`)
+```
+
+:::note [`BodyFallbackPlugin`](./build-in-plugin/body-fallback-plugin) can add undefined request parameters like `unknownKey` to the request body instead of discarding them.
+:::
+
+
+Finally, we can add unified error handling for all endpoints in the `catService` module. Since each module has its own independent `request` instance, simply import it:
+
+```typescript
+import { request as catServiceRequest } from './src/apis/cat_service/request'
+import { validateStatusCode } from '@keq-request/exception'
+
+// Mount middleware directly on the module's request instance
+catServiceRequest.use(validateStatusCode())
+```
+
+If you want multiple modules to share global middleware (like auth, logging), create a core `KeqRequest` and let modules inherit from it:
+
+```typescript
+import { KeqRequest } from 'keq'
+import { validateStatusCode } from '@keq-request/exception'
+import { request as catServiceRequest } from './src/apis/cat_service/request'
+import { request as dogServiceRequest } from './src/apis/dog_service/request'
+
+// Create core request with global middleware
+const coreRequest = new KeqRequest()
+coreRequest.use(validateStatusCode())
+coreRequest
+  .apply(setHeader('Authorization', 'Bearer TOKEN'))
+  .forRoutes({ host: 'api.example.com' })
+
+// Let modules inherit global middleware
+catServiceRequest.inherit(coreRequest)
+dogServiceRequest.inherit(coreRequest)
+```
+
+:::note Why does Keq use a *chainable API* + *middleware* design pattern?
+Keq was originally designed to generate request functions from swagger documents. However, relying solely on CLI-generated code leaves many problems unsolved:
+
+1. HTTP endpoint information defined in swagger documents may be incomplete or even incorrect — missing auth info, caching strategies, etc. External factors may prevent us from modifying the swagger document to fill in this information.
+2. Clients calling the same HTTP endpoint in different scenarios may have different needs — retry in some cases, not in others. Statically generated code cannot meet these dynamic requirements.
+3. Endpoints from the same swagger document often share similar auth, error handling, and logging needs. Generating these highly customized features through CLI Plugins would be very difficult to maintain.
+
+Keq is an HTTP client designed to provide more powerful runtime APIs for statically generated code:
+
+- *Chainable API* allows dynamically modifying request parameters when calling request functions, even setting parameters that contradict the swagger definition. It perfectly avoids bloated configuration options.
+- *Middleware* provides an elegant way to add unified functionality to all endpoints in a module. Each module has its own `KeqRequest` instance — just import and mount middleware; use `inherit` to inherit global middleware for layered management. And through the chainable API, you can flexibly enable or disable middleware in different scenarios.
+:::
+
+## Configuration Files
+
+### `.keqrc.(yml|json|js|ts)`
+
+`@keq-request/cli` automatically searches for configuration files named `.keqrc.yml`, `.keqrc.json`, `.keqrc.js`, or `.keqrc.ts`.
+You can specify the configuration file path with `-c --config <config_file_path>`.
+
+| **Parameter**       | **Required** | **Default**                                                  | **Description**                                                          |
+| :----------------- | :----------- | :---------------------------------------------------------- | :---------------------------------------------------------------- |
+| outdir             | true         | -                                                           | Output directory for compiled results                                                |
+| modules            | true         | -                                                           | Swagger file paths and module names                                        |
+| rendering          | false        | `{}`                                                        | Options controlling code generation output                                        |
+| rendering.fileNamingStyle    | false        | -                                                   | File naming style                                                        |
+| rendering.esm                | false        | `true` if `package.json` has `"type": "module"` | Whether to generate ESM-style code                                |
+| rendering.additionalPropertiesType | false  | `'unknown'`                                          | Controls whether `additionalProperties: true` (or undeclared) renders as `unknown` or `any` in generated TypeScript types |
+| rendering.entrypoint               | false  | `false`                                              | When enabled, generates an `index.ts` entry file for each module that re-exports all generated files |
+| rendering.v2Compat                 | false  | `false`                                              | (**Deprecated**) When enabled, adds `.option('module', { name, pathname, method })` to generated micro-functions for v2 compatibility |
+| translators        | false        | `[]`                                                        | [Generated code style](./4.translators.mdx)                                                    |
+| plugins            | false        | `[]`                                                        | [Plugins provide full customization of CLI behavior](./2.plugin.mdx)               |
+
+#### rendering.fileNamingStyle
+
+| **Enum**                       | **Example**      |
+| :----------------------------- | :------------ |
+| `FileNamingStyle.camelCase`    | `"twoWords"`  |
+| `FileNamingStyle.capitalCase`  | `"Two Words"` |
+| `FileNamingStyle.constantCase` | `"TWO_WORDS"` |
+| `FileNamingStyle.dotCase`      | `"two.words"` |
+| `FileNamingStyle.headerCase`   | `"Tow-Words"` |
+| `FileNamingStyle.noCase`       | `"two words"` |
+| `FileNamingStyle.paramCase`    | `"two-words"` |
+| `FileNamingStyle.pascalCase`   | `"TwoWords"`  |
+| `FileNamingStyle.pathCase`     | `"two/words"` |
+| `FileNamingStyle.sentenceCase` | `"Two words"` |
+| `FileNamingStyle.snakeCase`    | `"two_words"` |
+
+### `.keqfilter`
+
+You can also control which HTTP endpoints generate code via the `.keqfilter` file. The file uses INI Section format — `[deny]` blocks declare endpoints to ignore, `[allow]` blocks declare exceptions (higher priority than `[deny]`).
+
+Each line follows the format `METHOD module:/pathname`, supporting glob wildcards.
+
+```ini
+[deny]
+# Ignore all endpoints in all modules
+*       *:/**
+
+# Ignore GET /cats in all modules
+*       *:/cats
+
+# Ignore all GET endpoints
+GET     *:/**
+
+# Ignore /cats in catService module
+*       catService:/cats
+
+# Ignore GET /cats in catService module
+GET     catService:/cats
+
+[allow]
+# Don't ignore POST /dogs in dogService module
+POST    dogService:/dogs
+```
+
+
+## Commands
+
+### `keq build [options]`
+
+Generates code according to the configuration file.
+
+| **Option**                         | **Description**                                                                                                 |
+| :------------------------------- | :------------------------------------------------------------------------------------------------------- |
+| `--module <moduleName...>`      | Only generate modules matching the module name                                                                                 |
+| `-c --config <config_file_path>` | Path to the configuration file                                                                                           |
+| `-i --interactive`               | Interactively specify which HTTP endpoints to generate via CLI                                                                 |
+| `--tolerant`                     | Tolerant mode: ignores download failures and Swagger validation errors, generates code as much as possible. Without this flag, any error causes build failure (exit 1) |
+| `--fresh`                        | Clears output directory and download cache before building, suitable for full regeneration                                                     |
+| `--no-cache`                     | Disables download cache, re-downloads OpenAPI documents on every build                                                         |
+| `--method <method...>`           | Only generates HTTP endpoints matching the method (`'get' \| 'post' \| 'put' \| 'patch' \| 'head' \| 'options' \| 'delete'`) |
+| `--pathname <pathname...>`       | Only generates HTTP endpoints matching the pathname                                                                         |
+
+### `keq filter <mode> [options]`
+
+Adds filter rules to the `.keqfilter` file. Use `--interactive` to interactively specify endpoints to filter.
+
+| **Option**                         | **Description**                                                                                                 |
+| :------------------------------- | :------------------------------------------------------------------------------------------------------- |
+| `<mode>`                         | `deny`: add ignore rule; `allow`: add exception rule (higher priority than `deny`); `all`: ignore all endpoints
+| `-c --config <config_file_path>` | Path to the configuration file                                                                                         |
+| `--module`                      | Set the module name for the filter rule                                                                    |
+| `--method <method> `             | Set the HTTP method for the filter rule (`'get' \| 'post' \| 'put' \| 'patch' \| 'head' \| 'options' \| 'delete'`) |
+| `--pathname <pathname...>`       | Set the HTTP endpoint path for the filter rule                                                             |
+| `-i --interactive`               | Interactively specify which HTTP endpoints to filter via CLI                                                               |
+| `--tolerant`                     | Tolerant mode: ignores download failures and Swagger validation errors                                                          |
+| `--build`                        | Automatically runs `keq build` after filter rules are added                                                  |
+
+### `keq mock [options]`
+
+Starts a Mock HTTP server based on OpenAPI documents, automatically generating mock data conforming to Schema definitions. Suitable for frontend development when backend endpoints aren't ready yet.
+
+| **Option**                         | **Description**                                                                                                 |
+| :------------------------------- | :------------------------------------------------------------------------------------------------------- |
+| `-c --config <config_file_path>` | Path to the configuration file                                                                                           |
+| `-p --port <port>`               | Listen port (default: `3939`)                                                                                 |
+| `--host <host>`                  | Bind host address (default: `localhost`)                                                                       |
+| `--module <moduleName...>`       | Only mock modules matching the module name                                                                               |
+| `--cors`                         | Enable CORS response headers (default: `true`)                                                                          |
+| `--delay <delay>`                | Response delay (ms), supports range format like `"100-500"`                                                              |
+| `--max-depth <depth>`            | Maximum Schema depth for mock data generation (default: `10`)                                                           |
+| `--ref-depth <depth>`            | Maximum recursion depth for circular `$ref` references (default: `5`)                                                               |
+| `--debug`                        | Print debug information                                                                                             |
+| `--tolerant`                     | Tolerant mode: ignores invalid Swagger/OpenAPI document structure                                                             |
+
+#### Mock Data Generation Priority
+
+The mock server generates response data in the following priority:
+
+1. `example` field defined in OpenAPI Media Type
+2. First available entry in `examples`
+3. Auto-generated based on Schema using [json-schema-faker](https://github.com/json-schema-faker/json-schema-faker)
+
+### `keq search <query> [options]`
+
+Semantic search for API endpoints using natural language. Based on the `intfloat/multilingual-e5-small` embedding model, supports cross-language matching in Chinese and English.
+
+| **Option**                         | **Description**                                                                                                 |
+| :------------------------------- | :------------------------------------------------------------------------------------------------------- |
+| `<query>`                        | Natural language search query (required)                                                                                  |
+| `-c --config <config_file_path>` | Path to the configuration file                                                                                           |
+| `--module <moduleName...>`       | Only search within modules matching the module name                                                                              |
+| `--limit <limit>`                | Maximum number of results (default: `10`)                                                                            |
+| `--detail`                       | Include full request/response Schema in results (parameters, requestBody, responses)                                   |
+| `--format <format>`              | Output format, options: `json`, `compact` (default: `json`)                                                        |
+| `--all`                          | Ignore `.keqfilter` rules, search all endpoints                                                                      |
+| `--tolerant`                     | Tolerant mode: ignores invalid Swagger/OpenAPI document structure                                                             |
+| `--debug`                        | Print debug information                                                                                             |
+
+:::tip
+On first run, the embedding model is automatically downloaded to `~/.cache/keq/models`. Subsequent runs use the cache directly.
+:::
+
+#### Output Examples
+
+**compact format:**
+
+```
+[0.92] GET  /cats  Get all cat info  (catService#getCats)
+[0.85] POST /cats  Create a new cat    (catService#createCat)
+```
+
+**json format:**
+
+```json
+{
+  "results": [
+    {
+      "score": 0.92,
+      "module": "catService",
+      "method": "GET",
+      "pathname": "/cats",
+      "operationId": "getCats",
+      "summary": "Get all cat info",
+      "description": "",
+      "tags": ["cats"]
+    }
+  ],
+  "total": 1
+}
+```
+
+### `keq apis [options]`
+
+Lists all API endpoints and component information defined in OpenAPI documents, including endpoint summary/description and schema descriptions.
+
+| **Option**                         | **Description**                                                                                                 |
+| :------------------------------- | :------------------------------------------------------------------------------------------------------- |
+| `-c --config <config_file_path>` | Path to the configuration file                                                                                           |
+| `--includes <includes...>`       | Specify output content, options: `operations`, `components`                                                          |
+| `--module <moduleName...>`       | Only list modules matching the module name                                                                                 |
+| `--method <method>`              | Only list endpoints matching the HTTP method                                                                               |
+| `--pathname <pathname>`          | Only list endpoints matching the path                                                                                     |
+| `--format <format>`              | Output format, options: `compact`, `json`                                                                       |
+| `--json`                         | Output in JSON format (equivalent to `--format json`)                                                                |
+| `--all`                          | Ignore `.keqfilter` rules, list all modules and endpoints. Cannot be used with `--module`, `--method`, `--pathname`            |
+| `--tolerant`                     | Tolerant mode: ignores invalid Swagger/OpenAPI document structure                                                             |
+| `--debug`                        | Print debug information                                                                                             |
+
+#### Output Example
+
+```
+Module: catService
+──────────────────────────────────────────────────────────────────────────
+
+  APIs:
+    GET     /cats
+    Get all cat info
+    POST    /cats
+    Create a new cat
+
+  Schemas:
+    Cat
+    Cat data model
+```

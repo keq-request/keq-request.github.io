@@ -1,0 +1,35 @@
+# HTTP Methods
+
+Keq supports all common HTTP methods with a clean, straightforward API:
+
+```typescript
+import { request } from "keq"
+
+// GET request
+await request.get("https://example.com/cats")
+
+// POST request
+await request.post("https://example.com/cats")
+
+// PUT request
+await request.put("https://example.com/cats/1")
+
+// PATCH request
+await request.patch("https://example.com/cats/1")
+
+// DELETE request
+await request.delete("https://example.com/cats/1")
+await request.del("https://example.com/cats/1") // .del() is an alias for .delete()
+
+// HEAD request
+await request.head("https://example.com/cats")
+
+// OPTIONS request (commonly used for CORS preflight debugging)
+await request.options("https://api.example.com/cats")
+```
+
+:::tip Automatic URL Completion
+If the URL contains only a path (e.g., `/cats`), Keq will automatically prepend the origin:
+- **Browser**: Uses `window.location.origin`
+- **Node.js**: Uses `http://127.0.0.1`
+:::

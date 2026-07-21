@@ -1,0 +1,75 @@
+# Response Parsing
+
+## Automatic Parsing
+
+Keq automatically selects the appropriate parsing method based on the response's `Content-Type`:
+
+import IntelligentTable from '@site/docs/components/_intelligent-table.mdx'
+
+<IntelligentTable />
+
+
+```typescript
+import { request } from "keq"
+
+// Assuming the response Content-Type is application/json
+const cats = await request.get("/cats")
+
+console.log(`Found ${cats.length} cats`)
+console.log(`The first cat is named: ${cats[0].name}`)
+```
+
+## Manually Specifying the Parsing Method
+
+Use `.resolveWith()` to manually specify how to parse the response body, ignoring `Content-Type`:
+
+```typescript
+import { request } from "keq"
+
+// Force parse as JSON (even if Content-Type isn't application/json)
+const cats = await request
+  .get("/cats")
+  .resolveWith("json")
+
+// Force parse as text
+const text = await request
+  .get("/cats")
+  .resolveWith("text")
+
+// Parse as FormData
+const form = await request
+  .get("/cats")
+  .resolveWith("form-data")
+
+// Parse as Blob
+const blob = await request
+  .get("/cats")
+  .resolveWith("blob")
+
+// Parse as ArrayBuffer
+const buffer = await request
+  .get("/cats")
+  .resolveWith("array-buffer")
+```
+
+## Getting the Raw Response Object
+
+If you need access to the raw `Response` object (e.g., to read response headers, status codes, etc.), use `.resolveWith("response")`:
+
+```typescript
+import { request } from "keq"
+
+// Get the raw Response object
+const response = await request
+  .get("/cats")
+  .resolveWith("response")
+
+// Access response information
+console.log(response.status)        // 200
+console.log(response.statusText)    // "OK"
+console.log(response.headers.get("content-type"))
+
+// Manually parse the response body
+const cats = await response.json()
+console.log(cats)
+```

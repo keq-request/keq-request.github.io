@@ -1,0 +1,250 @@
+# Storage
+
+`Storage` is the container for storing cache data. `@keq-request/cache` provides multiple built-in storage solutions and supports custom storage implementations.
+
+## MemoryStorage
+
+`MemoryStorage` stores cache data in memory — it's cleared after page refresh.
+
+### Configuration Options
+
+| Parameter       | Type                                   | Default                   | Description                                                           |
+| :-------------- | :------------------------------------- | :------------------------ | :------------------------------------------------------------- |
+| size            | `number`                               | `Infinity`                | Maximum storage capacity (bytes); when capacity is insufficient, cache data is evicted based on the eviction policy    |
+| eviction        | `Eviction`                             | `Eviction.LRU`            | Eviction policy when memory is insufficient, [see details](#eviction-policies)                    |
+| debug           | `boolean`                              | `false`                   | Whether to enable debug log output                                           |
+| onCacheGet      | `(event: OnCacheGetEvent) => void`     | `undefined`               | Callback when cache is accessed. Event contains `key: string`                 |
+| onCacheSet      | `(event: OnCacheSetEvent) => void`     | `undefined`               | Callback when cache is added/updated. Event contains `key: string`            |
+| onCacheRemove   | `(event: OnCacheRemoveEvent) => void`  | `undefined`               | Callback when cache is removed. Event contains `key: string`                 |
+| onCacheEvict    | `(event: OnCacheEvictEvent) => void`   | `undefined`               | Callback when cache is evicted. Event contains `keys: string[]`              |
+| onCacheExpired  | `(event: OnCacheExpiredEvent) => void` | `undefined`               | Callback when cache expires. Event contains `keys: string[]`                |
+
+### Usage Example
+
+```typescript
+import { request } from "keq"
+import { cache, MemoryStorage, Eviction, Size } from "@keq-request/cache"
+
+const storage = new MemoryStorage({
+  size: 10 * Size.MB,
+  eviction: Eviction.LRU,
+})
+
+request.use(cache({ storage }))
+```
+
+### Debugging
+
+`MemoryStorage` provides a `print()` method that prints all cache entries to the console in table format for debugging:
+
+```typescript
+const storage = new MemoryStorage({ debug: true })
+
+// Print info for all cache entries (key, size, expiry, access count, last access time, response status, etc.)
+await storage.print()
+```
+
+## IndexedDBStorage
+
+`IndexedDBStorage` stores cache data in IndexedDB — data persists and survives page refreshes.
+
+### Configuration Options
+
+| Parameter       | Type                                   | Default                            | Description                                                           |
+| :-------------- | :------------------------------------- | :--------------------------------- | :------------------------------------------------------------- |
+| size            | `number`                               | `Infinity`                         | Maximum storage capacity (bytes); when capacity is insufficient, cache data is evicted based on the eviction policy    |
+| eviction        | `Eviction`                             | `Eviction.LRU`                     | Eviction policy when storage is insufficient, [see details](#eviction-policies)                |
+| tableName       | `string`                               | `'keq_cache_indexed_db_storage'`   | IndexedDB table name; **multiple instances using the same table name share cache data**     |
+| debug           | `boolean`                              | `false`                            | Whether to enable debug log output                                           |
+| onCacheGet      | `(event: OnCacheGetEvent) => void`     | `undefined`                        | Callback when cache is accessed. Event contains `key: string`                 |
+| onCacheSet      | `(event: OnCacheSetEvent) => void`     | `undefined`                        | Callback when cache is added/updated. Event contains `key: string`            |
+| onCacheRemove   | `(event: OnCacheRemoveEvent) => void`  | `undefined`                        | Callback when cache is removed. Event contains `key: string`                 |
+| onCacheEvict    | `(event: OnCacheEvictEvent) => void`   | `undefined`                        | Callback when cache is evicted. Event contains `keys: string[]`              |
+| onCacheExpired  | `(event: OnCacheExpiredEvent) => void` | `undefined`                        | Callback when cache expires. Event contains `keys: string[]`                |
+
+### Usage Example
+
+```typescript
+import { request } from "keq"
+import { cache, IndexedDBStorage, Eviction, Size } from "@keq-request/cache"
+
+const storage = new IndexedDBStorage({
+  size: 50 * Size.MB,
+  eviction: Eviction.LRU,
+  tableName: "my-app-cache",
+})
+
+request.use(cache({ storage }))
+```
+
+## MultiTierStorage
+
+`MultiTierStorage` provides a multi-tier caching solution. You can use a fast, small-capacity, short-lived `Storage` (like MemoryStorage) as the first tier, and a slower, larger-capacity, long-lived `Storage` (like IndexedDBStorage) as the second tier, achieving high-performance caching.
+
+### Configuration Options
+
+| Parameter  | Type                                   | Default                    | Description                                                           |
+| :--------- | :------------------------------------- | :------------------------ | :------------------------------------------------------------- |
+| tiers      | `KeqCacheStorage[]`                    | -                         | Array of Storage instances. When looking up cache, tiers are traversed in order. |
+
+### How It Works
+
+- **Read**: Searches for cache data sequentially from the first tier to the last. When data is found in a later tier, it's automatically synced to all preceding tiers for faster access next time.
+- **Write**: Writes to all tiers simultaneously, ensuring data consistency across all storage layers.
+- **Delete**: Deletes from all tiers simultaneously.
+
+### Usage Example
+
+```typescript
+import { request } from "keq"
+import {
+  cache,
+  MemoryStorage,
+  IndexedDBStorage,
+  MultiTierStorage,
+  Size,
+} from "@keq-request/cache"
+
+const memoryStorage = new MemoryStorage({
+  size: 5 * Size.MB, // 5MB memory cache
+})
+
+const indexedDBStorage = new IndexedDBStorage({
+  size: 50 * Size.MB, // 50MB persistent cache
+  tableName: "app-cache",
+})
+
+const storage = new MultiTierStorage({
+  tiers: [memoryStorage, indexedDBStorage],
+})
+
+request.use(cache({ storage }))
+```
+
+## TierStorage
+
+`TierStorage` is a convenient two-tier caching solution combining `MemoryStorage` (L1 cache) and `IndexedDBStorage` (L2 cache). It's essentially a specialized version of `MultiTierStorage` for two-layer storage.
+
+### Configuration Options
+
+| Parameter  | Type                                                              | Default  | Description                                                           |
+| :--------- | :--------------------------------------------------------------- | :------- | :------------------------------------------------------------- |
+| memory     | `MemoryStorage \| MemoryStorageOptions`                          | `{}`     | Memory storage (L1 cache) configuration options or an existing `MemoryStorage` instance. Creates a default `MemoryStorage` if not provided |
+| indexedDB  | `IndexedDBStorage \| IndexedDBStorageOptions`                    | `{}`     | IndexedDB storage (L2 cache) configuration options or an existing `IndexedDBStorage` instance. Creates a default `IndexedDBStorage` if not provided |
+
+### Basic Usage
+
+```typescript
+import { request } from "keq"
+import { cache, TierStorage, Eviction, Size } from "@keq-request/cache"
+
+const storage = new TierStorage({
+  memory: {
+    size: 5 * Size.MB, // 5MB memory cache
+    eviction: Eviction.LRU,
+  },
+  indexedDB: {
+    size: 50 * Size.MB, // 50MB persistent cache
+    eviction: Eviction.TTL,
+    tableName: "app-cache",
+  },
+})
+
+request.use(cache({ storage }))
+```
+
+## Size Constants
+
+The `Size` enum provides common byte unit constants for conveniently configuring storage capacity:
+
+| Constant  | Value                | Description    |
+| :-------- | :---------------- | :------ |
+| `Size.B`  | `1`               | Bytes    |
+| `Size.KB` | `1024`            | Kilobytes  |
+| `Size.MB` | `1024 * 1024`     | Megabytes  |
+| `Size.GB` | `1024 * 1024 * 1024` | Gigabytes  |
+
+```typescript
+import { Size } from "@keq-request/cache"
+
+const size = 10 * Size.MB // 10485760 bytes
+```
+
+## Eviction Policies
+
+Both built-in `MemoryStorage` and `IndexedDBStorage` implement multiple eviction policies:
+
+### Eviction.TTL
+
+Evicts cache entries that are about to expire
+
+### Eviction.LRU
+
+Evicts least recently used cache entries
+
+### Eviction.LFU
+
+Evicts least frequently used cache entries
+
+### Eviction.RANDOM
+
+Randomly evicts cache entries
+
+## Custom Storage
+
+You can define your own `Storage` if you want to use other storage methods (e.g., `SessionStorage`). Here's a simple example:
+
+```typescript
+import { KeqCacheStorage, CacheEntry } from "@keq-request/cache"
+
+class MyStorage extends KeqCacheStorage {
+  private storage = new Map<string, CacheEntry>()
+
+  async get(key: string): Promise<CacheEntry | undefined> {
+    return this.storage.get(key)
+  }
+
+  async set(entry: CacheEntry): Promise<void> {
+    this.storage.set(entry.key, entry)
+  }
+
+  async remove(key: string): Promise<void> {
+    this.storage.delete(key)
+  }
+}
+```
+
+This example shows only the most basic custom storage implementation. In a real production environment, you'd also need to handle storage capacity limits and eviction policies.
+For more implementation details, refer to the source code of [`MemoryStorage`](https://github.com/keq-request/keq/blob/main/packages/cache/src/storage/memory-storage/memory-storage.ts) and [`IndexedDBStorage`](https://github.com/keq-request/keq/blob/main/packages/cache/src/storage/indexed-db-storage/indexed-db-storage.ts).
+
+If you only need to extend the functionality of `MemoryStorage` or `IndexedDBStorage`, you can inherit the corresponding class and override the needed methods.
+
+```typescript
+import { MemoryStorage } from "@keq-request/cache"
+
+
+/**
+ * Memory cache that invalidates after 3 hits
+*/
+class OnceStorage extends MemoryStorage {
+  const counter = new Map<string, number>()
+
+  async get(key: string) {
+    const entry = await super.get(key)
+
+    if (entry) {
+      const count = (this.counter.get(key) || 0) + 1
+
+      if (count >= 3) {
+        await this.remove(key)
+        this.counter.delete(key)
+        return undefined
+      } else {
+        this.counter.set(key, count)
+      }
+    }
+
+    return entry
+  }
+}
+```

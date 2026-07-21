@@ -1,0 +1,80 @@
+# Request Body
+
+## JSON Format
+
+Sending JSON data is the most common scenario — just call `.send()` with an object:
+
+```typescript
+import { request } from "keq"
+
+await request
+  .post("/cats")
+  .send({
+    name: "mimi",
+    age: 3,
+    breed: "british_shorthair"
+  })
+```
+
+:::tip Automatic Content-Type
+When the argument to `.send()` is a plain object, Keq automatically sets `Content-Type` to `application/json`.
+:::
+
+## FormData Format
+
+### Using the Chainable API
+
+Keq provides a convenient API for constructing FormData:
+
+```typescript
+import { request } from "keq"
+
+await request
+  .post("/cats")
+  .field("name", "mimi")
+  .field("age", 3)
+  .attach("avatar", imageBlob)  // file upload
+```
+
+:::tip Automatic Content-Type
+When `.field()` or `.attach()` is called, Keq automatically sets `Content-Type` to `multipart/form-data`.
+:::
+
+### Using Native FormData
+
+You can also pass a `FormData` object directly:
+
+```typescript
+import { request } from "keq"
+
+const form = new FormData()
+form.append("name", "mimi")
+form.append("age", "3")
+form.append("avatar", imageBlob)
+
+await request
+  .post("/cats")
+  .send(form)
+```
+
+:::tip Automatic Content-Type
+When the argument to `.send()` is a `FormData` instance, Keq automatically sets `Content-Type` to `multipart/form-data`.
+:::
+
+## URL-Encoded Format
+
+To send `application/x-www-form-urlencoded` data, explicitly specify it using the `.type()` method:
+
+```typescript
+import { request } from "keq"
+
+await request
+  .post("/cats")
+  .type("form")
+  .send({ name: "mimi", age: 3 })
+  .send("breed=british_shorthair")  // you can also append strings
+```
+
+:::info Content-Type Priority
+The `Content-Type` set explicitly via `.type()` has the highest priority and overrides any automatic inference from `.send()`, `.field()`, or `.attach()`.
+:::

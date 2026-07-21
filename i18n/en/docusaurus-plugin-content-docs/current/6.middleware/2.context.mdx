@@ -1,0 +1,113 @@
+# Understanding Context
+
+[Response MDN]: https://developer.mozilla.org/en-US/docs/Web/API/Response
+
+`context` is the shared context object that flows through the entire middleware execution chain. Understanding its lifecycle in the onion model is key to writing good middleware. For the complete property list, see [API Reference - Context](../api-reference/context).
+
+## Core Properties
+
+| Property | Description |
+|:-----|:-----|
+| `context.request` | HTTP request parameters (URL, method, headers, body, etc.), readable/writable before `next()` |
+| `context.response` | Response proxy object that supports multiple reads of the response body |
+| `context.res` | Raw Fetch [Response][Response MDN] object |
+| `context.output` | Overrides the final resolved value of the request (only effective in intelligent mode) |
+| `context.options` | Custom options set via `.option()` |
+| `context.data` | Request-level shared data, automatically cleaned up after the request completes |
+| `context.global` | Global shared data, requires manual cleanup |
+
+## Lifecycle
+
+`await next()` is the dividing line in middleware — operate on the request before it, handle the response after it:
+
+1. **Request created** — context initialized, `context.request` is readable/writable
+2. **Before `await next()`** — modifications to `context.request` affect the actual HTTP request sent
+3. **`await next()`** — request is sent, control passes to the next middleware layer
+4. **After `await next()`** — `context.response` is readable, response has been received
+5. **Request ends** — `context.data` is automatically cleaned up
+
+A typical middleware leverages both phases:
+
+```typescript
+import { KeqMiddleware } from "keq"
+
+const authMiddleware: KeqMiddleware = async (context, next) => {
+  // Before next(): modify the request
+  context.request.headers.set("Authorization", `Bearer ${getToken()}`)
+
+  await next()
+
+  // After next(): inspect the response
+  if (context.response?.status === 401) {
+    await refreshToken()
+  }
+}
+```
+
+:::warning Do not modify context.request after next()
+When `next()` returns, the request has already been sent — modifications to `context.request` at this point have no effect.
+:::
+
+## Response Proxy
+
+`context.response` is a proxy of the raw [Response][Response MDN]. The raw Response's `.json()`, `.text()`, and similar methods can only be called once — this causes conflicts when multiple middleware need to read the response body. Keq solves this through proxying.
+
+```typescript
+const middlewareA: KeqMiddleware = async (context, next) => {
+  await next()
+  const data = await context.response.json() // First read
+  console.log("A:", data)
+}
+
+const middlewareB: KeqMiddleware = async (context, next) => {
+  await next()
+  const data = await context.response.json() // Second read, works normally
+  console.log("B:", data)
+}
+```
+
+### Caching & Copy-on-Write
+
+- `.json()` and `.text()` cache the first parse result — repeated calls don't re-parse
+- For objects returned by `.json()`, Keq uses a copy-on-write strategy: zero overhead for reads, automatic independent copy on writes, without affecting other middleware
+- `.arrayBuffer()`, `.blob()`, `.formData()` are not cached but still support multiple reads
+
+### context.res
+
+`context.res` is the raw Fetch Response object. In most scenarios you should use `context.response` — only use `context.res` when you need low-level operations like streaming reads (`body.getReader()`).
+
+## Data Flow Between Middleware
+
+### context.data
+
+`context.data` is a request-level shared object for passing data between middleware. It's automatically destroyed after the request completes.
+
+Using Symbol as keys is recommended to avoid naming conflicts between different middleware:
+
+```typescript
+import { KeqMiddleware } from "keq"
+
+const START_TIME = Symbol("timer")
+
+const timerMiddleware: KeqMiddleware = async (context, next) => {
+  context.data[START_TIME] = Date.now()
+
+  await next()
+
+  const duration = Date.now() - context.data[START_TIME]
+  console.log(`Request duration: ${duration}ms`)
+}
+```
+
+### Comparison of Three Sharing Mechanisms
+
+| Feature | context.data | context.options | context.global |
+|:-----|:-------------|:----------------|:---------------|
+| **Lifecycle** | Automatically cleaned after request | Automatically cleaned after request | Manual cleanup |
+| **Scope** | Single request | Single request | Globally shared |
+| **Typical use** | Passing temporary state between middleware | Passing configuration to middleware | Sharing state across requests (e.g., cache) |
+
+Selection criteria:
+- Passing temporary data between collaborating middleware → `context.data`
+- Letting users control middleware behavior via `.option()` → `context.options`
+- Persisting state across requests (e.g., token cache, request count) → `context.global` (remember to clean up manually to avoid memory leaks)

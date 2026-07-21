@@ -1,0 +1,136 @@
+# Error Handling
+
+Unified error handling is one of the core use cases for middleware. Through middleware, you can centralize error handling for all requests, avoiding repetitive try/catch logic in every request.
+
+## Using instanceof to Check Error Types
+
+```typescript
+import { request, RequestException, TimeoutException } from 'keq'
+
+try {
+  await request.get('/cats').timeout(5000)
+} catch (err) {
+  if (err instanceof TimeoutException) {
+    console.error('Request timed out, please try again later')
+  } else if (err instanceof RequestException) {
+    console.error(`Request failed: ${err.statusCode} ${err.message}`)
+  } else {
+    console.error('Unknown error:', err)
+  }
+}
+```
+
+:::tip
+For complete exception class definitions and parameter descriptions, see [API Reference - Exception Types](../api-reference/exceptions).
+:::
+
+## Unified Error Handling in Middleware
+
+```typescript
+import { request, KeqMiddleware, RequestException } from 'keq'
+
+function errorHandler(): KeqMiddleware {
+  return async (context, next) => {
+    await next()
+
+    if (context.response) {
+      const { status, statusText } = context.response
+
+      if (status === 401) {
+        throw new RequestException(401, statusText, { fatal: true })
+      } else if (status === 403) {
+        throw new RequestException(403, statusText, { fatal: true })
+      } else if (status === 404) {
+        throw new RequestException(404, statusText, { fatal: true })
+      } else if (status >= 400 && status < 500) {
+        // Other client errors should not retry
+        throw new RequestException(status, statusText, { fatal: true })
+      } else if (status >= 500) {
+        // Server errors are retryable
+        const message = await context.response.text()
+        throw new RequestException(status, message)
+      }
+    }
+  }
+}
+
+request.use(errorHandler())
+```
+
+## Catching Different Error Types
+
+```typescript
+import { request, RequestException } from 'keq'
+
+try {
+  await request.get('/cats')
+} catch (err) {
+  if (err instanceof RequestException) {
+    switch (err.statusCode) {
+      case 401:
+        console.error('Unauthorized, please log in first')
+        break
+      case 403:
+        console.error('No permission to access this resource')
+        break
+      case 404:
+        console.error('Resource not found')
+        break
+      default:
+        console.error(`Request failed: ${err.statusCode} ${err.message}`)
+    }
+  }
+}
+```
+
+## Using Custom Exception Classes
+
+```typescript
+import { request, KeqMiddleware, RequestException } from 'keq'
+
+// Custom exception classes
+export class UnauthorizedException extends RequestException {
+  constructor(message?: string) {
+    super(401, message || 'Unauthorized', { fatal: true })
+    this.name = 'UnauthorizedException'
+  }
+}
+
+export class ForbiddenException extends RequestException {
+  constructor(message?: string) {
+    super(403, message || 'Forbidden', { fatal: true })
+    this.name = 'ForbiddenException'
+  }
+}
+
+function errorHandler(): KeqMiddleware {
+  return async (context, next) => {
+    await next()
+
+    if (context.response) {
+      const { status, statusText } = context.response
+
+      if (status === 401) {
+        throw new UnauthorizedException(statusText)
+      } else if (status === 403) {
+        throw new ForbiddenException(statusText)
+      } else if (status >= 400) {
+        throw new RequestException(status, statusText)
+      }
+    }
+  }
+}
+
+request.use(errorHandler())
+
+// Catch specific error types when using
+try {
+  await request.get('/cats')
+} catch (err) {
+  if (err instanceof UnauthorizedException) {
+    // Redirect to login page
+  } else if (err instanceof ForbiddenException) {
+    // Show permission denied message
+  }
+}
+```

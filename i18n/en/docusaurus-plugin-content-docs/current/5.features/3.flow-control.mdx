@@ -1,0 +1,246 @@
+# Flow Control
+
+Flow control manages the behavior when multiple requests are sent simultaneously. Keq provides four control strategies: serial execution (`serial`), concurrent throttling (`concurrent`), abort previous (`abort`), and mutex lock (`mutex`).
+
+## Why Flow Control?
+
+1. **Search input**: Rapid typing triggers multiple search requests, but we only care about the latest results
+2. **Batch requests**: When processing many requests, browser concurrent connection limits require controlling concurrency
+3. **Polling protection**: During timed polling, if the previous request hasn't returned, skip the current poll to avoid buildup
+
+## Serial Execution - serial
+
+Serial mode ensures requests in the same queue execute in order — subsequent requests wait until the previous one completes.
+
+### Basic Usage
+
+```typescript
+import { request } from "keq"
+
+await request
+  .get("/api/cats")
+  .flowControl("serial"/*, context.locationId */)
+
+await request
+  .get("/api/cats/random")
+  .flowControl("serial", "cat-api") // named queue
+```
+
+### Real-World Scenario: Batch Requests
+
+Ensure multiple requests execute sequentially:
+
+```typescript
+import { request } from "keq";
+
+const catIds = [1, 2, 3, 4, 5];
+
+// All requests will execute serially, not concurrently
+await Promise.all(
+  catIds.map((id) =>
+    request
+      .get(`/api/cats/${id}`)
+      .flowControl("serial", "cat-fetch")
+  )
+);
+```
+
+:::tip Performance Note
+Browsers limit concurrent HTTP connections to the same domain (typically 6). Using `serial` mode gives you precise control over concurrency, preventing request queuing.
+:::
+
+## Concurrent Throttling - concurrent
+
+Concurrent mode allows up to a specified number of requests in the same queue to execute simultaneously — excess requests queue up and wait. Compared to `serial`'s one-at-a-time execution, `concurrent` maintains parallel capability while controlling concurrency.
+
+### Basic Usage
+
+```typescript
+import { request } from "keq"
+
+await request
+  .get("/api/cats")
+  .flowControl("concurrent", 3/*, context.locationId */)
+
+await request
+  .get("/api/cats/random")
+  .flowControl("concurrent", 3, "cat-api") // named queue, max 3 concurrent
+```
+
+### Real-World Scenario: Batch Downloads
+
+Limit concurrency when processing many requests to avoid overloading the server:
+
+```typescript
+import { request } from "keq";
+
+const catIds = Array.from({ length: 100 }, (_, i) => i + 1);
+
+// At most 5 requests sent simultaneously, the rest queue up
+await Promise.all(
+  catIds.map((id) =>
+    request
+      .get(`/api/cats/${id}`)
+      .flowControl("concurrent", 5, "cat-download")
+  )
+);
+```
+
+:::tip serial vs concurrent
+`serial` is equivalent to `concurrent` with a concurrency of 1. Use `serial` when strict ordering is required; use `concurrent` when you just need throttling.
+:::
+
+## Abort Previous - abort
+
+Abort mode automatically cancels unfinished requests in the same queue when a new request is sent, ensuring only the latest request is executing.
+
+### Basic Usage
+
+```typescript
+import { request } from "keq"
+
+await request
+  .get("/api/cats/search")
+  .flowControl("abort"/*, context.locationId */)
+
+await request
+  .get("/api/cats/search")
+  .flowControl("abort", "cat-search"); // named queue
+```
+
+### Real-World Scenario: Search Suggestions
+
+When users type quickly, only show results from the latest search:
+
+```tsx
+import { request, AbortException } from "keq"
+import { useState } from "react"
+
+function SearchBox() {
+  const [suggestions, setSuggestions] = useState<string[]>([])
+
+  const handleSearch = async (keyword: string) => {
+    try {
+      const results = await request
+        .get("/api/cats/search")
+        .query("q", keyword)
+        .flowControl("abort", "cat-search")
+
+      setSuggestions(results)
+    } catch (err) {
+      // An AbortException is thrown when a previous request is aborted
+      if (!(err instanceof AbortException)) {
+        console.error(err)
+      }
+    }
+  }
+
+  return (
+    <div>
+      <input
+        type="text"
+        onChange={(e) => handleSearch(e.target.value)}
+        placeholder="Searching..."
+      />
+      <ul>
+        {suggestions.map((suggestion, i) => (
+          <li key={i}>{suggestion}</li>
+        ))
+      </ul>
+    </div>
+  )
+}
+```
+
+:::tip Error Handling
+When a request is aborted, an `AbortException` is thrown. In practice, you typically need to catch and ignore this error.
+:::
+
+## Mutex Lock - mutex
+
+Mutex mode is the opposite of abort: when a request in the same queue is already executing, new requests are immediately rejected with a `MutexException`, preventing duplicate requests to the backend.
+
+### Basic Usage
+
+```typescript
+import { request } from "keq"
+
+await request
+  .get("/api/cats")
+  .flowControl("mutex"/*, context.locationId */)
+
+await request
+  .get("/api/cats")
+  .flowControl("mutex", "cat-api") // named queue
+```
+
+### Real-World Scenario: Polling Protection
+
+During timed polling, if the previous request hasn't returned when the next trigger fires, mutex skips the current poll to avoid request buildup:
+
+```tsx
+import { request, MutexException } from "keq"
+import { useEffect, useState } from "react"
+
+function OrderStatus({ orderId }: { orderId: string }) {
+  const [status, setStatus] = useState<string>("pending")
+
+  useEffect(() => {
+    const poll = async () => {
+      try {
+        const res = await request
+          .get(`/api/orders/${orderId}/status`)
+          .flowControl("mutex", `poll-order-${orderId}`)
+
+        setStatus(res.status)
+      } catch (err) {
+        if (!(err instanceof MutexException)) {
+          console.error(err)
+        }
+      }
+    }
+
+    const timer = setInterval(poll, 3000)
+    poll()
+
+    return () => clearInterval(timer)
+  }, [orderId])
+
+  return <span>Order status: {status}</span>
+}
+```
+
+:::tip Error Handling
+When a request is rejected, a `MutexException` is thrown. In polling scenarios, you typically ignore it silently to avoid meaningless error logs.
+:::
+
+## Queue Isolation
+
+Different named queues are completely independent and don't affect each other:
+
+```typescript
+import { request } from "keq";
+
+// These two requests are in different queues and can execute concurrently
+await Promise.all([
+  request.get("/api/cats").flowControl("serial", "cats"),
+  request.get("/api/dogs").flowControl("serial", "dogs"),
+]);
+```
+
+## Instance Isolation
+
+Flow control queues between different `KeqRequest` instances are completely isolated:
+
+```typescript
+import { KeqRequest } from "keq";
+
+const api1 = new KeqRequest();
+const api2 = new KeqRequest();
+
+// Even with the same key, the queues of the two instances are independent
+await Promise.all([
+  api1.get("/api/cats").flowControl("serial", "my-key"),
+  api2.get("/api/cats").flowControl("serial", "my-key"),
+]);
+```

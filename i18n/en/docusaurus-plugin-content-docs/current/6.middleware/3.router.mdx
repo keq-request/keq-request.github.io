@@ -1,0 +1,165 @@
+# Routing Methods
+
+[minimatch]: https://www.npmjs.com/package/minimatch
+
+Keq provides a flexible routing mechanism that makes middleware apply only to specific requests. Through the `.apply()` chainable API, you can precisely control middleware scope.
+
+## `.apply(...middlewares)`
+
+Applies one or more middleware to specified routes, returning a chain configuration object. Use `.exclude()` and `.forRoutes()` to define matching rules.
+
+```typescript
+import { request } from "keq"
+
+request
+  .apply(authMiddleware, loggingMiddleware)
+  .forRoutes({ host: "api.example.com" })
+```
+
+**Parameters**:
+- `middlewares` - One or more middleware functions
+
+### `.forRoutes(...routes)`
+
+Specifies the routes where middleware takes effect. Multiple routes have an **OR** relationship (matches if any one applies).
+
+```typescript
+import { request } from "keq"
+
+request
+  .apply(rateLimitMiddleware)
+  .forRoutes(
+    { host: "api.example.com", method: "post" },
+    { host: "api.example.com", method: "put" },
+  )
+```
+
+**Parameters**:
+- `routes` - One or more `KeqRoutePattern` objects or `KeqRoute` predicate functions
+
+**`KeqRoutePattern` fields**:
+
+| Field | Type | Description |
+|------|------|------|
+| `host` | `string` | Match domain |
+| `method` | `string` | Match HTTP method |
+| `pathname` | `string` | Glob ([minimatch][minimatch]) pattern to match path |
+
+Within a single `KeqRoutePattern`, multiple fields have an **AND** relationship (all fields must match).
+
+```typescript
+// host AND method AND pathname must all match
+request
+  .apply(middleware)
+  .forRoutes({ host: "api.example.com", method: "get", pathname: "/users/**" })
+```
+
+### `.forAllRoutes()`
+
+Applies middleware to all routes. Semantically equivalent to unconditional matching — combined with `.exclude()`, achieves "apply globally but exclude specific routes".
+
+```typescript
+import { request } from "keq"
+
+// Apply globally
+request
+  .apply(loggingMiddleware)
+  .forAllRoutes()
+
+// Apply globally but exclude health checks
+request
+  .apply(loggingMiddleware)
+  .exclude({ pathname: "/health" }, { pathname: "/ready" })
+  .forAllRoutes()
+```
+
+### `.exclude(...routes)`
+
+Excludes specific routes. Multiple exclusion conditions have an **OR** relationship (skip if any one matches).
+
+```typescript
+import { request } from "keq"
+
+request
+  .apply(authMiddleware)
+  .exclude({ pathname: "/health" }, { pathname: "/ready" })
+  .forRoutes({ host: "api.example.com" })
+```
+
+**Parameters**:
+- `routes` - One or more `KeqRoutePattern` objects or `KeqRoute` predicate functions
+
+### Custom `KeqRoute` Predicates
+
+In addition to `KeqRoutePattern` objects, you can pass custom predicate functions:
+
+```typescript
+import { request } from "keq"
+import type { KeqRoute } from "keq"
+
+const hasDebugParam: KeqRoute = (ctx) => {
+  return ctx.request.url.searchParams.has("debug")
+}
+
+request
+  .apply(debugMiddleware)
+  .forRoutes(hasDebugParam)
+```
+
+## Chaining
+
+`.forRoutes()` and `.forAllRoutes()` return the `request` instance itself, supporting continuous chain registration of multiple routed middleware groups:
+
+```typescript
+import { request } from "keq"
+
+request
+  .apply(authMiddleware)
+    .forRoutes({ host: "api.example.com" })
+  .apply(cacheMiddleware)
+    .forRoutes({ host: "cdn.example.com" })
+  .apply(loggingMiddleware)
+    .exclude({ pathname: "/health" })
+    .forAllRoutes()
+```
+
+## Comprehensive Example
+
+```typescript
+import { request } from "keq"
+
+// Add auth for API requests, excluding health checks
+request
+  .apply(authMiddleware)
+  .exclude({ pathname: "/health" }, { pathname: "/ready" })
+  .forRoutes({ host: "api.example.com" })
+
+// Add request logging for write operations
+request
+  .apply(logMiddleware)
+  .forRoutes(
+    { host: "api.example.com", method: "post" },
+    { host: "api.example.com", method: "put" },
+    { host: "api.example.com", method: "delete" },
+  )
+
+// Add global rate limiting, excluding internal paths
+request
+  .apply(rateLimitMiddleware)
+  .exclude({ pathname: "/internal/**" })
+  .forAllRoutes()
+```
+
+## Execution Order
+
+Routed middleware executes in the order it was registered. When a request matches multiple routes, all matching middleware executes in order:
+
+```typescript
+request
+  .apply(middleware1).forRoutes({ host: "api.example.com" })
+  .apply(middleware2).forRoutes({ pathname: "/users/**" })
+  .apply(middleware3).forRoutes({ method: "get" })
+
+// For GET https://api.example.com/users/123
+// Execution order: middleware1 -> middleware2 -> middleware3 -> built-in middleware
+```

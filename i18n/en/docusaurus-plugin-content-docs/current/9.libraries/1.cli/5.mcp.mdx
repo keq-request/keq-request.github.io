@@ -1,0 +1,162 @@
+# MCP Server
+
+`@keq-request/cli` includes a built-in [Model Context Protocol (MCP)](https://modelcontextprotocol.io/) server that exposes your project's API directory as tools callable by AI assistants (Claude, Cursor, etc.).
+
+## Starting
+
+```bash
+keq mcp [options]
+```
+
+| **Option**                         | **Description**                                                                                                 |
+| :------------------------------- | :------------------------------------------------------------------------------------------------------- |
+| `-c --config <config_file_path>` | Path to the configuration file                                                                                           |
+| `--tolerant`                     | Tolerant mode: ignores invalid Swagger/OpenAPI document structure                                                             |
+| `--debug`                        | Print debug information                                                                                             |
+
+The MCP Server communicates via the stdio transport protocol, making it suitable for launching as a subprocess of an AI editor.
+
+## Configuring AI Editors
+
+:::tip
+It's recommended to configure the MCP Server in the project directory rather than globally, so each project can independently manage its own API context.
+:::
+
+### Claude Code
+
+Add to `.mcp.json` in your project root:
+
+```json
+{
+  "mcpServers": {
+    "keq": {
+      "command": "npx",
+      "args": ["@keq-request/cli", "mcp"]
+    }
+  }
+}
+```
+
+### Cursor
+
+Add to `.cursor/mcp.json` in your project:
+
+```json
+{
+  "mcpServers": {
+    "keq": {
+      "command": "npx",
+      "args": ["keq", "mcp"]
+    }
+  }
+}
+```
+
+### VS Code
+
+Add to `.vscode/mcp.json` in your project:
+
+```json
+{
+  "servers": {
+    "keq": {
+      "command": "npx",
+      "args": ["keq", "mcp"]
+    }
+  }
+}
+```
+
+## Available Tools
+
+The MCP Server registers the following tools for AI assistants to call:
+
+### `search_apis`
+
+Semantic search for API endpoints using natural language, supporting cross-language matching in Chinese and English.
+
+| **Parameter** | **Type**   | **Required** | **Description**                     |
+| :--------- | :--------- | :------- | :--------------------------- |
+| `query`    | `string`   | Yes       | Natural language search query              |
+| `module`   | `string[]` | No       | Filter by module name               |
+| `limit`    | `number`   | No       | Maximum number of results (default: 10)  |
+
+### `get_api_detail`
+
+Get the complete definition of a specified API, including request parameters, request body, and response body JSON Schema.
+
+| **Parameter** | **Type** | **Required** | **Description**                                  |
+| :--------- | :------- | :------- | :---------------------------------------- |
+| `module`   | `string` | Yes       | Module name                                  |
+| `method`   | `string` | Yes       | HTTP method (GET, POST, PUT, DELETE, etc.)     |
+| `pathname` | `string` | Yes       | API path (e.g., `/api/v1/users`)            |
+
+### `list_modules`
+
+List all API modules configured in `.keqrc`.
+
+No parameters required.
+
+### `list_apis`
+
+List structured information for all API endpoints (module, method, path, operationId, summary).
+
+| **Parameter** | **Type**   | **Required** | **Description**                                                    |
+| :--------- | :--------- | :------- | :---------------------------------------------------------- |
+| `module`   | `string[]` | No       | Filter by module name                                              |
+| `method`   | `string`   | No       | Filter by HTTP method                                            |
+| `pathname` | `string`   | No       | Filter by path (supports glob wildcards)                               |
+| `includes` | `string[]` | No       | Content to include, options: `operations`, `components` (default: `['operations']`) |
+
+### `build_apis`
+
+Generate type-safe TypeScript client code for specified API endpoints. Files are written to the output directory configured in `.keqrc`.
+
+| **Parameter** | **Type**   | **Required** | **Description**                                          |
+| :--------- | :--------- | :------- | :------------------------------------------------ |
+| `module`   | `string[]` | No       | Modules to generate code for                                   |
+| `method`   | `string`   | No       | Filter by HTTP method                                   |
+| `pathname` | `string`   | No       | Filter by path (supports glob wildcards, e.g., `/api/v1/users/**`)|
+| `fresh`    | `boolean`  | No       | Clear output directory before building (default: `false`)                 |
+
+### `list_generated_files`
+
+List generated TypeScript client files. Optionally list only invalid/outdated files.
+
+| **Parameter** | **Type**   | **Required** | **Description**                                              |
+| :--------- | :--------- | :------- | :---------------------------------------------------- |
+| `invalid`  | `boolean`  | No       | When `true`, only lists outdated files not in current build output (default: `false`) |
+
+### `get_filter_rules`
+
+View the current `.keqfilter` file contents. Filter rules control which APIs generate code.
+
+No parameters required.
+
+### `add_filter_rule`
+
+Add a filter rule to `.keqfilter`. `deny` rules exclude APIs from code generation, `allow` rules include them.
+
+| **Parameter** | **Type** | **Required** | **Description**                                    |
+| :--------- | :------- | :------- | :------------------------------------------ |
+| `mode`     | `string` | Yes       | Rule mode: `deny` or `allow`                  |
+| `module`   | `string` | No       | Module name pattern (supports glob, default: `*`)          |
+| `method`   | `string` | No       | HTTP method pattern (default: `*`)                    |
+| `pathname` | `string` | Yes       | Path pattern (supports glob)                         |
+| `build`    | `boolean`| No       | Whether to automatically rebuild after adding the rule (default: `false`)    |
+
+### `remove_filter_rule`
+
+Remove a specified filter rule from `.keqfilter`.
+
+| **Parameter** | **Type** | **Required** | **Description**                          |
+| :--------- | :------- | :------- | :-------------------------------- |
+| `mode`     | `string` | Yes       | Block the rule belongs to: `deny` or `allow`  |
+| `module`   | `string` | Yes       | Exact match module name pattern             |
+| `method`   | `string` | Yes       | Exact match method pattern                 |
+| `pathname` | `string` | Yes       | Exact match path pattern                 |
+| `build`    | `boolean`| No       | Whether to automatically rebuild after removing the rule (default: `false`) |
+
+## Auto-Reload
+
+The MCP Server monitors changes to `.keqrc` and `.keqfilter` files. When these files are modified, the server automatically recompiles the API index without requiring a manual restart.

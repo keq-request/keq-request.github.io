@@ -1,0 +1,107 @@
+# Cache Strategies
+
+Cache strategies determine how to handle the relationship between cached data and network requests. `@keq-request/cache` provides multiple built-in strategies and supports custom strategies.
+
+## Strategies.NETWORK_ONLY
+
+import NetworkOnly from './assets/network-only.png'
+
+<img src={NetworkOnly} style={{ maxHeight: '300px' }} />
+
+
+**Network Only** - Sends the request directly without using cache, equivalent to not enabling the cache middleware.
+
+## Strategies.NETWORK_FIRST
+
+import NetworkFirst from './assets/network-first.png'
+
+<img src={NetworkFirst} style={{ maxHeight: '300px' }} />
+
+**Network First** - Attempts the network request first; falls back to cache if it fails.
+
+## Strategies.CACHE_FIRST
+
+import CacheFirst from './assets/cache-first.png'
+
+<img src={CacheFirst} style={{ maxHeight: '300px' }} />
+
+**Cache First** - Returns from cache if it exists; otherwise sends a network request.
+
+## Strategies.STALE_WHILE_REVALIDATE
+
+import StaleWhileRevalidate from './assets/stale-while-revalidate.png'
+
+<img src={StaleWhileRevalidate} style={{ maxHeight: '300px' }} />
+
+**SWR** - Returns cached data immediately if available, while asynchronously sending a network request to update the cache.
+
+
+## Custom Strategies
+
+You can implement your own `Strategy` function to control caching behavior.
+This example shows a simple implementation of the `CACHE_FIRST` strategy:
+
+```typescript
+import { request, KeqMiddleware } from "keq"
+import { KeqCacheStrategy, KeqCacheParameters, CacheEntry } from "@keq-request/cache"
+
+const MyCacheFirstStrategy: KeqCacheStrategy = async function (handler, context, next) {
+  // const { storage, key } = params
+
+  // return async function (context, next) {
+  const [key,cache] = await handler.getCache(context)
+
+  if (cache) {
+    context.res = cache.response
+    context.emitter.emit('cache:hit', { key, response: context.response, context }) // Don't forget to emit the cache hit event
+    return
+  }
+
+  context.emitter.emit('cache:miss', { key, context }) // Don't forget to emit the cache miss event
+
+  // Send request
+  await next()
+
+  const [, entry] = await handler.setCache(context, key)
+  if (entry) {
+    // Don't forget to emit the cache update event
+    context.emitter.emit('cache:update', {
+      key: entry.key,
+      oldResponse: cache?.response,
+      newResponse: entry.response,
+      context,
+    })
+  }
+}
+
+// Now you can use this custom strategy directly
+request
+  .get("/example")
+  .options({
+    cache: {
+      key: "custom-cache-key",
+      strategy: MyCacheFirstStrategy,
+      ttl: 60,
+    },
+  })
+```
+
+### Composing Strategies
+
+Implementing a completely new strategy can be complex. What you might need is simply combining built-in strategies for different scenarios:
+
+```typescript
+import { KeqCacheStrategy, Strategies } from "@keq-request/cache"
+
+const isNetworkFast = true
+
+const MyStrategy: KeqCacheStrategy = async function (handler, context, next) {
+  // Choose different strategies based on conditions
+  if (isNetworkFast) {
+    return Strategies.NETWORK_FIRST(handler, context, next)
+  } else {
+    // Use stale-while-revalidate for other cases
+    return Strategies.STALE_WHILE_REVALIDATE(handler, context, next)
+  }
+}
+```

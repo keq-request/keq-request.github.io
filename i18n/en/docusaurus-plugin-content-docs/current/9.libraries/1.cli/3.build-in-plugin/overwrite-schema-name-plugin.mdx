@@ -1,0 +1,40 @@
+# OverwriteSchemaNamePlugin
+
+`OverwriteSchemaNamePlugin` renames Schema names under `components.schemas` in OpenAPI documents. When backend-generated Schema names contain package paths, version numbers, or other redundant information, this plugin can unify the naming style.
+
+The plugin automatically updates all `$ref` paths referencing the renamed Schema throughout the document.
+
+## Configuration
+
+```typescript title=".keqrc.ts"
+import { defineKeqConfig } from "@keq-request/cli"
+import { OverwriteSchemaNamePlugin } from '@keq-request/cli/plugins'
+
+export default defineKeqConfig({
+  outdir: "./src/apis",
+  modules: {
+    catService: "./cat-service-swagger.json",
+  },
+  plugins: [
+    new OverwriteSchemaNamePlugin(({ name, module }) => {
+      // Remove Java package path prefix, e.g., "com.example.model.Cat" → "Cat"
+      const simpleName = name.split('.').pop()
+      return simpleName
+    }),
+  ],
+})
+```
+
+## Factory Function
+
+The constructor accepts a factory function:
+
+| **Parameter**    | **Type**           | **Description**             |
+| :--------------- | :----------------- | :------------------- |
+| `context.name`   | `string`           | Original name of the current Schema |
+| `context.module` | `ModuleDefinition` | Definition info for the current module   |
+
+**Return value**: `string | undefined`
+
+- Returns `string`: Uses that string as the new Schema name
+- Returns `undefined`: Keeps the original name unchanged

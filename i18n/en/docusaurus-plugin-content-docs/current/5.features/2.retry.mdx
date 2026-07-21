@@ -1,0 +1,180 @@
+# Request Retry
+
+Request retry handles network fluctuations or temporary service errors by automatically re-sending failed requests to improve application reliability.
+
+## Basic Usage
+
+Use the `.retry()` method to configure the retry strategy:
+
+```typescript
+import { request } from 'keq'
+
+// Retry 3 times with a 1-second interval
+await request
+  .get('/cats')
+  .retry(3, 1000)
+```
+
+:::tip
+The actual number of requests is `retryTimes + 1`. For example, `.retry(3, 1000)` means up to 4 requests will be made (1 original + 3 retries).
+:::
+
+:::caution Retry Execution Scope
+Each retry **re-executes the entire middleware pipeline**, not just the fetch request. If your middleware has side effects (such as logging, counter increments, token refresh), use `context.data.retry.attempt` to check whether the current execution is a retry:
+
+```typescript
+import { KeqMiddleware } from 'keq'
+
+const logMiddleware: KeqMiddleware = async (context, next) => {
+  const attempt = context.data.retry?.attempt ?? 0
+
+  if (attempt === 0) {
+    // Only execute on the first request
+    console.log("Sending request:", context.request.__url__.href)
+  } else {
+    console.log(`Retry attempt ${attempt}`)
+  }
+
+  await next()
+}
+```
+:::
+
+## Parameters
+
+| Parameter  | Type                           | Default                       | Description                           |
+| :--------- | :----------------------------- | :---------------------------- | :----------------------------- |
+| retryTimes | `number`                       | `0`                           | Maximum number of retries                   |
+| retryDelay | `number \| function`           | `0`                           | Delay between retries (ms), or a function returning the delay |
+| retryOn    | `function`                     | `(attempt, error) => !!error` | Function to determine whether to continue retrying         |
+
+### retryDelay Function Signature
+
+When `retryDelay` is a function, its signature is:
+
+```typescript
+(attempt: number, error: Error | null, context: KeqSharedContext) => number | Promise<number>
+```
+
+| Parameter | Type                | Description                                       |
+| :------ | :------------------ | :----------------------------------------- |
+| attempt | `number`            | Current retry number (starting from 1)              |
+| error   | `Error \| null`     | Error thrown during the request, or `null` if none  |
+| context | `KeqSharedContext`  | Keq request context containing `request` and `response` info |
+
+This allows you to implement dynamic delay strategies like exponential backoff:
+
+```typescript
+import { request } from 'keq'
+
+await request
+  .get('/cats')
+  .retry(
+    5,
+    // Exponential backoff: 1s, 2s, 4s, 8s, 16s
+    (attempt) => Math.pow(2, attempt - 1) * 1000,
+  )
+```
+
+### retryOn Function Signature
+
+The `retryOn` function signature is:
+
+```typescript
+(attempt: number, error: Error | null, context: KeqSharedContext) => boolean | Promise<boolean>
+```
+
+| Parameter | Type                | Description                                       |
+| :------ | :------------------ | :----------------------------------------- |
+| attempt | `number`            | Current retry number (starting from 1)              |
+| error   | `Error \| null`     | Error thrown during the request, or `null` if none  |
+| context | `KeqSharedContext`  | Keq request context containing `request` and `response` info |
+
+Return `true` to continue retrying, `false` to stop.
+
+## Custom Retry Conditions
+
+With the `retryOn` parameter, you can precisely control which situations trigger a retry:
+
+```typescript
+import { request, RequestException } from 'keq'
+
+await request
+  .get('/cats')
+  .retry(3, 1000, (attempt, err, context) => {
+    // If the error is explicitly marked as non-retryable, don't retry
+    if (err instanceof RequestException && err.retry === false) return false
+
+    // An error occurred during the request (network error, fetch failure, middleware exception, etc.)
+    if (err) return true
+
+    if (context.response) {
+      const status = context.response.status
+
+      // Don't retry 4xx client errors
+      if (status >= 400 && status < 500) {
+        return false
+      }
+
+      // Retry 5xx server errors
+      if (status >= 500) {
+        return true
+      }
+    }
+
+    return false
+  })
+```
+
+## Global Retry Configuration
+
+You can set a default retry strategy for all requests using middleware:
+
+```typescript
+import { request, KeqMiddleware, RequestException } from 'keq'
+
+// Create a retry middleware
+function withRetry(
+  retryTimes: number,
+  retryDelay: number
+): KeqMiddleware {
+  return async (context, next) => {
+    // If the request hasn't explicitly set retry options, apply the custom strategy
+    if (!context.options.retry) {
+      context.options.retry = {
+        times: retryTimes,
+        delay: retryDelay,
+        on: (attempt, err, ctx) => {
+          // Error explicitly marked as non-retryable
+          if (err instanceof RequestException && err.retry === false) {
+            return false
+          }
+
+          // Retry on error
+          if (err) return true
+
+          // Retry on 5xx server errors
+          if (ctx.response && ctx.response.status >= 500) {
+            return true
+          }
+
+          return false
+        }
+      }
+    }
+
+    await next()
+  }
+}
+
+// Add middleware with a custom global retry strategy
+request.use(withRetry(3, 1000))
+
+// Uses the global custom retry strategy
+await request.get('/cats')
+
+// Overrides the global custom retry strategy
+await request
+  .get('/cats')
+  .retry(5, 2000)
+```

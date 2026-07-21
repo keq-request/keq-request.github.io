@@ -1,0 +1,255 @@
+---
+title: Translators
+---
+
+# Translators
+
+Translators are the code generation strategy system of `@keq-request/cli`, used to define the style and pattern for generating TypeScript code from OpenAPI documents. Through different Translators, you can generate API client code adapted for different frameworks.
+
+## What is a Translator
+
+A Translator is an interface for organizing and applying a set of plugins (Plugins) to control how code is generated:
+
+```typescript
+interface Translator {
+  apply(): Plugin[]
+}
+```
+
+Each Translator returns a set of plugins through its `apply()` method. These plugins are executed during the compilation process, ultimately generating code in a specific style.
+
+## Built-in Translators
+
+### MicroFunctionTranslator
+
+`MicroFunctionTranslator` is the default translator, generating function-style API calling code. This style is concise, easy to use, and suitable for most scenarios.
+
+**Generated code example:**
+
+```typescript
+import { KeqRequest } from 'keq'
+
+export const request = new KeqRequest()
+```
+
+```typescript
+import { request } from './request'
+
+// Generated function-style API
+export function getCats<STATUS extends keyof GetCatsResponseBodies>(
+  args?: GetCatsRequestParameters
+): Keq<GetCatsOperation<STATUS>> {
+  const req = request.get<GetCatsResponseBodies[STATUS]>("/api/cats")
+
+  if (args && "breed" in args) {
+    req.query("breed", args["breed"], { arrayFormat: "repeat" })
+  }
+
+  return req
+}
+
+getCats.pathname = '/api/cats'
+getCats.method = 'get'
+```
+
+**Using the generated code:**
+
+```typescript
+import { getCats } from './apis/cat-service'
+
+// Call the function directly to make a request
+const response = await getCats({ breed: 'persian' })
+console.log(response.data)
+```
+
+### NestjsTranslator
+
+`NestjsTranslator` generates module code deeply integrated with the NestJS framework, suitable for use in NestJS projects.
+
+**Generated code characteristics:**
+- NestJS service module definitions
+- Dependency injection support
+- Seamless integration with the NestJS ecosystem
+
+**Configuration example:**
+
+```typescript
+// .keqrc.ts
+import { defineKeqConfig, NestjsTranslator } from "@keq-request/cli"
+
+export default defineKeqConfig({
+  outdir: "./src/apis",
+  modules: {
+    catService: "./cat-service-swagger.json",
+  },
+  translators: [new NestjsTranslator()],
+})
+```
+
+**Using the generated code:**
+
+```typescript
+import { Module } from '@nestjs/common'
+import { CatServiceModule } from './apis/cat-service'
+
+@Module({
+  imports: [CatServiceModule],
+})
+export class AppModule {}
+```
+
+## Configuring Translators
+
+### Basic Configuration
+
+Specify the translator to use via the `translators` field in the configuration file:
+
+```typescript
+// .keqrc.ts
+import { defineKeqConfig, MicroFunctionTranslator } from "@keq-request/cli"
+
+export default defineKeqConfig({
+  outdir: "./src/apis",
+  modules: {
+    catService: "./cat-service-swagger.json",
+  },
+  // Specify MicroFunctionTranslator
+  translators: [new MicroFunctionTranslator()],
+})
+```
+
+### Default Value
+
+If the `translators` field is not configured, the CLI defaults to `MicroFunctionTranslator`:
+
+```typescript
+// The following two configurations are equivalent
+export default defineKeqConfig({
+  // ...
+})
+
+export default defineKeqConfig({
+  // ...
+  translators: [new MicroFunctionTranslator()],
+})
+```
+
+### Using Multiple Translators
+
+You can configure multiple translators simultaneously (though this is uncommon):
+
+```typescript
+import { defineKeqConfig, MicroFunctionTranslator, NestjsTranslator } from "@keq-request/cli"
+
+export default defineKeqConfig({
+  outdir: "./src/apis",
+  modules: {
+    catService: "./cat-service-swagger.json",
+  },
+  // Use multiple translators simultaneously
+  translators: [
+    new MicroFunctionTranslator(),
+    new NestjsTranslator(),
+  ],
+})
+```
+
+## How It Works
+
+How Translators work in the compilation process:
+
+```
+Configuration file (.keqrc.ts)
+    ↓
+Parse config, read translators
+    ↓
+Call apply() on each translator
+    ↓
+Get Plugin[] arrays and flatten
+    ↓
+Apply all plugins to the compiler
+    ↓
+Execute compilation process
+    ↓
+Generate code
+```
+
+### Relationship Between Translators and Plugins
+
+A Translator is essentially an organizer for Plugins:
+
+- **Translator**: Defines the code generation strategy, returns a set of related Plugins
+- **Plugin**: Executes specific code generation logic
+
+For example, `MicroFunctionTranslator` internally uses two plugins:
+
+```typescript
+class MicroFunctionTranslator implements Translator {
+  apply(): Plugin[] {
+    return [
+      new GenerateDeclarationPlugin(),    // Generate type declarations
+      new GenerateMicroFunctionPlugin(),  // Generate function code
+    ]
+  }
+}
+```
+
+## Custom Translators
+
+If the built-in translators don't meet your needs, you can implement a custom translator:
+
+```typescript
+// custom-translator.ts
+import type { Translator, Plugin } from '@keq-request/cli'
+import { GenerateDeclarationPlugin } from '@keq-request/cli'
+
+export class CustomTranslator implements Translator {
+  apply(): Plugin[] {
+    return [
+      new GenerateDeclarationPlugin(),
+      new MyCustomPlugin(),
+    ]
+  }
+}
+
+class MyCustomPlugin implements Plugin {
+  apply(compiler: Compiler): void {
+    // Register to various compiler hooks
+    compiler.hooks.compile.tap('MyCustomPlugin', (context) => {
+      // Custom code generation logic
+    })
+  }
+}
+```
+
+Then use it in your configuration:
+
+```typescript
+// .keqrc.ts
+import { defineKeqConfig } from "@keq-request/cli"
+import { CustomTranslator } from "./custom-translator"
+
+export default defineKeqConfig({
+  outdir: "./src/apis",
+  modules: {
+    catService: "./cat-service-swagger.json",
+  },
+  translators: [new CustomTranslator()],
+})
+```
+
+## Choosing the Right Translator
+
+| Translator | Use Case | Features |
+|------------|---------|------|
+| **MicroFunctionTranslator** | General projects, React, Vue, and other frontend frameworks | Function-style calls, concise and easy to use, default option |
+| **NestjsTranslator** | NestJS backend projects | Generates NestJS modules, supports dependency injection |
+| **Custom Translator** | Special frameworks or custom needs | Fully customizable generation logic |
+
+## Summary
+
+- **Translators** define the strategy for generating code from OpenAPI documents
+- Built-in **MicroFunctionTranslator** (default) and **NestjsTranslator** cover most needs
+- Specify which translator to use via the `translators` field in the configuration file
+- Implement custom translators to generate code for specific frameworks
+- Translators complete code generation by organizing and applying a set of Plugins

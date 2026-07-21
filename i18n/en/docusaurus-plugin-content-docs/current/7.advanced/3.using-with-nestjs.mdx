@@ -1,0 +1,350 @@
+import InstallPackagesCode from '@site/docs/components/_install-packages-code.mdx'
+import ExecPackageCommandCode from '@site/docs/components/_exec-package-command-code.mdx'
+
+# Using Keq with NestJS
+
+This article explains how to integrate Keq in a NestJS project and how to use OpenAPI to auto-generate type-safe client code.
+
+## Installation
+
+<InstallPackagesCode packages="keq @keq-request/cli @keq-request/nestjs" />
+
+## Registering KeqModule
+
+Import `KeqModule` in your application's root module. `KeqModule` is a `@Global()` module that provides a global `KeqRequest` instance and `KeqMiddlewareConsumer`:
+
+```typescript title="src/app.module.ts"
+import { Module } from '@nestjs/common'
+import { KeqModule } from '@keq-request/nestjs'
+
+@Module({
+  imports: [
+    KeqModule,                                                // [!code ++]
+
+    /* ...other modules... */
+  ]
+})
+export class AppModule {}
+```
+
+Once registered, you can use `KeqRequest` via dependency injection in any Service:
+
+```typescript title="src/app.service.ts"
+import { Injectable } from '@nestjs/common'
+import { KeqRequest } from 'keq'
+
+@Injectable()
+export class AppService {
+  constructor(private readonly request: KeqRequest) {}
+
+  async getCats() {
+    const cats = await this.request.get('https://api.example.com/cats')
+    return cats
+  }
+}
+```
+
+## Advanced Middleware Configuration
+
+### Overview
+
+Keq provides a programmatic interface similar to NestJS's `MiddlewareConsumer`, supporting **route-based middleware registration** and **route exclusion**.
+
+There are two types of consumers in the middleware system:
+
+- **`KeqMiddlewareConsumer`**: Global consumer provided by `KeqModule`. Middleware registered through it applies to **all** requests from `KeqRequest`.
+- **`KeqConsumer<T>`**: Module-level consumer injected via `@InjectKeqConsumer(ModuleClass)`, bound to a specific generated module. Middleware registered through it **only applies to that module's** requests.
+
+Both consumers share the same middleware API (`apply()`, `forRoutes()`, `exclude()`, and chaining) — see sections below.
+
+:::info Middleware Execution Order
+
+When a request is sent, middleware executes in this order:
+
+**Global middleware** → **Module-level middleware from `register()`** → **Middleware registered via `KeqConsumer`**
+
+This three-layer order is always maintained regardless of configuration method.
+:::
+
+Module-level middleware has two configuration approaches for different scenarios:
+
+| Approach | Use Case |
+|------|---------|
+| `register({ middlewares: [...] })` | Static configuration at module import time; middleware takes effect immediately at module initialization |
+| `@InjectKeqConsumer()` | Dynamic registration in other Services; supports NestJS Provider dependency injection (e.g., `AuthService`, `ConfigService`) |
+
+### Global Middleware — KeqMiddlewareConsumer
+
+`KeqMiddlewareConsumer` is an `@Injectable()` class that can be injected into any Service or Controller. Middleware registered through it applies to **all** requests from `KeqRequest`:
+
+```typescript title="src/global-middleware.service.ts"
+import { Injectable } from '@nestjs/common'
+import { KeqMiddlewareConsumer, KEQ_ROUTES } from '@keq-request/nestjs'
+import { validateStatusCode } from '@keq-request/exception'
+
+@Injectable()
+export class GlobalMiddlewareService {
+  constructor(consumer: KeqMiddlewareConsumer) {
+    // Apply validateStatusCode middleware globally
+    consumer.apply(validateStatusCode()).forRoutes(KEQ_ROUTES.ALL)
+  }
+}
+```
+
+:::tip Injection Timing
+`KeqMiddlewareConsumer` is globally provided by `KeqModule`. As long as the module has imported `KeqModule` (or any module that depends on `KeqModule`), it can be injected anywhere.
+:::
+
+### apply() — Registering Middleware
+
+The `apply()` method accepts Keq middleware functions or NestJS-style middleware classes:
+
+```typescript
+import { type KeqNestMiddleware, type KeqExecutionContext, type KeqNext } from '@keq-request/nestjs'
+
+// NestJS-style middleware class (supports dependency injection)
+class AuthMiddleware implements KeqNestMiddleware {
+  use(ctx: KeqExecutionContext, next: KeqNext): Promise<void> {
+    // Auth logic
+    return next()
+  }
+}
+
+consumer.apply(AuthMiddleware, loggingMiddleware).forRoutes(KEQ_ROUTES.ALL)
+```
+
+:::tip Middleware Types
+`apply()` supports two types:
+- **`KeqMiddleware`**: Plain function middleware `(ctx, next) => void`
+- **`KeqNestMiddleware`**: NestJS class middleware (supports dependency injection, can inject other NestJS Providers)
+:::
+
+### forRoutes() — Specifying Route Scope
+
+`forRoutes()` controls which requests the middleware applies to:
+
+```typescript
+// Apply globally
+consumer.apply(loggingMiddleware).forRoutes(KEQ_ROUTES.ALL)
+
+// Apply only to specific paths (supports picomatch wildcards)
+consumer.apply(authMiddleware).forRoutes({
+  pathname: '/api/**',  // Only matches /api/* paths
+  method: 'POST',       // Only POST requests
+})
+```
+
+`forRoutes()` accepts two types of route targets:
+
+| Type | Description |
+|------|------|
+| `KEQ_ROUTES.ALL` | Matches all requests |
+| `KeqRouteInfo` | `{ host?, method?, pathname? }` — Filter by host / method / path |
+
+:::info Route Matching
+`KeqRouteInfo` uses [picomatch](https://github.com/micromatch/picomatch) as the path matching engine. When multiple conditions are specified (e.g., `pathname` + `method`), they have an **AND** relationship — all conditions must be satisfied to match.
+:::
+
+### exclude() — Excluding Specific Routes
+
+`exclude()` can be called before `forRoutes()` to exclude specific routes from the middleware scope:
+
+```typescript
+// Apply auth middleware globally, but exclude health check and public endpoints
+consumer.apply(AuthMiddleware)
+  .exclude(
+    { pathname: '/health' },
+    { pathname: '/public/**' },
+    { method: 'OPTIONS' },
+  )
+  .forRoutes(KEQ_ROUTES.ALL)
+```
+
+It can also be used with route-level middleware to exclude sub-paths:
+
+```typescript
+// Apply logging to /api/**, but exclude /api/internal/**
+consumer.apply(LoggingMiddleware)
+  .exclude({ pathname: '/api/internal/**' })
+  .forRoutes({ pathname: '/api/**' })
+```
+
+:::tip exclude Semantics
+- **Multiple conditions within a single `KeqRouteInfo`** (e.g., `{ pathname: '/api/**', method: 'GET' }`) have an **AND** relationship
+- **Multiple `exclude()` calls or multiple parameters** have an **OR** cumulative relationship (excluded if any one matches)
+- `exclude()` returns a config proxy, supporting chaining before `forRoutes()`
+:::
+
+### Chaining
+
+Both `KeqMiddlewareConsumer` and `KeqConsumer<T>` support chain registration of multiple middleware rules:
+
+```typescript
+@Injectable()
+export class AppMiddleware {
+  constructor(consumer: KeqMiddlewareConsumer) {
+    consumer
+      .apply(validateStatusCode())
+      .forRoutes(KEQ_ROUTES.ALL)
+
+    consumer
+      .apply(AuthMiddleware)
+      .exclude({ pathname: '/public/**' })
+      .forRoutes({ pathname: '/api/**' })
+
+    consumer
+      .apply(LoggingMiddleware)
+      .forRoutes(KEQ_ROUTES.ALL)
+  }
+}
+```
+
+## Generating NestJS Modules from OpenAPI
+
+`@keq-request/cli` supports generating NestJS modules from OpenAPI documents, providing complete type definitions and dependency injection support.
+
+### Configuring Generation Mode
+
+Set `mode` to `nestjs-module` in `.keqrc.ts`:
+
+```typescript title=".keqrc.ts"
+import { defineKeqConfig, FileNamingStyle } from '@keq-request/cli'
+
+export default defineKeqConfig({
+  mode: 'nestjs-module',   // [!code ++]
+  outdir: "./src/apis",
+  rendering: {
+    fileNamingStyle: FileNamingStyle.snakeCase,
+  },
+  modules: {
+    catService: "./cat-service-swagger.json",
+  },
+})
+```
+
+Run the build command:
+
+<ExecPackageCommandCode command="keq build" />
+
+### Registering Generated Modules
+
+Import the generated module into your application:
+
+```typescript title="src/app.module.ts"
+import { Module } from '@nestjs/common'
+import { KeqModule } from '@keq-request/nestjs'
+import { CatServiceModule } from './apis/cat_service/cat_service.module' // [!code ++]
+
+@Module({
+  imports: [
+    // Global KeqModule (provides KeqRequest and KeqMiddlewareConsumer)
+    KeqModule,
+
+    // Register generated module (forked from global KeqRequest, inherits global middleware)
+    CatServiceModule.register({                                   // [!code ++]
+      // Module-level middleware (executes after global middleware, see section 3.1)   [!code ++]
+      middlewares: [                                              // [!code ++]
+        setBaseUrl('https://cat-api.example.com'),                // [!code ++]
+        appendHeader('Authorization', 'Bearer YOUR_TOKEN_HERE'),  // [!code ++]
+      ]                                                           // [!code ++]
+    }),                                                           // [!code ++]
+  ]
+})
+export class AppModule {}
+```
+
+### Two Approaches to Module-Level Middleware
+
+There are two approaches for configuring module-level middleware for generated modules: static configuration (`register()`) and dynamic registration (`@InjectKeqConsumer()`). Regardless of approach, middleware follows the three-layer execution order: **Global middleware → `register()` middleware → `KeqConsumer` middleware**.
+
+#### Approach 1: `register()` Static Configuration
+
+Configure directly via `register({ middlewares: [...] })` at module import time. Suitable for scenarios where configuration is known at import time and doesn't depend on other NestJS Providers:
+
+```typescript
+CatServiceModule.register({
+  middlewares: [
+    setBaseUrl('https://cat-api.example.com'),
+    appendHeader('Authorization', 'Bearer YOUR_TOKEN_HERE'),
+  ],
+})
+```
+
+#### Approach 2: `@InjectKeqConsumer()` Dynamic Registration
+
+When middleware needs **dependency injection** of other NestJS Providers (e.g., `AuthService`, `ConfigService`), use `@InjectKeqConsumer()` to dynamically register in a separate Service:
+
+```typescript title="src/cat-service.middleware.ts"
+import { Injectable } from '@nestjs/common'
+import { InjectKeqConsumer, KeqConsumer } from '@keq-request/nestjs'
+import { CatServiceModule } from './apis/cat_service/cat_service.module'
+
+@Injectable()
+export class CatServiceMiddleware {
+  constructor(
+    @InjectKeqConsumer(CatServiceModule) consumer: KeqConsumer<typeof CatServiceModule>,
+  ) {
+    // This middleware only applies to CatServiceModule requests
+    consumer.apply(authMiddleware).forRoutes('*')
+  }
+}
+```
+
+:::info Injection Requirement
+`@InjectKeqConsumer()` requires the target module class to have a `KEQ_CONSUMER` static property. NestJS modules generated by `@keq-request/cli` automatically include this property and can be used directly for injection.
+:::
+
+#### Comparison
+
+| Approach | Use Case | Dependency Injection |
+|------|---------|---------|
+| `register({ middlewares: [...] })` | Static configuration at module import; middleware takes effect at module initialization | Not supported |
+| `@InjectKeqConsumer()` | Dynamic registration in other Services; middleware takes effect at Service instantiation | Supported (can inject `AuthService`, `ConfigService`, etc.) |
+
+### Isolation Mode
+
+If you don't want the generated module to inherit global middleware, set `isolate: true` to create an independent `KeqRequest` instance:
+
+```typescript
+@Module({
+  imports: [
+    CatServiceModule.register({
+      isolate: true,   // Don't inherit global middleware, create independent instance
+      middlewares: [
+        setBaseUrl('https://cat-api.example.com'),
+        appendHeader('Authorization', 'Bearer YOUR_TOKEN_HERE'),
+      ]
+    }),
+  ]
+})
+export class SomeFeatureModule {}
+```
+
+:::info Instance Acquisition Strategy
+- Without `isolate` (default): Forked from the global `KeqRequest` provided by `KeqModule`, inheriting global middleware
+- `isolate: true`: Creates a brand new `KeqRequest` instance, inheriting nothing from global configuration
+
+If `KeqModule` is not registered and `isolate: true` is not set, the module will automatically create an independent instance and output a warning.
+:::
+
+### Using the Generated Client
+
+```typescript title="src/cat.service.ts"
+import { Injectable } from '@nestjs/common'
+import { CatServiceClient } from './apis/cat_service/cat_service.client'
+
+@Injectable()
+export class CatService {
+  constructor(private readonly catServiceClient: CatServiceClient) {}
+
+  async getCats() {
+    const response = await this.catServiceClient.getCats<200>()
+    return response.body
+  }
+
+  async getCatById(id: string) {
+    const response = await this.catServiceClient.getCatById<200>({ id })
+    return response.body
+  }
+}
+```

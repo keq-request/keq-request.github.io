@@ -1,0 +1,90 @@
+# Request Configuration
+
+Keq wraps Fetch API configuration options and provides a more convenient chainable API. This section covers authentication, request modes, and other advanced configurations.
+
+## HTTP Basic Authentication
+
+Use the `.auth()` method to set HTTP Basic authentication, automatically encoding to Base64:
+
+```typescript
+import { request } from "keq"
+
+await request
+  .get("https://api.example.com/admin/users")
+  .auth("username", "password")
+// Equivalent to .set("Authorization", "Basic dXNlcm5hbWU6cGFzc3dvcmQ=")
+```
+
+## Credentials Mode
+
+Control whether the browser sends cookies with cross-origin requests:
+
+```typescript
+import { request } from "keq"
+
+// Send cookies with cross-origin requests
+await request
+  .get("https://api.example.com/cats")
+  .credentials("include")
+
+// Only send cookies for same-origin requests (default)
+await request
+  .get("https://api.example.com/cats")
+  .credentials("same-origin")
+
+// Never send cookies
+await request
+  .get("https://api.example.com/cats")
+  .credentials("omit")
+```
+
+## Request Mode
+
+Control the cross-origin behavior of the request:
+
+```typescript
+import { request } from "keq"
+
+// CORS mode (default)
+await request
+  .get("https://api.example.com/cats")
+  .mode("cors")
+
+// Disallow cross-origin
+await request
+  .get("/api/cats")
+  .mode("same-origin")
+
+// Simple cross-origin (no preflight, limited methods and headers)
+await request
+  .get("https://api.example.com/cats")
+  .mode("no-cors")
+```
+
+## Redirect Handling
+
+Control how HTTP redirect responses are handled:
+
+```typescript
+import { request } from "keq"
+
+// Automatically follow redirects (default)
+await request
+  .get("https://api.example.com/cats")
+  .redirect("follow")
+
+// Handle redirects manually (returns the redirect response itself)
+const response = await request
+  .get("https://api.example.com/cats")
+  .redirect("manual")
+  .resolveWith("response")
+
+if (response.status === 302) {
+  console.log("Redirected to:", response.headers.get("Location"))
+}
+
+// Throw an error on redirect
+await request
+  .get("https://api.example.com/cats")
+  .redirect("error")
+```

@@ -1,0 +1,66 @@
+# LintSchemaPlugin
+
+`LintSchemaPlugin` uses [AJV](https://ajv.js.org/) and JSON Schema Draft 2020-12 meta-schema to validate all Schema objects in OpenAPI documents, helping you discover non-compliant field definitions before code generation.
+
+:::tip
+Many Swagger/OpenAPI documents contain non-compliant schema definitions (e.g., using `required: false` in a schema object). These errors can cause code generation failures or incorrect type generation. `LintSchemaPlugin` can detect these issues early in the build stage, helping you quickly locate and report them to the API provider for fixing.
+:::
+
+## Configuration
+
+```typescript title=".keqrc.ts"
+import { LintSchemaPlugin } from '@keq-request/cli/plugins'
+
+export default defineKeqConfig({
+  outdir: "./src/apis",
+  modules: {
+    catService: "./cat-service-swagger.json",
+  },
+  plugins: [new LintSchemaPlugin()],
+})
+```
+
+## Validation Scope
+
+The plugin runs during the `beforeCompile` stage and validates Schema objects in the following locations:
+
+- All Schemas defined in `components.schemas`
+- `parameters` schemas for each Operation
+- `requestBody` schemas for each Operation
+- `responses` schemas for each Operation
+
+## Output Example
+
+When non-compliant Schemas are found, the plugin outputs warning messages to the console including the module name, field path, and error description:
+
+```
+WARN [catService] components.schemas.Cat/required: must be array
+WARN [catService] listCats parameter "status" schema/required: must be array
+WARN [catService] createCat requestBody application/json schema/properties/name/required: must be array
+```
+
+## Strict Mode
+
+By default, the plugin only outputs warnings and continues the build. If you want to abort the build on validation failure, enable `strict` mode:
+
+```typescript title=".keqrc.ts"
+import { LintSchemaPlugin } from '@keq-request/cli/plugins'
+
+export default defineKeqConfig({
+  outdir: "./src/apis",
+  modules: {
+    catService: "./cat-service-swagger.json",
+  },
+  plugins: [
+    new LintSchemaPlugin({
+      strict: true,
+    }),
+  ],
+})
+```
+
+## Configuration Options
+
+| **Option** | **Type**  | **Default** | **Description**                                               |
+| :------- | :-------- | :--------- | :----------------------------------------------------- |
+| `strict` | `boolean` | `false`    | When enabled, aborts the build and throws an error on validation failure instead of just outputting warnings |

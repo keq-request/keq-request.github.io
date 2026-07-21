@@ -1,0 +1,293 @@
+# Overview
+
+[Fetch MDN]: https://developer.mozilla.org/en-US/docs/Web/API/Fetch
+
+Middleware is one of Keq's most powerful features, allowing you to elegantly extend and customize HTTP request behavior. Keq adopts an onion model middleware architecture similar to [Koa](https://github.com/koajs/koa).
+
+## Why Middleware?
+
+When using the native [Fetch API][Fetch MDN], we often need various enhancements like automatic retry, timeout control, error handling, etc.
+There are many such libraries on NPM, like [`fetch-retry`](https://www.npmjs.com/package/fetch-retry) and [`node-fetch-har`](https://www.npmjs.com/package/node-fetch-har),
+which typically provide a `wrap(fetch)` style API. But this approach has two problems:
+
+1. **Difficult to compose**: Multiple features require nested wrapping like `wrapX(wrapY(wrapZ(fetch)))`, making code hard to maintain
+2. **Lack of flexibility**: Difficult to configure different behaviors for different API routes
+
+Some other HTTP client libraries provide interceptor mechanisms,
+but interceptors can usually only do simple pre/post-request processing.
+Complex requirements like SWR (Stale-While-Revalidate) caching become impractical.
+
+## Onion Model
+
+import KeqMiddlewareImage from './assets/keq-middleware.png'
+
+<img src={KeqMiddlewareImage} style={{ display: 'block', maxHeight: '500px', marginRight: 'auto', marginLeft: 'auto' }} alt="Keq Middleware" />
+
+Keq's middleware uses the onion model: requests enter from the outermost middleware, passing inward layer by layer until the request is sent, then responses return from inside out — each middleware layer has the opportunity to process both the request and response.
+
+Keq has 3 built-in core middleware layers (from outer to inner):
+
+1. **flowControlMiddleware** - Provides flow control functionality
+2. **timeoutMiddleware** - Provides request timeout control
+3. **fetchMiddleware** - Sends the actual request using [Fetch API][Fetch MDN]
+
+## Writing Middleware
+
+### Basic Concepts
+
+A middleware is an async function that receives `context` and `next` as parameters, with the following type definition:
+
+```typescript
+type KeqMiddleware = (context: KeqExecutionContext, next: () => Promise<void>) => Promise<void>
+```
+
+**Parameters**:
+
+- **context** - The request context containing all information like request parameters and response results (see [Context Object](./context))
+- **next** - Function to call the next middleware layer
+
+A simple middleware example:
+
+```typescript
+import { KeqMiddleware } from "keq"
+
+const myMiddleware: KeqMiddleware = async (context, next) => {
+  // Modify request parameters here
+  console.log("Before request")
+
+  await next() // Call the next middleware layer
+
+  // Process response here
+  console.log("After request")
+}
+```
+
+### Applying Middleware
+
+Use the `.use()` method to add middleware to a request instance:
+
+```typescript
+import { request } from "keq"
+
+request.use(myMiddleware)
+
+// Chain multiple middleware
+request
+  .use(middleware1)
+  .use(middleware2)
+  .use(middleware3)
+```
+
+### Example: Logging Middleware
+
+Let's start with a simple example — writing middleware that records request duration:
+
+```typescript
+import { request } from "keq"
+
+request.use(async (context, next) => {
+  const startTime = Date.now()
+  console.log("Request started:", context.request.url.href)
+
+  await next() // Execute the request
+
+  const duration = Date.now() - startTime
+  console.log("Request completed, duration:", duration, "ms")
+})
+
+await request.get("http://example.com/cats")
+// Output:
+// Request started: http://example.com/cats
+// Request completed, duration: 234 ms
+```
+
+### Reusable Middleware
+
+Wrapping middleware in a function makes it reusable and configurable:
+
+```typescript {4-14,18}
+import { KeqMiddleware, request } from "keq"
+
+// Create a logging middleware factory function
+function logMiddleware(prefix: string): KeqMiddleware {
+  return async (context, next) => {
+    const startTime = Date.now()
+    console.log(`${prefix} Request started:`, context.request.url.href)
+
+    await next() // Execute the request
+
+    const duration = Date.now() - startTime
+    console.log(`${prefix} Request completed:`, context.response?.status, `Duration: ${duration}ms`)
+  }
+}
+
+// Apply middleware
+request
+  .use(logMiddleware("[API]"))
+```
+
+:::tip Middleware should follow the single responsibility principle:
+
+```typescript
+// ✅ Good: single responsibility
+function authMiddleware(token: string): KeqMiddleware { /* ... */ }
+function logMiddleware(): KeqMiddleware { /* ... */ }
+
+// ❌ Bad: mixed responsibilities
+function megaMiddleware(): KeqMiddleware {
+  // Does both auth and logging
+}
+```
+:::
+
+### Adding Custom Options
+
+Middleware can add custom options through TypeScript module augmentation, allowing users to flexibly control behavior at call time.
+
+Let's enhance the previous logging middleware by adding a `silent` option to control log output:
+
+```typescript
+import { KeqMiddleware, request } from "keq"
+
+// 1. Extend type definitions
+declare module "keq" {                  // [!code ++]
+  interface KeqMiddlewareOptions<OP> {  // [!code ++]
+    silent(value: boolean): Keq<OP>     // [!code ++]
+  }                                     // [!code ++]
+}                                       // [!code ++]
+
+// 2. Create middleware with custom options support
+function logMiddleware(prefix: string): KeqMiddleware {
+  return async (context, next) => {
+    // Read custom options
+    const isSilent = context.options.silent || false // [!code ++]
+
+    if (!isSilent) {   // [!code ++]
+      const startTime = Date.now()
+      console.log(`${prefix} Request started:`, context.request.url.href)
+
+      await next()
+
+      const duration = Date.now() - startTime
+      console.log(`${prefix} Request completed:`, context.response?.status, `Duration: ${duration}ms`)
+    } else {          // [!code ++]
+      await next()    // [!code ++]
+    }
+  }
+}
+
+request.use(logMiddleware("[API]"))
+
+// 3. Normal usage outputs logs
+await request.get("/cats")
+
+// 4. Using the silent option suppresses logs
+await request
+  .get("/cats")
+  .option("silent", true)  // [!code ++]
+```
+
+### Routed Middleware
+
+In the examples above, middleware applies to all requests. In real projects, different APIs may need different processing logic. Keq provides powerful routing to make middleware apply only to specific requests:
+
+```typescript
+import { request } from "keq"
+
+request
+  .apply(logMiddleware("[EXAMPLE API]")).forRoutes({ host: "api.example.com" })
+  .apply(logMiddleware("[ADMIN]")).forRoutes({ host: "admin.example.com" })
+```
+
+For detailed information on routing methods, see [Routing Methods](./router).
+
+## Creating Independent Instances
+
+Use `new KeqRequest()` to create independent request instances — middleware and global state are completely isolated between different instances:
+
+```typescript
+import { KeqRequest } from "keq"
+
+const internalAPI = new KeqRequest({
+  baseOrigin: "http://internal-api.company.com"
+})
+
+const externalAPI = new KeqRequest({
+  baseOrigin: "https://api.example.com"
+})
+
+// Even with the same key, flow control queues are independent between instances
+await Promise.all([
+  internalAPI.get("/users").flowControl("serial", "api-key"),
+  externalAPI.get("/data").flowControl("serial", "api-key"), // Independent from internalAPI, won't block
+])
+```
+
+**KeqRequest Constructor Options**:
+
+| Option | Description |
+|:-----|:-----|
+| `baseOrigin` | Default request origin (browser defaults to `window.location.origin`, Node.js defaults to `http://127.0.0.1`) |
+| `qs` | Query parameter serialization options |
+| `middlewares` | Initial middleware array |
+| `terminalMiddlewares` | Custom terminal middleware (replaces the built-in flowControl/timeout/fetch pipeline) |
+
+:::tip The `request` object exported from `keq` is also a default `KeqRequest` instance.
+:::
+
+## Sharing & Inheriting Middleware
+
+When multiple API clients need to share some middleware (like auth, logging) while having their own independent configurations, you can use instance inheritance to avoid duplicate registration.
+
+### fork() - Derive a Child Instance
+
+`fork()` derives a child instance from the current instance — the child automatically inherits all middleware from the parent:
+
+```typescript
+import { request } from "keq"
+
+// Parent instance adds global middleware
+request.use(authMiddleware())
+request.use(logMiddleware())
+
+// Derive child instances that inherit authMiddleware and logMiddleware
+const catAPI = request.fork({ baseOrigin: "https://cat-api.example.com" })
+const dogAPI = request.fork({ baseOrigin: "https://dog-api.example.com" })
+
+// Child instances can add their own middleware without affecting parent or siblings
+catAPI.use(catCacheMiddleware())
+
+await catAPI.get("/cats")   // Executes: authMiddleware → logMiddleware → catCacheMiddleware → fetch
+await dogAPI.get("/dogs")   // Executes: authMiddleware → logMiddleware → fetch
+```
+
+### inherit() / adopt() - Cross-Instance Middleware Reuse
+
+`fork()` automatically shares middleware at derivation time. For independently created instances, `inherit()` and `adopt()` provide the same capability:
+
+```typescript
+import { KeqRequest } from "keq"
+
+const shared = new KeqRequest()
+shared.use(authMiddleware())
+
+const userAPI = new KeqRequest({ baseOrigin: "https://api.example.com" })
+
+// These two are equivalent:
+userAPI.inherit(shared)
+// or
+shared.adopt(userAPI)
+```
+
+After linking, middleware on `shared` applies to all requests from `userAPI`, while middleware registered on `userAPI` itself doesn't affect `shared`:
+
+```typescript
+// Middleware added to shared later also applies to userAPI
+shared.use(logMiddleware())
+
+// userAPI's own middleware only takes effect within userAPI
+userAPI.use(cacheMiddleware())
+
+await userAPI.get("/me")
+// Execution order: authMiddleware → logMiddleware → cacheMiddleware → fetch
+```

@@ -1,0 +1,38 @@
+# Built-in Plugins
+
+`@keq-request/cli` provides a rich set of built-in plugins to help you generate high-quality TypeScript code from OpenAPI documents.
+Plugins fall into two categories: optional plugins that require manual configuration and core plugins that are automatically enabled.
+
+## Optional Plugins
+
+The following plugins must be manually added to the configuration file to take effect. Choose based on your project needs.
+
+| **Plugin Name**                                                                    | **Description**                                                  |
+|:--------------------------------------------------------------------------------|:--------------------------------------------------------------|
+| [BodyFallbackPlugin](./build-in-plugin/body-fallback-plugin)                    | Adds undefined request parameters to the request body instead of discarding them |
+| [ChineseToPinyinPlugin](./build-in-plugin/chinese-to-pinyin-plugin)             | Automatically converts Chinese identifiers in OpenAPI documents to pinyin                   |
+| [EslintPlugin](./build-in-plugin/eslint-plugin)                                 | Automatically runs ESLint formatting (`eslint --fix`) after code generation             |
+| [PrettierPlugin](./build-in-plugin/prettier-plugin)                             | Automatically runs Prettier formatting (`prettier --write`) after code generation       |
+| [OverwriteOperationIdPlugin](./build-in-plugin/overwrite-operation-id-plugin)   | Overrides `operationId` fields in OpenAPI documents based on custom rules        |
+| [OverwriteAdditionalPropertiesPlugin](./build-in-plugin/overwrite-additional-properties-plugin) | Forces object schemas without `additionalProperties` to set `additionalProperties: false` |
+| [OverwriteQueryOptionsPlugin](./build-in-plugin/overwrite-query-options-plugin) | Customizes URL query parameter formatting                             |
+| [LintSchemaPlugin](./build-in-plugin/lint-schema-plugin)                        | Validates Schema compliance in OpenAPI documents using JSON Schema Draft 2020-12 meta-schema |
+| [UseValibotPlugin](./build-in-plugin/use-valibot-plugin)                        | Generates `components/schema` using [Valibot](https://valibot.dev/) |
+| [MockPlugin](./build-in-plugin/mock-plugin)                                     | Injects mock data hints into Schemas for more realistic mock data generation with `keq mock` |
+| [SpringdocCompatPlugin](./build-in-plugin/springdoc-compat-plugin)              | Fixes compatibility issues with nested `extensions` objects in SpringDoc-generated documents   |
+| [OverwriteSchemaNamePlugin](./build-in-plugin/overwrite-schema-name-plugin)     | Renames Schema names in `components.schemas` based on custom rules    |
+
+## Core Plugins
+
+The following plugins are automatically enabled by the CLI based on configuration — no manual setup required. They handle core functionality like document downloading and code generation.
+
+| **Plugin Name**                | **Description**                                |
+|:----------------------------|:--------------------------------------------|
+| DownloadHttpFilePlugin      | Downloads OpenAPI documents from HTTP/HTTPS URLs         |
+| DownloadLocalFilePlugin     | Loads OpenAPI documents from the local filesystem             |
+| GenerateDeclarationPlugin   | Generates TypeScript type declaration files                |
+| GenerateMicroFunctionPlugin | Generates function-style API calling code                 |
+| GenerateNestjsModulePlugin  | Generates NestJS module code                        |
+| InitialPlugin               | Core plugin responsible for loading other plugins based on configuration      |
+| ShakingPlugin               | Removes unused Schema definitions from OpenAPI documents   |
+| TerminalSelect              | Provides terminal interactive selection functionality                      |

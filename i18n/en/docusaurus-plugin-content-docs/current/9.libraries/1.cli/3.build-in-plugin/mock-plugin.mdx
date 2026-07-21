@@ -1,0 +1,56 @@
+# MockPlugin
+
+`MockPlugin` injects mock data hints (examples, `x-faker` annotations, defaults) into OpenAPI Schemas during the `beforeValidate` stage, enabling the `keq mock` command to generate mock data closer to real business scenarios.
+
+## Configuration
+
+```typescript title=".keqrc.ts"
+import { defineKeqConfig } from "@keq-request/cli"
+import { MockPlugin } from '@keq-request/cli/plugins'
+
+export default defineKeqConfig({
+  outdir: "./src/apis",
+  modules: {
+    catService: "./cat-service-swagger.json",
+  },
+  plugins: [
+    new MockPlugin([
+      {
+        given: '$.components.schemas.Cat.properties.name',
+        then: { faker: 'person.firstName' },
+      },
+      {
+        given: '$.components.schemas.Cat.properties.age',
+        when: { type: 'number' },
+        then: { faker: 'number.int', args: [{ min: 1, max: 20 }] },
+      },
+      {
+        given: '$.components.schemas.Cat.properties.breed',
+        then: { example: 'Siamese' },
+      },
+    ]),
+  ],
+})
+```
+
+## Rule Definition
+
+Each rule consists of three parts: `given`, `when` (optional), and `then`:
+
+| **Field**     | **Type**             | **Required** | **Description**                                     |
+| :------------ | :------------------- | :------- | :------------------------------------------- |
+| `given`       | `string`             | Yes       | JSONPath expression to locate the target Schema node        |
+| `when`        | `object`             | No       | Match condition; rule applies only when the Schema satisfies this condition     |
+| `when.type`   | `string \| string[]` | No       | Matches the Schema's `type` field                   |
+| `when.format` | `string`             | No       | Matches the Schema's `format` field                 |
+| `then`        | `object`             | Yes       | Mock data hint to inject, supporting three modes           |
+
+### Supported `then` Modes
+
+- **`{ example: unknown }`** — Directly specify a fixed example value
+- **`{ faker: string; args?: unknown }`** — Generate data using [json-schema-faker](https://github.com/json-schema-faker/json-schema-faker) faker methods
+- **`{ default: unknown }`** — Set a default value
+
+:::tip
+`MockPlugin` only takes effect on Schema nodes that haven't explicitly defined `example`, `examples`, `enum`, `const`, or `x-faker` — it won't override existing values.
+:::

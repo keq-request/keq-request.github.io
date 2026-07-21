@@ -1,0 +1,132 @@
+# Derive & Fire
+
+Keq provides `.derive()` and `.fire()` methods for deriving new instances from existing requests and triggering requests without waiting for results.
+
+## Deriving Requests - derive()
+
+`.derive()` derives a brand new, unsent request instance from the current request. The derived request inherits all configuration from the original (URL, headers, body, query, middleware, options, etc.) but has a completely independent lifecycle.
+
+### Basic Usage
+
+```typescript
+import { request } from "keq"
+
+const base = request
+  .get("/api/cats")
+  .set("Authorization", "Bearer token")
+  .query("breed", "british_shorthair")
+
+const page1 = await base.derive()
+  .query("page", 1)
+
+const page2 = await base.derive()
+  .query("page", 2)
+
+const page3 = await base.derive()
+  .query("page", 3)
+```
+
+### Deriving from an Already-Sent Request
+
+Even if the base request has already been `await`ed, you can still call `.derive()` to create new requests:
+
+```typescript
+import { request } from "keq"
+
+const base = request
+  .get("/api/cats")
+  .set("Authorization", "Bearer token")
+
+// Send once
+const firstPage = await base
+
+// Base request was sent, but can still derive
+const secondPage = await base.derive()
+  .query("page", 2)
+
+const thirdPage = await base.derive()
+  .query("page", 3)
+```
+
+### Concurrent Derivation
+
+Multiple derived requests can execute concurrently without affecting each other:
+
+```typescript
+import { request } from "keq"
+
+const base = request
+  .get("/api/cats")
+  .set("Authorization", "Bearer token")
+
+const [page1, page2, page3] = await Promise.all([
+  base.derive().query("page", 1),
+  base.derive().query("page", 2),
+  base.derive().query("page", 3),
+])
+```
+
+### State Isolation
+
+Derived requests are completely independent from the original — modifying a derived request's parameters won't affect the original, and vice versa:
+
+```typescript
+import { request } from "keq"
+
+const base = request
+  .get("/api/cats")
+  .set("Authorization", "Bearer token")
+
+const derived = base.derive()
+derived.query("page", 2)
+derived.set("X-Custom", "value")
+
+// base's parameters remain unmodified
+```
+
+## Fire-and-Forget - fire()
+
+When you only need to send a request without caring about the result, use the `.fire()` method. It returns `void` and can be called directly without `await`:
+
+```typescript
+import { request } from "keq"
+
+// Send analytics event, no need to wait for result
+request
+  .post("/analytics/event")
+  .send({ event: "page_view", page: "/home" })
+  .fire()
+```
+
+### Combining with derive
+
+```typescript
+import { request } from "keq"
+
+const tracker = request
+  .post("/analytics/event")
+  .set("Authorization", "Bearer token")
+
+// Send different analytics events at different times
+tracker.derive()
+  .send({ event: "page_view", page: "/home" })
+  .fire()
+
+tracker.derive()
+  .send({ event: "button_click", target: "submit" })
+  .fire()
+```
+
+### Getting Results After fire()
+
+After calling `.fire()`, you can still get the request result via `await`:
+
+```typescript
+import { request } from "keq"
+
+const req = request.get("/api/cats")
+
+req.fire()  // Trigger the request
+
+const result = await req  // Can still get the result
+```

@@ -1,0 +1,28 @@
+# OverwriteOperationIdPlugin
+
+In OpenAPI documents, `operationId` identifies each API operation, and the CLI tool generates corresponding function names based on it.
+`OverwriteOperationIdPlugin` allows you to regenerate `operationId` based on custom rules, solving issues with missing, non-standard, conflicting, or convention-violating names in the original document.
+
+```typescript title=".keqrc.ts"
+import { OverwriteOperationIdPlugin } from '@keq-request/cli/plugins'
+
+export default defineKeqConfig({
+  outdir: "./src/apis",
+  modules: {
+    catService: "./cat-service-swagger.json",
+  },
+  plugins: [
+    new OverwriteOperationIdPlugin(({ method, pathname, operation }) => {
+      return [
+        ...pathname
+          .split('/')
+          .filter(Boolean)
+          .map(segment => segment.replace(/[^a-zA-Z0-9]/g, ''))
+          .join('_'),
+        'using',
+        method,
+      ].join('_')
+    })
+  ],
+})
+```

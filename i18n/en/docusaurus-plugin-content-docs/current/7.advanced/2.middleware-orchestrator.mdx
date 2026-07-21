@@ -1,0 +1,192 @@
+# Middleware Orchestration & Execution
+
+## Overview
+
+Keq's Middleware Orchestrator manages the middleware execution flow, execution state, and the request Context object.
+In this article, you'll also learn about two variants of `KeqContext`: `KeqSharedContext` and `KeqExecutionContext`.
+
+## Context Type System
+
+### Type Relationships
+
+```text
+KeqContext (TypeScript Interface)
+    ├── KeqSharedContext (Class implements KeqContext)
+    └── KeqExecutionContext (Class implements KeqContext)
+```
+
+### Type Descriptions
+
+| Type | Description |
+|:-----|:-----|
+| `KeqContext` | TypeScript interface defining the core properties of the [Context object](../middleware/context) (excluding `orchestration`). |
+| `KeqSharedContext` | Full implementation class of `KeqContext`, using `getter` and `setter` to protect data and prevent accidental modification by middleware. |
+| `KeqExecutionContext` | Extends `KeqSharedContext` with an `orchestration` property, providing access to and control over middleware execution state. |
+
+
+## `context.orchestration` Property Details
+
+The core difference between `KeqExecutionContext` and `KeqSharedContext` is the `orchestration` property, which provides access to and control over the middleware execution flow.
+
+### API Interface
+
+| Property/Method | Type | Description |
+|:---------|:-----|:-----|
+| `context.orchestration.middlewares` | `KeqMiddlewareContext[]` | Middleware execution state array, recording the execution status of all middleware |
+| `context.orchestration.fork()` | `Function` | Creates an independent middleware execution branch for parallel or background execution |
+| `context.orchestration.merge(source)` | `Function` | Merges branch execution results back into the current context |
+
+### `context.orchestration.middlewares`
+
+Provides real-time access to the execution state of all middleware. Each element contains:
+
+| Field | Type | Description |
+|:-----|:-----|:-----|
+| `name` | `string` | Middleware name |
+| `status` | `'idle' \| 'pending' \| 'fulfilled' \| 'rejected'` | Current execution status |
+| `finished` | `boolean` | Whether execution has completed |
+
+**Usage example: Print middleware execution state**
+
+```typescript
+import { KeqMiddleware, KeqExecutionContext } from 'keq'
+
+const inspectMiddleware: KeqMiddleware = async (context: KeqExecutionContext, next) => {
+  console.log('Middleware state before execution:')
+  context.orchestration.middlewares.forEach(mw => {
+    console.log(`  ${mw.name}: ${mw.status}`)
+  })
+
+  await next()
+
+  console.log('Middleware state after execution:')
+  context.orchestration.middlewares.forEach(mw => {
+    console.log(`  ${mw.name}: ${mw.status} (finished: ${mw.finished})`)
+  })
+}
+```
+
+### `context.orchestration.fork()`
+
+Creates a brand new middleware executor containing:
+
+- **Deep clone**: Complete copy of context (request, options, data, etc.)
+- **Independent execution**: Has its own middleware chain and execution state
+- **Non-interfering**: Branch execution does not affect the original request
+
+**Practical example: Implementing SWR caching strategy**
+
+> SWR (Stale-While-Revalidate) is a caching strategy: return cached data immediately while updating the cache in the background.
+
+```typescript
+import { KeqMiddleware, KeqExecutionContext } from 'keq'
+
+// Simple in-memory cache example (production should consider cache expiry and memory management)
+const cache = new Map<string, Response>()
+
+const swrCacheMiddleware: KeqMiddleware = async (context: KeqExecutionContext, next) => {
+  const cacheKey = context.request.url.href
+  const cachedResponse = cache.get(cacheKey)
+
+  if (cachedResponse) {
+    // Return cached data immediately
+    context.res = cachedResponse.clone()
+
+    // Update cache in the background
+    const forkedExecutor = context.orchestration.fork()
+    setTimeout(async () => {
+      try {
+        await forkedExecutor.execute()
+        if (forkedExecutor.context.response) {
+          cache.set(cacheKey, forkedExecutor.context.response)
+        }
+      } catch (error) {
+        console.error('Background cache update failed:', error)
+      }
+    }, 0)
+
+    return // Return directly, skip subsequent middleware
+  }
+
+  // No cache — execute normally
+  await next()
+
+  // First request: save to cache
+  if (context.response) {
+    cache.set(cacheKey, context.response)
+  }
+}
+```
+
+:::warning Notes
+- The forked execution triggers the complete subsequent middleware chain, including all side effects (such as retry, logging, etc.)
+- `fork()` also copies the current execution state. You cannot execute middleware that has already been executed.
+:::
+
+### `context.orchestration.merge(source)`
+
+Merges the results (`response`, `res`, `output`, etc.) of a completed branch executor back into the current context. Typically used with `fork()` when you need to execute a request in the background and then sync the results back to the main chain:
+
+```typescript
+import { KeqMiddleware, KeqExecutionContext } from 'keq'
+
+const backgroundRefresh: KeqMiddleware = async (context: KeqExecutionContext, next) => {
+  const forkedExecutor = context.orchestration.fork()
+
+  // Execute the branch
+  await forkedExecutor.execute()
+
+  // Merge branch results back into current context
+  context.orchestration.merge(forkedExecutor)
+
+  // context.response is now updated with the branch execution result
+}
+```
+
+
+
+## Don't Overthink It
+
+### You should always prefer `KeqContext`
+
+For **99% of use cases**, `KeqContext` is sufficient — it includes all commonly used properties:
+
+```typescript
+import { request, KeqContext, KeqNext } from 'keq'
+
+async function logging (context: KeqContext, next: KeqNext) => {
+  console.log('Request URL:', context.request.url)
+  console.log('Request options:', context.options)
+
+  await next()
+
+  console.log('Response status:', context.response?.status)
+}
+
+request.use(logging)
+```
+
+### Only use `KeqExecutionContext` when necessary
+
+Some event callbacks only provide `KeqSharedContext` (equivalent to `KeqContext`), so using `KeqContext` is always safe. Read the documentation before using `KeqExecutionContext`:
+
+```typescript
+import { request } from 'keq'
+import type { KeqContext } from 'keq'
+
+request
+  .get('/api/users')
+  .on('retry', ({ context }: { context: KeqContext }) => {
+    console.log('Retrying...', context.request.url)
+    console.log(context.orchestration.middlewares) // ❌ Error: context in retry event is not KeqExecutionContext
+  })
+  .on('error', ({ context, error }: { context: KeqContext; error: Error }) => {
+    console.error('Request failed:', error.message)
+    console.error('Request URL:', context.request.url)
+    console.log(context.orchestration.middlewares) // ❌ Error: context in error event is not KeqExecutionContext
+  })
+  .use(async (context, next) => {
+    console.log(context.orchestration.middlewares) // ✅ Correct
+    await next()
+  })
+```

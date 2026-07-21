@@ -1,0 +1,100 @@
+# Plugins
+
+`Plugin` provides third-party developers with full ability to customize CLI behavior. Through Plugins, you can intervene at various stages of the compilation process, modify generated code, or add custom logic.
+
+## Quick Start
+
+A minimal Plugin only needs to implement the `apply` method:
+
+```typescript
+import { Plugin } from '@keq-request/cli'
+
+export class MyPlugin implements Plugin {
+  apply(compiler) {
+    console.log('Plugin loaded!')
+  }
+}
+```
+
+Then enable the Plugin in the configuration file:
+
+```typescript title=".keqrc.ts"
+import { defineKeqConfig } from "@keq-request/cli"
+import { MyPlugin } from "./my-plugin"
+
+export default defineKeqConfig({
+  outdir: "./src/apis",
+  modules: {
+    catService: "./cat-service-swagger.json",
+  },
+  plugins: [new MyPlugin()],
+})
+```
+
+## Compilation Lifecycle
+
+Plugins can intervene at various stages through `Hooks`.
+Before diving into Hooks, you need to understand the compilation process of `@keq-request/cli`.
+The entire compilation process is divided into 4 stages, executed in order:
+
+### 1. Setup - Load Configuration
+
+Loads the `.keqrc` configuration file and `.keqfilter` filter rules.
+
+**Data output**: `context.rc` (configuration), `context.matcher` (matching rules)
+
+### 2. Download - Fetch Documents
+
+Loads Swagger 3.1 documents from local or remote sources.
+
+**Data output**: `context.documents` (normalized documents)
+
+### 3. Compile - Generate Code
+
+Compiles OpenAPI documents into TypeScript code files.
+
+**Data output**: `context.artifacts`
+
+### 4. Persist - Write Files
+
+Writes `context.artifacts` to disk and writes `context.matcher` to the `.keqfilter` file.
+
+## Hooks
+
+The CLI implements a hook system based on [tapable](https://github.com/webpack/tapable). The complete list of Hooks:
+
+| **Hook Name**     | **Trigger Timing**             | **Type**              | **Parameters** |
+| :---------------- | :----------------------- | :-------------------- | :------- |
+| `setup`           | When Setup stage begins (parallel)  | `AsyncParallelHook`   | `[TaskWrapper]` |
+| `afterSetup`      | After Setup stage completes         | `AsyncSeriesHook`     | `[TaskWrapper]` |
+| `beforeDownload`  | Before Download stage begins      | `AsyncSeriesHook`     | `[TaskWrapper]` |
+| `download`        | Custom document download logic       | `AsyncSeriesBailHook` | `[address: Address, module: ModuleDefinition, task: TaskWrapper]` |
+| `afterDownload`   | After Download stage completes      | `AsyncSeriesHook`     | `[TaskWrapper]` |
+| `beforeValidate`  | After JSON parsing, before validation | `AsyncSeriesHook`     | `[object, ModuleDefinition]` |
+| `beforeCompile`   | Before Compile stage begins       | `AsyncSeriesHook`     | `[TaskWrapper]` |
+| `compile`         | When Compile stage executes (parallel)| `AsyncParallelHook`   | `[TaskWrapper]` |
+| `afterCompile`    | After Compile stage completes       | `AsyncSeriesHook`     | `[TaskWrapper]` |
+| `beforePersist`   | Before Persist stage begins       | `AsyncSeriesHook`     | `[TaskWrapper]` |
+| `persist`         | When Persist stage executes (parallel)| `AsyncParallelHook`   | `[TaskWrapper]` |
+| `afterPersist`    | After Persist stage completes       | `AsyncSeriesHook`     | `[TaskWrapper]` |
+| `done`            | After all stages complete           | `SyncHook`            | `[]` |
+
+
+
+**Example**: Custom download logic
+
+```typescript
+export class CustomDownloadPlugin implements Plugin {
+  apply(compiler) {
+    compiler.hooks.download.tapPromise('CustomDownloadPlugin', async (address, module, task) => {
+      if (address.url.startsWith('custom://')) {
+        // Custom download logic
+        const content = await fetchFromCustomSource(address.url)
+        return { content }
+      }
+      // Return undefined to indicate this plugin doesn't handle it
+      return undefined
+    })
+  }
+}
+```

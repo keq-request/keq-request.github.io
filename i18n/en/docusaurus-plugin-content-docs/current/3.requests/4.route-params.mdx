@@ -1,0 +1,21 @@
+# Route Parameters
+
+Keq supports the [URI Template (RFC 6570)](https://www.rfc-editor.org/rfc/rfc6570.html) specification for convenient route parameter substitution:
+
+```typescript
+import { request } from "keq"
+
+await request
+  .get("/cats/{catId}")
+  .params("catId", "123")
+
+// Or use an object to set multiple parameters at once
+await request
+  .get("/cats/{catId}/toys/{toyId}")
+  .params({
+    catId: "123",
+    toyId: "456",
+  })
+
+// Actual request: /cats/123/toys/456
+```

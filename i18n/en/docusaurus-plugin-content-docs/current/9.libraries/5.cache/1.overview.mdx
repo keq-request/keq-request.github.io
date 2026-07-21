@@ -1,0 +1,140 @@
+# Overview
+
+## Introduction
+
+`@keq-request/cache` is a lightweight transport-layer request caching middleware. It intervenes before and after requests are sent, working independently of UI frameworks and runtime environments — whether it's browser, Node.js, React Native, or mini-programs, it provides consistent caching capabilities.
+
+### Core Features
+
+- 🎯 **Multiple Cache Strategies** - Network First, Cache First, Stale-While-Revalidate, Network Only, with support for custom strategies and strategy composition
+- 💾 **Multi-Tier Storage Architecture** - Memory, IndexedDB, multi-level cache coordination, with built-in LRU/LFU/TTL/Random eviction policies
+- 🔒 **Request Serialization** - Concurrent requests with the same cache key are automatically queued to prevent cache stampede and duplicate requests
+- 📡 **Observable** - cache:hit / cache:miss / cache:update events + Server-Timing response headers
+- 🎨 **Rule-Based Configuration** - Global rule matching + request-level overrides for flexible granularity control
+- 🔧 **Extensible** - Custom cache strategy functions, custom storage implementations
+
+## Quick Start
+
+### Basic Usage
+
+```typescript
+import { request } from "keq"
+import { cache, MemoryStorage } from "@keq-request/cache"
+
+// Create a storage instance
+const storage = new MemoryStorage()
+
+// Use the cache middleware
+// By default, no requests are cached
+request.use(cache({ storage }))
+
+// Make a request
+request
+  .get("/api/data")
+  // Enable caching
+  .option('cache', {
+    key: '/api/data',
+    strategy: Strategy.CACHE_FIRST,
+    ttl: 60, // Cache for 60 seconds
+  })
+```
+
+
+### Configuring Cache Rules
+
+```typescript
+import { request } from "keq"
+import { cache, Strategy, MemoryStorage } from "@keq-request/cache"
+
+request.use(
+  cache({
+    storage: new MemoryStorage(),
+    rules: [
+      {
+        // Match all GET requests
+        pattern: (ctx) => ctx.request.method === "get",
+
+        // Use SWR strategy
+        strategy: Strategy.STALE_WHILE_REVALIDATE,
+
+        // Cache TTL of 5 minutes
+        ttl: 5 * 60,
+
+        // Custom cache key
+        key: (ctx) => ctx.request.__url__.href,
+
+        // Exclude non-200 responses
+        exclude: async (response) => response.status !== 200,
+      },
+    ],
+  })
+)
+```
+
+### Request-Level Configuration
+
+You can override global configuration when making requests:
+
+```typescript
+import { request } from "keq"
+import { Strategy } from "@keq-request/cache"
+
+request
+  .get("/cats")
+  // Override global cache configuration
+  .options({
+    cache: {
+      strategy: Strategy.NETWORK_FIRST,
+      key: 'custom-cache-key',
+      // Properties not set will use global configuration
+      // exclude: async (response) => response.status !== 200,
+      ttl: 60,
+    },
+  })
+
+  // Or disable caching entirely
+  .option('cache', false)
+```
+
+## Configuration Options
+
+| Parameter                | Type                                                | Default                                              | Description                                                        |
+| :---------------------- | :------------------------------------------------- | :------------------------------------------------- | :------------------------------------------------------------- |
+| storage                 | `KeqCacheStorage`                                  | -                                                  | Cache storage instance, [see Storage](./storage)                        |
+| keyFactory              | `(context) => string`                              | `(context) => context.locationId`                  | Cache key generator function; requests generating the same key share cache                  |
+| serverTiming            | `boolean`                                          | `false`                                            | Whether to add `Server-Timing` to response headers                             |
+| rules                   | `Rule[]`                                           | `[]`                                               | Array of cache rules                                                   |
+
+**rules**
+
+| Parameter                | Type                                                | Default                                            | Description                                                           |
+| :---------------------- | :------------------------------------------------- | :------------------------------------------------- | :------------------------------------------------------------- |
+| pattern                 | `boolean \| (ctx) => boolean`                      | `true`                                             | Match rule; determines whether this cache rule applies to a request                       |
+| key                     | `(ctx) => string`                                  | Uses global `keyFactory`                           | Custom cache key generator function                                           |
+| strategy                | `Strategy`                                         | `Strategy.NETWORK_FIRST`                           | Cache strategy, [see Strategies](./strategies)                        |
+| ttl                     | `number`                                           | `Infinity`                                         | Cache TTL (seconds)                                               |
+| concurrent              | `boolean`                                          | `false`                                            | Whether to allow same-key requests to execute concurrently. When `false`, same-key requests are queued serially |
+| exclude                 | `(response) => boolean \| Promise<boolean>`        | -                                                  | Exclude function; returns `true` to skip caching the response                           |
+| serverTiming            | `boolean`                                          | `false`                                            | Whether to add `Server-Timing` to response headers                             |
+
+## Extensions
+
+### `.on(eventName, callback)`
+
+| Event Name   | Description                           | Callback Parameters                                      |
+| :----------- | :----------------------------- | :------------------------------------------ |
+| cache:hit    | Triggered on cache hit                 | `({ key: string, response: Response, context: KeqContext })`
+| cache:miss   | Triggered on cache miss               | `({ key: string, context: KeqContext})`                  |
+| cache:update | Triggered on cache update                 | `({ key: string, oldResponse: Response, newResponse: Response, context: KeqContext })`            |
+
+### `.option('cache', options)`
+
+| Parameter         | Type                                               | Description                                                           |
+| :---------------- | :------------------------------------------------- | :------------------------------------------------------------- |
+| key               | `(ctx) => string`                                  | Custom cache key generator function                                           |
+| debug             | `boolean`                                          | Print debug logs                                                   |
+| strategy          | `Strategy`                                         | Cache strategy, [see Strategies](./strategies)                        |
+| ttl               | `number`                                           | Cache TTL (seconds)                                               |
+| concurrent        | `boolean`                                          | Whether to allow same-key requests to execute concurrently. Default `false`; same-key requests are queued serially to prevent cache stampede |
+| exclude           | `(response) => boolean \| Promise<boolean>`        | Exclude function; returns `true` to skip caching the response                           |
+| serverTiming      | `boolean`                                          | Whether to add `Server-Timing` to response headers                             |

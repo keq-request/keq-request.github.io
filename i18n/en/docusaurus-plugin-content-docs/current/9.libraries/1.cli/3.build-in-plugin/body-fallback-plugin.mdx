@@ -1,0 +1,16 @@
+# BodyFallbackPlugin
+
+By default, request parameters not defined in the `swagger` document are discarded.
+`BodyFallbackPlugin` adds all these undefined request parameters to the request body instead:
+
+```typescript title=".keqrc.ts"
+import { BodyFallbackPlugin } from '@keq-request/cli/plugins'
+
+export default defineKeqConfig({
+  outdir: "./src/apis",
+  modules: {
+    catService: "./cat-service-swagger.json",
+  },
+  plugins: [new BodyFallbackPlugin()],
+})
+```

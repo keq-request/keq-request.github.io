@@ -1,0 +1,74 @@
+# Timeout
+
+Timeout control limits the maximum wait time for a request, preventing requests from hanging due to network failures or unresponsive services.
+
+## Basic Usage
+
+Use the `.timeout()` method to set the request timeout (in milliseconds):
+
+```typescript
+import { request } from 'keq'
+
+// Set a 5-second timeout
+await request
+  .get('/api/data')
+  .timeout(5000)
+```
+
+## Parameters
+
+| Parameter    | Type     | Default    | Description                       |
+| :----------- | :------- | :--------- | :------------------------- |
+| milliseconds | `number` | `Infinity` | Timeout in milliseconds — the request will be aborted after this duration |
+
+## Error Handling
+
+When a request times out, Keq throws a `TimeoutException`. Use `try-catch` to catch and handle timeout errors:
+
+```typescript
+import { request, TimeoutException } from 'keq'
+
+try {
+  const data = await request
+    .get('/api/slow-endpoint')
+    .timeout(3000)
+
+  console.log('Request succeeded:', data)
+} catch (err) {
+  if (err instanceof TimeoutException) {
+    console.error('Request timed out')
+  } else {
+    console.error('Request failed:', err)
+  }
+}
+```
+
+## Global Timeout Configuration
+
+You can set a default timeout for all requests using middleware:
+
+```typescript
+import { request, KeqMiddleware } from 'keq'
+
+// Create a timeout middleware
+function withTimeout(milliseconds: number): KeqMiddleware {
+  return async (context, next) => {
+    // If no timeout is set, use the default
+    if (!context.options.timeout || context.options.timeout.millisecond <= 0) {
+      context.options.timeout = { millisecond: milliseconds }
+    }
+    await next()
+  }
+}
+
+// Add middleware with a default 10-second timeout
+request.use(withTimeout(10000))
+
+// Uses the default timeout (10s)
+await request.get('/api/data')
+
+// Overrides the default timeout
+await request
+  .get('/api/slow-data')
+  .timeout(20000)
+```

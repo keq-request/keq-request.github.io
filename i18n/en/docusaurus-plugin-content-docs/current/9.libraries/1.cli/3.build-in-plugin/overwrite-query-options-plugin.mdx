@@ -1,0 +1,22 @@
+# OverwriteQueryOptionsPlugin
+
+`OverwriteQueryOptionsPlugin` customizes URL query parameter formatting.
+When your API requires specific query parameter formats (e.g., whether array parameters should be passed as `ids=1&ids=2` or `ids=1,2`),
+this plugin configures the second parameter options of the `.query()` method in generated code, controlling how query parameters are serialized into the URL.
+
+```typescript title=".keqrc.ts"
+import { OverwriteQueryOptionsPlugin } from '@keq-request/cli/plugins'
+
+
+export default defineKeqConfig({
+  outdir: "./src/apis",
+  modules: {
+    catService: "./cat-service-swagger.json",
+  },
+  plugins: [
+    new OverwriteQueryOptionsPlugin({
+      arrayFormat: 'command',
+    }),
+  ],
+})
+```

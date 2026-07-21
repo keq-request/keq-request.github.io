@@ -1,0 +1,125 @@
+# Context Property Reference
+
+[Fetch MDN]: https://developer.mozilla.org/en-US/docs/Web/API/Fetch
+[Headers MDN]: https://developer.mozilla.org/en-US/docs/Web/API/Headers
+[Response MDN]: https://developer.mozilla.org/en-US/docs/Web/API/Response
+[URL MDN]: https://developer.mozilla.org/en-US/docs/Web/API/URL
+
+This page lists the complete property definitions of the `context` object for reference when developing middleware.
+
+## Top-Level Properties
+
+| Property | Description |
+|:-----|:-----|
+| `context.request` | HTTP request parameters (URL, method, headers, body, etc.) |
+| `context.response` | **[Readonly]** HTTP response proxy object, supports multiple reads of the response body |
+| `context.res` | Raw Fetch [Response][Response MDN] object |
+| `context.options` | Custom options set via `.option()` |
+| `context.output` | **[Writeonly]** Overrides the final resolved value of `await request.get(...)`, only effective in default parsing mode |
+| `context.data` | Request-level shared data, automatically cleaned up after the request completes |
+| `context.global` | Global shared data, not destroyed when the request ends |
+| `context.orchestration` | **[Readonly]** See [Advanced - Middleware Orchestration](../advanced/middleware-orchestrator#contextorchestration-property-details) |
+| `context.locationId` | **[Readonly]** Location identifier of the request code (file path + line number) |
+
+## context.request
+
+Contains all parameters needed to send an HTTP request:
+
+| Property | Description |
+|:-----|:-----|
+| `context.request.url` | Request [URL][URL MDN] object |
+| `context.request.__url__` | **Readonly** Complete request [URL][URL MDN] with route parameters merged |
+| `context.request.method` | HTTP method ('get', 'post', 'put', 'patch', 'delete', 'head', 'options') |
+| `context.request.headers` | Request headers ([Headers][Headers MDN] object) |
+| `context.request.body` | Request body |
+| `context.request.pathParameters` | Route parameters object |
+| `context.request.abort()` | Abort the current request |
+| `context.request.credentials` | [Fetch API][Fetch MDN] credentials option |
+| `context.request.mode` | [Fetch API][Fetch MDN] mode option |
+| `context.request.cache` | [Fetch API][Fetch MDN] cache option |
+| `context.request.redirect` | [Fetch API][Fetch MDN] redirect option |
+| `context.request.referrer` | [Fetch API][Fetch MDN] referrer option |
+| `context.request.referrerPolicy` | [Fetch API][Fetch MDN] referrerPolicy option |
+| `context.request.integrity` | [Fetch API][Fetch MDN] integrity option |
+| `context.request.keepalive` | [Fetch API][Fetch MDN] keepalive option |
+
+### Route Parameters
+
+Use `context.request.pathParameters` and `context.request.__url__` to handle route parameters:
+
+```typescript
+import { request } from "keq"
+
+request.use(async (context, next) => {
+  console.log("Raw URL:", context.request.url.href)
+  console.log("Route params:", context.request.pathParameters)
+  console.log("Actual URL:", context.request.__url__.href)
+
+  await next()
+})
+
+await request.get("/users/{id}").params("id", "123")
+// Raw URL: /users/{id}
+// Route params: { id: "123" }
+// Actual URL: /users/123
+```
+
+## context.response
+
+`context.response` is a proxy of the raw [Response][Response MDN] object, solving the limitation that [Response][Response MDN] methods (like `.json()`, `.text()`) can only be called once, allowing multiple middleware to safely read the response body.
+
+### context.res
+
+`context.res` is the raw Fetch [Response][Response MDN] object. In most cases you should use `context.response` — only use `context.res` when you need access to the raw Response object.
+
+## context.output
+
+**[Writeonly]** Allows middleware to override the final resolved value of `await request.get(...)`.
+
+By default, Keq automatically parses the response body based on the response's `Content-Type` (intelligent mode). After setting `context.output`, automatic parsing is skipped and the caller receives this value directly.
+
+Only effective when `resolveWith` is not set or is `'intelligent'`. If the caller used `.resolveWith('json')` or other specified modes, `context.output` will be ignored.
+
+## context.options
+
+Custom options set via the `.option()` method.
+
+**Built-in options and their defaults:**
+
+| Option | Default | Description |
+|:-----|:------|:-----|
+| `context.options.fetchAPI` | `global.fetch` | [Fetch API][Fetch MDN] implementation used to send requests |
+| `context.options.resolveWith` | `"intelligent"` | Response body parsing method |
+| `context.options.retry.times` | `undefined` | Retry count |
+| `context.options.retry.delay` | `undefined` | Retry delay (ms) |
+| `context.options.retry.on` | `undefined` | Custom retry condition function |
+| `context.options.timeout` | `undefined` | Timeout configuration object (`{ millisecond: number }`) |
+| `context.options.flowControl` | `undefined` | Flow control mode |
+
+## context.data
+
+Request-level shared data object for sharing data between multiple middleware within the same request. Automatically destroyed after the request completes.
+
+## context.global
+
+Global shared data that is not destroyed when the request ends. Requires special attention to memory management.
+
+```typescript
+import { KeqMiddleware } from "keq"
+
+const key = Symbol('myMiddleware')
+
+const middleware: KeqMiddleware = async (context, next) => {
+  context.global[key] = { startTime: Date.now() }
+
+  try {
+    await next()
+  } finally {
+    delete context.global[key]
+  }
+}
+```
+
+## context.orchestration
+
+Middleware orchestrator providing middleware execution state and fork capabilities. See [Advanced - Middleware Orchestration](../advanced/middleware-orchestrator#contextorchestration-property-details).

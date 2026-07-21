@@ -1,0 +1,311 @@
+# TypeScript
+
+Keq provides comprehensive TypeScript support, giving you complete type hints and type safety guarantees when writing code.
+
+## Specifying Response Types
+
+Keq supports specifying response types through generic parameters:
+
+```typescript
+import { request } from "keq"
+
+interface Cat {
+  id: string
+  breed: string
+  name: string
+}
+
+// Specify return type using generic parameter
+const cat = await request.get<Cat>("/api/cats/123")
+// cat is typed as Cat
+
+const cats = await request.get<Cat[]>("/api/cats")
+// cats is typed as Cat[]
+```
+
+## API Type Constraints
+
+### Using the KeqApiSchema Interface
+
+When you need to define types for specific APIs, extend the `KeqApiSchema` interface:
+
+```typescript
+import { KeqRequest, KeqApiSchema, KeqQueryValue, KeqParamValue } from "keq"
+
+// Define the API type structure
+export interface CatApiSchema extends KeqApiSchema {
+  "/cats": {
+    get: {
+      requestParams: {
+        [key: string]: KeqParamValue // Index signature is required
+      }
+      requestQuery: {
+        breed: string
+        [key: string]: KeqQueryValue // Index signature is required
+      }
+      requestHeaders: {
+        Authorization: string
+        [key: string]: string | number // Index signature is required
+      }
+      requestBody: {}
+      responseBody: {
+        id: string
+        breed: string
+        name: string
+      }[]
+    }
+    post: {
+      requestParams: {
+        [key: string]: KeqParamValue
+      }
+      requestQuery: {
+        [key: string]: KeqQueryValue
+      }
+      requestHeaders: {
+        Authorization: string
+        [key: string]: string | number
+      }
+      requestBody: {
+        breed: string
+        name: string
+      }
+      responseBody: {
+        id: string
+        breed: string
+        name: string
+      }
+    }
+  }
+  "/cats/{id}": {
+    get: {
+      requestParams: {
+        id: string
+        [key: string]: KeqParamValue
+      }
+      requestQuery: {
+        [key: string]: KeqQueryValue
+      }
+      requestHeaders: {
+        [key: string]: string | number
+      }
+      requestBody: {}
+      responseBody: {
+        id: string
+        breed: string
+        name: string
+      }
+    }
+  }
+}
+
+// Create a typed request instance
+const catAPI = new KeqRequest<CatApiSchema>()
+
+// Now you get complete type hints and checks
+const cats = await catAPI
+  .get("/cats")
+  .query("breed", "Persian") // ✅ Correct: breed is string type
+  .query("breed", 123)       // ❌ Error: TypeScript reports type mismatch
+  .set("Authorization", "Bearer token")
+
+const cat = await catAPI
+  .get("/cats/{id}")
+  .param("id", "123") // ✅ Correct: id is string type
+```
+
+## Extending Custom Options
+
+Through module augmentation, you can add custom options to Keq with type support:
+
+```typescript {4-8,17,27}
+import { Keq, KeqMiddleware } from "keq"
+
+// Extend the KeqMiddlewareOptions interface
+declare module "keq" {
+  interface KeqMiddlewareOptions<OP> {
+    silent(value: boolean): Keq<OP>
+  }
+}
+
+// Implement the corresponding middleware
+function errorHandlerMiddleware(): KeqMiddleware {
+  return async (context, next) => {
+    await next()
+
+    if (context.response && context.response.status >= 400) {
+      const isSilent = context.options.silent || false
+      if (!isSilent) {
+        console.error(`Request failed: ${context.response.status}`)
+      }
+    }
+  }
+}
+
+// Now you can use custom options with type hints
+await request
+  .get("/api/data")
+  .option("silent", true)  // ✅ Has type hints
+```
+
+## Extending KeqContextData
+
+`KeqContextData` is the request-level shared data interface for passing data between middleware. Through module augmentation, you can add strongly-typed fields:
+
+```typescript
+import { KeqMiddleware } from "keq"
+
+// Extend KeqContextData with custom fields
+declare module "keq" {
+  interface KeqContextData {
+    startTime?: number
+    metrics?: {
+      duration: number
+      size: number
+    }
+  }
+}
+
+// Complete type hints when reading/writing context.data in middleware
+const metricsMiddleware: KeqMiddleware = async (context, next) => {
+  context.data.startTime = Date.now()  // ✅ Type-safe
+
+  await next()
+
+  context.data.metrics = {             // ✅ Structure is type-constrained
+    duration: Date.now() - context.data.startTime,
+    size: Number(context.response?.headers.get("content-length") || 0),
+  }
+}
+```
+
+## Extending KeqGlobal
+
+`KeqGlobal` is the cross-request shared global data interface. When you need to share state between requests (like token cache, request counters), extend it for type constraints:
+
+```typescript
+declare module "keq" {
+  interface KeqGlobal {
+    tokenCache?: {
+      accessToken: string
+      expiresAt: number
+    }
+    requestCount?: number
+  }
+}
+
+// Type-safe access to global data in middleware
+const tokenMiddleware: KeqMiddleware = async (context, next) => {
+  const cache = context.global.tokenCache  // ✅ Correct type inference
+
+  if (!cache || cache.expiresAt < Date.now()) {
+    // Refresh token...
+  }
+
+  context.request.headers.set("Authorization", `Bearer ${cache?.accessToken}`)
+  await next()
+}
+```
+
+## Extending KeqEvents
+
+Extend the `KeqEvents` interface to define type signatures for custom events, making both triggering and listening type-safe:
+
+```typescript
+import { KeqContext } from "keq"
+
+declare module "keq" {
+  interface KeqEvents {
+    "cache:hit": { context: KeqContext; key: string }
+    "cache:miss": { context: KeqContext; key: string }
+  }
+}
+
+// Event parameters are type-constrained when triggering
+const cacheMiddleware: KeqMiddleware = async (context, next) => {
+  const key = context.request.url.toString()
+  const cached = getCache(key)
+
+  if (cached) {
+    context.emitter.emit("cache:hit", { context, key })  // ✅ Parameter types correct
+    context.output = cached
+    return
+  }
+
+  context.emitter.emit("cache:miss", { context, key })
+  await next()
+}
+
+// Callback parameters have complete type hints when listening
+await request
+  .get("/api/cats")
+  .use(cacheMiddleware)
+  .on("cache:hit", ({ key }) => {    // ✅ key is inferred as string
+    console.log("Cache hit:", key)
+  })
+```
+
+## KeqOperation Field Type Details
+
+`KeqOperation` defines the complete type structure of a single API operation. Supported value types for each field:
+
+| Field | Type | Description |
+|:-----|:-----|:-----|
+| `requestParams` | `{ [key: string]: KeqPathParameterInit }` | Route parameters, values support URI Template variable types (string, number, arrays, etc.) |
+| `requestQuery` | `{ [key: string]: KeqQueryInit }` | Query parameters, supports `string \| number \| bigint \| null \| undefined \| nested objects \| arrays` |
+| `requestHeaders` | `{ [key: string]: string \| number }` | Request headers |
+| `requestBody` | `KeqBodyInit` | Request body, supports JSON objects, FormData, URLSearchParams, Blob, ReadableStream, ArrayBuffer, string |
+| `responseBody` | `any` | Response body, can be any type |
+
+:::tip Index signatures are required
+When defining `KeqApiSchema`, the `requestParams`, `requestQuery`, and `requestHeaders` fields **must include index signatures**. This is because Keq's chainable API supports both type-constrained known keys and dynamic arbitrary keys simultaneously. Missing index signatures will cause compilation errors.
+:::
+
+```typescript
+import { KeqApiSchema, KeqQueryValue, KeqPathParameterInit } from "keq"
+
+interface MyApiSchema extends KeqApiSchema {
+  "/users/{id}/posts": {
+    get: {
+      requestParams: {
+        id: string
+        [key: string]: KeqPathParameterInit  // Required
+      }
+      requestQuery: {
+        page: number
+        limit: number
+        tags: string[]                       // Array types supported
+        filter: { status: string }           // Nested objects supported
+        [key: string]: KeqQueryValue         // Required
+      }
+      requestHeaders: {
+        "X-Request-ID": string
+        [key: string]: string | number       // Required
+      }
+      requestBody: {}
+      responseBody: {
+        data: Array<{ id: string; title: string }>
+        total: number
+      }
+    }
+  }
+}
+```
+
+## Using with keq-cli
+
+For large projects, manually writing `KeqApiSchema` is impractical. [keq-cli](../libraries/cli/overview) can automatically generate complete type definitions from OpenAPI/Swagger documents, including all request parameters, request body, and response body type constraints.
+
+```bash
+npx keq-cli build -o ./src/api -m userService ./openapi.json
+```
+
+The generated code automatically includes complete `KeqApiSchema` types, ready to use out of the box:
+
+```typescript
+import { request } from "./src/api/user-service"
+
+// Automatically has complete type hints and checks
+const users = await request.get("/users")
+  .query("page", 1)       // ✅ Type checked
+  .query("limit", 20)     // ✅ Type checked
+```

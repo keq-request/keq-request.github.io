@@ -1,0 +1,14 @@
+# Headers
+
+Use the `.set()` or `.headers()` method to set request headers:
+
+```typescript
+import { request } from "keq"
+
+await request
+  .get("https://example.com/cats")
+  .set("Authorization", "Bearer token")                    // single header
+  .set({ "Accept": "application/json" })                   // multiple headers
+  .headers("X-Custom-Header", "value")                     // .headers() is an alias for .set()
+  .set(new Headers({ "Cache-Control": "no-cache" }))      // using a Headers object
+```
