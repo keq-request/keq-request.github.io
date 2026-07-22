@@ -27,3 +27,30 @@ export default defineKeqConfig({
 - `"Property extensions is not expected to be here"`
 - parameter 缺少 `schema` 导致的校验错误
 :::
+
+## 选项
+
+| 参数 | 类型 | 默认值 | 描述 |
+|------|------|--------|------|
+| `ensureJsonBody` | `boolean` | `false` | 确保 `application/json` 请求始终携带 body |
+
+### ensureJsonBody
+
+Spring Boot 默认使用 Jackson 作为 JSON 反序列化器。当请求设置了 `Content-Type: application/json` 但未携带 body 时，Jackson 会直接报错。启用 `ensureJsonBody` 后，生成的代码会自动发送空对象 `{}`，确保即使未传递任何 body 属性也不会触发后端错误。
+
+```typescript title=".keqrc.ts"
+import { defineKeqConfig } from "@keq-request/cli"
+import { SpringdocCompatPlugin } from '@keq-request/cli/plugins'
+
+export default defineKeqConfig({
+  outdir: "./src/apis",
+  modules: {
+    userService: "./user-service-swagger.json",
+  },
+  plugins: [new SpringdocCompatPlugin({ ensureJsonBody: true })], // [!code highlight]
+})
+```
+
+:::caution
+此选项默认关闭，因为并非所有 Spring Boot 项目都使用 Jackson 或使用 Jackson 的默认配置。仅在确认后端因空 body 报错时启用。
+:::

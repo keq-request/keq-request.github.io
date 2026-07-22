@@ -27,3 +27,30 @@ If you encounter any of the following errors during validation, your OpenAPI doc
 - `"Property extensions is not expected to be here"`
 - Validation errors caused by parameters missing `schema`
 :::
+
+## Options
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `ensureJsonBody` | `boolean` | `false` | Ensure `application/json` requests always carry a body |
+
+### ensureJsonBody
+
+Spring Boot uses Jackson as the default JSON deserializer. When a request has `Content-Type: application/json` but carries no body, Jackson throws an error. With `ensureJsonBody` enabled, the generated code automatically sends an empty object `{}`, ensuring that requests won't trigger backend errors even when no body properties are provided.
+
+```typescript title=".keqrc.ts"
+import { defineKeqConfig } from "@keq-request/cli"
+import { SpringdocCompatPlugin } from '@keq-request/cli/plugins'
+
+export default defineKeqConfig({
+  outdir: "./src/apis",
+  modules: {
+    userService: "./user-service-swagger.json",
+  },
+  plugins: [new SpringdocCompatPlugin({ ensureJsonBody: true })], // [!code highlight]
+})
+```
+
+:::caution
+This option is disabled by default because not all Spring Boot projects use Jackson or its default configuration. Only enable it when you confirm that the backend fails on empty bodies.
+:::
