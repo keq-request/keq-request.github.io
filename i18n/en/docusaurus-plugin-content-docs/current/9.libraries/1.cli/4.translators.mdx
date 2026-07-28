@@ -64,7 +64,7 @@ console.log(response.data)
 
 ### IsolatedTranslator
 
-`IsolatedTranslator` generates standalone operation files, where each file contains complete type declarations and request functions without relying on shared schema files. Ideal for scenarios requiring on-demand imports, independent deployment, or tree-shaking optimization.
+`IsolatedTranslator` generates standalone operation files, where each file contains complete type declarations and request functions without relying on shared schema files. Ideal for incremental API generation. Each file is fully isolated, unaffected by shared schema changes or naming conflicts.
 
 **Generated code characteristics:**
 - Each operation file contains inline schema type declarations
@@ -330,7 +330,7 @@ export default defineKeqConfig({
 | Translator | Use Case | Features |
 |------------|---------|------|
 | **MicroFunctionTranslator** | General projects, React, Vue, and other frontend frameworks | Function-style calls, concise and easy to use, default option |
-| **IsolatedTranslator** | On-demand imports, tree-shaking, independent deployment | Each operation file is self-contained with types, no shared schema dependencies |
+| **IsolatedTranslator** | Incremental generation, fully isolated files | Each operation file is self-contained with types, no shared schema dependencies |
 | **NestjsTranslator** | NestJS backend projects | Generates NestJS modules, supports dependency injection |
 | **Custom Translator** | Special frameworks or custom needs | Fully customizable generation logic |
 

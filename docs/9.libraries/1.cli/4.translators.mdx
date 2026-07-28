@@ -64,7 +64,7 @@ console.log(response.data)
 
 ### IsolatedTranslator
 
-`IsolatedTranslator` 生成独立的操作文件，每个文件包含完整的类型声明和请求函数，无需依赖共享的 schema 文件。适合需要按需引入、独立部署或树摇优化的场景。
+`IsolatedTranslator` 生成独立的操作文件，每个文件包含完整的类型声明和请求函数，无需依赖共享的 schema 文件。适合增量生成接口的场景，文件间完全隔离，不受共享 schema 变更或重名冲突影响。
 
 **生成的代码特点：**
 - 每个 operation 文件包含内联的 schema 类型声明
@@ -330,7 +330,7 @@ export default defineKeqConfig({
 | Translator | 适用场景 | 特点 |
 |------------|---------|------|
 | **MicroFunctionTranslator** | 通用项目、React、Vue 等前端框架 | 函数式调用，简洁易用，默认选项 |
-| **IsolatedTranslator** | 按需引入、树摇优化、独立部署 | 每个操作文件自包含类型，无共享 schema 依赖 |
+| **IsolatedTranslator** | 增量生成接口，文件间完全隔离 | 每个操作文件自包含类型，无共享 schema 依赖 |
 | **NestjsTranslator** | NestJS 后端项目 | 生成 NestJS 模块，支持依赖注入 |
 | **自定义 Translator** | 特殊框架或定制需求 | 完全自定义生成逻辑 |
 
