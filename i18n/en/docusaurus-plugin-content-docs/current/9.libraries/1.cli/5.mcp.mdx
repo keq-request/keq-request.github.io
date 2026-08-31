@@ -160,3 +160,18 @@ Remove a specified filter rule from `.keqfilter`.
 ## Auto-Reload
 
 The MCP Server monitors changes to `.keqrc` and `.keqfilter` files. When these files are modified, the server automatically recompiles the API index without requiring a manual restart.
+
+## Process Lifecycle
+
+The MCP Server runs as a stdio subprocess, launched on demand by the AI editor. To prevent multiple editor windows from accumulating long-lived processes and exhausting system memory, the server automatically exits in any of the following cases:
+
+- The client disconnects (the editor closes or drops the MCP connection)
+- The parent process exits (the editor process disappears)
+- A termination signal is received (`SIGINT` / `SIGTERM` / `SIGHUP`)
+- It stays idle for over 30 minutes without any tool call
+
+No manual intervention is needed after it exits — the AI editor will automatically restart the server on next use.
+
+:::tip
+The semantic search model (used by `search_apis`) is lazily loaded, only loaded on the first `search_apis` call. Using only `list_apis`, `list_modules`, `get_api_detail`, and other tools will not consume model memory. As a result, after a process restart, only the first semantic search incurs a one-time model loading delay.
+:::

@@ -496,3 +496,66 @@ Module: catService
     Cat
     Cat data model
 ```
+
+### `keq describe operation [options]`
+
+View the full structure definition of an API operation, including detailed Schema information for parameters, request body, and responses.
+
+| **Option**                         | **Description**                                                                                                 |
+| :------------------------------- | :------------------------------------------------------------------------------------------------------- |
+| `--module <module>`              | Module name (required)                                                                                         |
+| `--method <method>`              | HTTP method (required)                                                                                        |
+| `--pathname <pathname>`          | API pathname (required), e.g. `/api/v1/users`                                                                    |
+| `-c --config <config_file_path>` | Path to the configuration file                                                                                           |
+| `--format <format>`              | Output format, options: `json`                                                                                  |
+| `--json`                         | Output in JSON format (equivalent to `--format json`)                                                                |
+| `--tolerant`                     | Tolerant mode: ignores invalid Swagger/OpenAPI document structure                                                             |
+| `--debug`                        | Print debug information                                                                                             |
+
+#### Output Example
+
+```
+Module: catService
+GET /cats
+  operationId  getCats
+  summary      Get all cat info
+  deprecated   no
+
+Parameters:
+  [query]  breed  string  Cat breed
+
+Request Body:
+  (none)
+
+Responses:
+  200 (application/json)
+    type: array
+    items:
+      → Cat (ref)
+```
+
+### `keq describe schema [options]`
+
+View the full structure definition of a Schema component, including type, properties, constraints, and other details.
+
+| **Option**                         | **Description**                                                                                                 |
+| :------------------------------- | :------------------------------------------------------------------------------------------------------- |
+| `--module <module>`              | Module name (required)                                                                                         |
+| `--name <name>`                  | Schema component name (required)                                                                                   |
+| `-c --config <config_file_path>` | Path to the configuration file                                                                                           |
+| `--format <format>`              | Output format, options: `json`                                                                                  |
+| `--json`                         | Output in JSON format (equivalent to `--format json`)                                                                |
+| `--tolerant`                     | Tolerant mode: ignores invalid Swagger/OpenAPI document structure                                                             |
+| `--debug`                        | Print debug information                                                                                             |
+
+#### Output Example
+
+```
+Module: catService
+Schema: Cat
+
+  type: object
+  properties:
+    name  string
+    age   number
+```

@@ -498,3 +498,66 @@ Module: catService
     Cat
     猫咪数据模型
 ```
+
+### `keq describe operation [options]`
+
+查看某个 API 接口的完整结构定义，包括请求参数、请求体和响应体的详细 Schema 信息。
+
+| **选项**                         | **描述**                                                                                                 |
+| :------------------------------- | :------------------------------------------------------------------------------------------------------- |
+| `--module <module>`              | 模块名称（必填）                                                                                         |
+| `--method <method>`              | HTTP 方法（必填）                                                                                        |
+| `--pathname <pathname>`          | API 路径（必填），例如 `/api/v1/users`                                                                    |
+| `-c --config <config_file_path>` | 配置文件的地址                                                                                           |
+| `--format <format>`              | 输出格式，可选值：`json`                                                                                  |
+| `--json`                         | 以 JSON 格式输出（等同于 `--format json`）                                                                |
+| `--tolerant`                     | 容错模式：忽略无效的 Swagger/OpenAPI 文档结构                                                             |
+| `--debug`                        | 打印调试信息                                                                                             |
+
+#### 输出示例
+
+```
+Module: catService
+GET /cats
+  operationId  getCats
+  summary      获取所有猫咪信息
+  deprecated   no
+
+Parameters:
+  [query]  breed  string  猫咪品种
+
+Request Body:
+  (none)
+
+Responses:
+  200 (application/json)
+    type: array
+    items:
+      → Cat (ref)
+```
+
+### `keq describe schema [options]`
+
+查看某个 Schema 组件的完整结构定义，包括类型、属性、约束等详细信息。
+
+| **选项**                         | **描述**                                                                                                 |
+| :------------------------------- | :------------------------------------------------------------------------------------------------------- |
+| `--module <module>`              | 模块名称（必填）                                                                                         |
+| `--name <name>`                  | Schema 组件名称（必填）                                                                                   |
+| `-c --config <config_file_path>` | 配置文件的地址                                                                                           |
+| `--format <format>`              | 输出格式，可选值：`json`                                                                                  |
+| `--json`                         | 以 JSON 格式输出（等同于 `--format json`）                                                                |
+| `--tolerant`                     | 容错模式：忽略无效的 Swagger/OpenAPI 文档结构                                                             |
+| `--debug`                        | 打印调试信息                                                                                             |
+
+#### 输出示例
+
+```
+Module: catService
+Schema: Cat
+
+  type: object
+  properties:
+    name  string
+    age   number
+```
