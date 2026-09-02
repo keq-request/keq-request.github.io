@@ -99,6 +99,9 @@ import ExecPackageCommandCode from '@site/docs/components/_exec-package-command-
         catService: "./cat-service-swagger.json",
         // 也可以从网络上获取 swagger 文档，例如：
         // dogService: "http://dog.example.com/swagger.json"
+        // 也可以通过执行脚本获取 swagger 文档
+        // dogService: "bash://./scripts/export-swagger.sh"
+        // dogService: "sh://./scripts/export-swagger.sh"
       },
     })
     ```
@@ -117,6 +120,9 @@ import ExecPackageCommandCode from '@site/docs/components/_exec-package-command-
         catService: "./cat-service-swagger.json",
         // 也可以从网络上获取 swagger 文档，例如：
         // dogService: "http://dog.example.com/swagger.json"
+        // 也可以通过执行脚本获取 swagger 文档
+        // dogService: "bash://./scripts/export-swagger.sh"
+        // dogService: "sh://./scripts/export-swagger.sh"
       },
     })
     ```
@@ -131,6 +137,9 @@ import ExecPackageCommandCode from '@site/docs/components/_exec-package-command-
       catService: ./cat-service-swagger.json
       # 也可以从网络上获取 swagger 文档，例如：
       # dogService: http://dog.example.com/swagger.json
+      # 也可以通过执行脚本获取 swagger 文档
+      # dogService: bash://./scripts/export-swagger.sh
+      # dogService: sh://./scripts/export-swagger.sh
     ```
   </TabItem>
 </Tabs>
@@ -302,7 +311,7 @@ dogServiceRequest.inherit(coreRequest)
 | **配置参数**       | **是否必填** | **默认值**                                                  | **描述**                                                          |
 | :----------------- | :----------- | :---------------------------------------------------------- | :---------------------------------------------------------------- |
 | outdir             | true         | -                                                           | 编译结果的输出目录                                                |
-| modules            | true         | -                                                           | Swagger 文件地址和模块名称                                        |
+| modules            | true         | -                                                           | Swagger 文件地址和模块名称。支持 `http://`/`https://` 远程地址、本地文件路径、`bash://` 和 `sh://` 脚本路径 |
 | rendering          | false        | `{}`                                                        | 控制代码生成结果的渲染选项                                        |
 | rendering.fileNamingStyle    | false        | -                                                   | 文件名风格                                                        |
 | rendering.esm                | false        | 若 `package.json` 是否设置了 `"type": "module"` 则为 `true` | 是否生成 ESM 风格的代码                                |

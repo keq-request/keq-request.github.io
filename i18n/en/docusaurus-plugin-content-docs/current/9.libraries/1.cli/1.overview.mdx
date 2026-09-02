@@ -99,6 +99,9 @@ Then, create the `@keq-request/cli` configuration file specifying the swagger do
         catService: "./cat-service-swagger.json",
         // You can also fetch swagger documents from the network:
         // dogService: "http://dog.example.com/swagger.json"
+        // You can also fetch swagger documents by executing scripts
+        // dogService: "bash://./scripts/export-swagger.sh"
+        // dogService: "sh://./scripts/export-swagger.sh"
       },
     })
     ```
@@ -117,6 +120,9 @@ Then, create the `@keq-request/cli` configuration file specifying the swagger do
         catService: "./cat-service-swagger.json",
         // You can also fetch swagger documents from the network:
         // dogService: "http://dog.example.com/swagger.json"
+        // You can also fetch swagger documents by executing scripts
+        // dogService: "bash://./scripts/export-swagger.sh"
+        // dogService: "sh://./scripts/export-swagger.sh"
       },
     })
     ```
@@ -131,6 +137,9 @@ Then, create the `@keq-request/cli` configuration file specifying the swagger do
       catService: ./cat-service-swagger.json
       # You can also fetch swagger documents from the network:
       # dogService: http://dog.example.com/swagger.json
+      # You can also fetch swagger documents by executing scripts
+      # dogService: bash://./scripts/export-swagger.sh
+      # dogService: sh://./scripts/export-swagger.sh
     ```
   </TabItem>
 </Tabs>
@@ -300,7 +309,7 @@ You can specify the configuration file path with `-c --config <config_file_path>
 | **Parameter**       | **Required** | **Default**                                                  | **Description**                                                          |
 | :----------------- | :----------- | :---------------------------------------------------------- | :---------------------------------------------------------------- |
 | outdir             | true         | -                                                           | Output directory for compiled results                                                |
-| modules            | true         | -                                                           | Swagger file paths and module names                                        |
+| modules            | true         | -                                                           | Swagger file paths and module names. Supports `http://`/`https://` remote URLs, local file paths, `bash://` and `sh://` script paths |
 | rendering          | false        | `{}`                                                        | Options controlling code generation output                                        |
 | rendering.fileNamingStyle    | false        | -                                                   | File naming style                                                        |
 | rendering.esm                | false        | `true` if `package.json` has `"type": "module"` | Whether to generate ESM-style code                                |
