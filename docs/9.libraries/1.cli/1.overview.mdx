@@ -316,7 +316,7 @@ dogServiceRequest.inherit(coreRequest)
 | rendering.fileNamingStyle    | false        | -                                                   | 文件名风格                                                        |
 | rendering.esm                | false        | 若 `package.json` 是否设置了 `"type": "module"` 则为 `true` | 是否生成 ESM 风格的代码                                |
 | rendering.additionalPropertiesType | false  | `'unknown'`                                          | 控制 `additionalProperties: true`（或未声明时）在生成的 TypeScript 类型中渲染为 `unknown` 还是 `any` |
-| rendering.entrypoint               | false  | `false`                                              | 开启后会为每个模块生成 `index.ts` 入口文件，统一 re-export 该目录下的所有生成文件 |
+| rendering.entrypoint               | false  | `false`                                              | 开启后会为每个模块生成 `index.ts` 入口文件，统一 re-export 该目录下的所有生成文件；目录中没有可导出内容时会生成 `export {}`，保证入口文件始终存在 |
 | rendering.v2Compat                 | false  | `false`                                              | (**已废弃**) 开启后在生成的 micro-function 中添加 `.option('module', { name, pathname, method })`，仅用于 v2 兼容 |
 | rendering.emptyJsonRequestBodyMode | false  | `'strict'`                                            | 控制 `application/json` 请求在 body 属性全部可选且用户未传参时，如何处理 body。可选值：`'strict'`（默认，保持当前行为）、`'omit'`（不设置 `Content-Type`）、`'empty-object'`（发送 `{}`）、`'null'`（发送 `null`） |
 | translators        | false        | `[]`                                                        | [生成的代码风格](./4.translators.mdx)                                                    |
