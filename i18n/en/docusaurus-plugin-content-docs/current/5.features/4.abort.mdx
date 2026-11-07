@@ -1,0 +1,112 @@
+# Abort Requests
+
+Keq provides two ways to abort a request:
+
+- **Direct abort (`.abort()`)**: keep the request instance and call it at the desired moment.
+- **Reactive abort (`.abortWhen()`)**: declare an abort source (`AbortSignal` / `Promise`); the request terminates when that source aborts or settles.
+
+Keq requests are lazy: `request.get(...)` is only sent after `await`, `.then()` or `.fire()`.
+
+## Direct Abort - `.abort()`
+
+Trigger the request first to get a handler, then abort it at any time. `fire()` is fire-and-forget and does not handle the result; when you need result or error handling, use `.abortWhen()` below or the middleware approach:
+
+```typescript
+import { request, AbortException } from 'keq'
+
+// fire() triggers the request and returns the request instance itself
+const handler = request
+  .get('/api/cats')
+  .fire()
+
+// While it is in flight, application code decides when to abort
+handler.abort(new AbortException('User left the page'))
+```
+
+The abort reason becomes the rejection reason of the request and is forwarded to `abort` event listeners. When omitted, it defaults to `new AbortException('Request aborted')`:
+
+```typescript
+const handler = request.get('/api/cats').fire()
+
+handler.abort()
+
+// Any value is accepted as the abort reason
+// handler.abort('user navigated away')
+```
+
+Calling `.abort()` before the request is sent is supported as well: the request is aborted as soon as it starts executing, and the `abort` event is emitted.
+
+## Reactive Abort - `.abortWhen()`
+
+`.abortWhen()` declares the abort timing as an abort source: the request terminates when the `AbortSignal` aborts or the `Promise` settles, which works well with frameworks, routing and other async flows.
+
+### AbortSignal
+
+```typescript
+import { request, AbortException } from 'keq'
+
+const controller = new AbortController()
+
+try {
+  // The request is sent when awaited; it aborts when the controller aborts
+  const cats = await request
+    .get('/api/cats')
+    .abortWhen(controller.signal)
+} catch (err) {
+  if (err instanceof AbortException) {
+    console.error('Request aborted:', err.message)
+  }
+}
+```
+
+The `controller` is owned by the caller (for example aborted on component unmount or when the user clicks cancel). If the signal is already aborted, the request is aborted as soon as it starts executing; the abort reason is taken from `signal.reason` (a default `DOMException` with `name` `AbortError` when no reason is passed). The listener registered by `abortWhen` is removed automatically once the request settles (success or failure).
+
+### Promise
+
+```typescript
+import { request } from 'keq'
+
+// Resolves when the route changes, for example
+const routeChanged = new Promise<void>((resolve) => {
+  router.afterEach(() => resolve())
+})
+
+// The request aborts when the Promise settles (resolves or rejects)
+const cats = await request
+  .get('/api/cats')
+  .abortWhen(routeChanged)
+```
+
+## Aborting in Middleware
+
+If you want the abort logic to be reusable, or to abort on a condition, put it in middleware. Middleware runs while the request is executing, so it can call `context.request.abort(reason)` at any stage.
+
+Below is a minimal time-based example (for plain timeouts prefer the built-in `.timeout()`):
+
+```typescript
+import { request, AbortException, KeqMiddleware } from 'keq'
+
+function abortAfter(milliseconds: number): KeqMiddleware {
+  return async (context, next) => {
+    const timer = setTimeout(() => {
+      context.request.abort(new AbortException(`Request exceeded ${milliseconds}ms`))
+    }, milliseconds)
+
+    try {
+      await next()
+    } finally {
+      clearTimeout(timer)
+    }
+  }
+}
+
+await request
+  .get('/api/cats')
+  .use(abortAfter(3000))
+```
+
+## Differences from Timeout and Flow Control
+
+- `.timeout()`: aborts automatically when the request times out and throws a `TimeoutException` (a subclass of `AbortException`).
+- `.flowControl('abort')`: aborts the previous request in the same queue automatically when a new one is sent.
+- `.abort()` / `.abortWhen()`: lets application code control or declare the abort timing; combined with middleware it can become a global policy.

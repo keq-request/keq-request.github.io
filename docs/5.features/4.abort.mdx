@@ -1,0 +1,112 @@
+# 终止请求
+
+Keq 提供两种终止请求的方式：
+
+- **主动终止（`.abort()`）**：持有请求实例后，在业务时机直接调用。
+- **响应式终止（`.abortWhen()`）**：声明一个中止源（`AbortSignal` / `Promise`），请求会响应它的中止或完成而终止。
+
+Keq 的请求是惰性的：`request.get(...)` 直到 `await`、`.then()` 或 `.fire()` 才会真正发送。
+
+## 主动终止 - `.abort()`
+
+先触发请求拿到 handler，再在任意时机中止。`fire()` 是 fire-and-forget 用法，不处理结果；需要结果或错误处理时，请使用下面的 `.abortWhen()` 或中间件方案：
+
+```typescript
+import { request, AbortException } from 'keq'
+
+// fire() 触发请求，并返回请求实例本身
+const handler = request
+  .get('/api/cats')
+  .fire()
+
+// 请求进行中，由业务代码决定何时中止
+handler.abort(new AbortException('用户离开页面'))
+```
+
+中止原因会作为请求的拒绝原因，并随 `abort` 事件一起传给监听器。不传参数时默认为 `new AbortException('Request aborted')`：
+
+```typescript
+const handler = request.get('/api/cats').fire()
+
+handler.abort()
+
+// 支持任意值作为中止原因
+// handler.abort('user navigated away')
+```
+
+在请求发送前调用 `.abort()` 同样有效：请求会在开始执行时立即中止并触发 `abort` 事件。
+
+## 响应式终止 - `.abortWhen()`
+
+`.abortWhen()` 把中止时机声明为一个中止源：`AbortSignal` 中止、或 `Promise` 完成时，请求随之终止，适合与框架、路由和其他异步流程联动。
+
+### AbortSignal
+
+```typescript
+import { request, AbortException } from 'keq'
+
+const controller = new AbortController()
+
+try {
+  // await 时发送请求；controller 中止时请求随之中止
+  const cats = await request
+    .get('/api/cats')
+    .abortWhen(controller.signal)
+} catch (err) {
+  if (err instanceof AbortException) {
+    console.error('请求已终止:', err.message)
+  }
+}
+```
+
+`controller` 由调用方持有（例如组件卸载、用户点击取消时调用 `controller.abort(reason)`）。如果传入的 signal 已经中止，请求会在开始执行时立即中止；中止原因取自 `signal.reason`（未传原因时为默认的 `DOMException`，`name` 为 `AbortError`）。请求结束（成功或失败）后，`abortWhen` 注册的监听会被自动移除。
+
+### Promise
+
+```typescript
+import { request } from 'keq'
+
+// 例如路由变化时 resolve
+const routeChanged = new Promise<void>((resolve) => {
+  router.afterEach(() => resolve())
+})
+
+// Promise 完成（resolve 或 reject）时终止请求
+const cats = await request
+  .get('/api/cats')
+  .abortWhen(routeChanged)
+```
+
+## 通过中间件中止
+
+如果希望把中止逻辑做成可复用的能力，或者按条件中止，可以放进中间件。中间件在请求执行过程中运行，因此可以在任意阶段调用 `context.request.abort(reason)`。
+
+下面是一个按时间中止的最小示例（如果是纯超时，优先使用内置的 `.timeout()`）：
+
+```typescript
+import { request, AbortException, KeqMiddleware } from 'keq'
+
+function abortAfter(milliseconds: number): KeqMiddleware {
+  return async (context, next) => {
+    const timer = setTimeout(() => {
+      context.request.abort(new AbortException(`请求超过 ${milliseconds}ms 未完成`))
+    }, milliseconds)
+
+    try {
+      await next()
+    } finally {
+      clearTimeout(timer)
+    }
+  }
+}
+
+await request
+  .get('/api/cats')
+  .use(abortAfter(3000))
+```
+
+## 与超时、并发控制的区别
+
+- `.timeout()`：超时后自动中止请求并抛出 `TimeoutException`（`AbortException` 的子类）。
+- `.flowControl('abort')`：发送新请求时自动中止同一队列中的旧请求。
+- `.abort()` / `.abortWhen()`：由业务代码主动控制或声明中止时机；配合中间件可以做成全局策略。

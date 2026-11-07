@@ -86,7 +86,7 @@ derived.set("X-Custom", "value")
 
 ## 触发请求但不等待 - fire()
 
-当你只需要发送请求而不关心结果时（fire-and-forget），使用 `.fire()` 方法。它返回 `void`，可以直接调用而无需 `await`：
+当你只需要发送请求而不关心结果时（fire-and-forget），使用 `.fire()` 方法。它返回请求实例本身，可以直接调用而无需等待结果；需要终止请求时，可以继续使用该实例调用 `.abort()`：
 
 ```typescript
 import { request } from "keq"
@@ -117,16 +117,15 @@ tracker.derive()
   .fire()
 ```
 
-### fire() 后仍可获取结果
+### fire() 与 abort
 
-调用 `.fire()` 后，仍然可以通过 `await` 获取请求结果：
+`.fire()` 返回请求实例本身，因此之后可以在需要时调用 `.abort()` 终止请求，详见[终止请求](../features/abort)：
 
 ```typescript
 import { request } from "keq"
 
-const req = request.get("/api/cats")
+const req = request.get("/api/cats").fire()  // 触发请求
 
-req.fire()  // 触发请求
-
-const result = await req  // 仍然可以获取结果
+// 之后需要时终止请求
+req.abort()
 ```

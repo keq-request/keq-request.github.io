@@ -86,7 +86,7 @@ derived.set("X-Custom", "value")
 
 ## Fire-and-Forget - fire()
 
-When you only need to send a request without caring about the result, use the `.fire()` method. It returns `void` and can be called directly without `await`:
+When you only need to send a request without caring about the result, use the `.fire()` method. It returns the request instance itself, so it can be called directly without waiting for the result; when the request needs to be aborted, the returned instance can be used to call `.abort()`:
 
 ```typescript
 import { request } from "keq"
@@ -117,16 +117,15 @@ tracker.derive()
   .fire()
 ```
 
-### Getting Results After fire()
+### fire() and abort
 
-After calling `.fire()`, you can still get the request result via `await`:
+`.fire()` returns the request instance itself, so it can be aborted later with `.abort()`; see [Abort Requests](../features/abort):
 
 ```typescript
 import { request } from "keq"
 
-const req = request.get("/api/cats")
+const req = request.get("/api/cats").fire()  // Trigger the request
 
-req.fire()  // Trigger the request
-
-const result = await req  // Can still get the result
+// Abort it later if needed
+req.abort()
 ```

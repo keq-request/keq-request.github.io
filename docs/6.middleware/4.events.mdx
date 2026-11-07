@@ -189,34 +189,26 @@ try {
 | reason  | `any`              | 中止原因       |
 
 ```typescript
-import { request, AbortException, KeqMiddleware } from 'keq'
+import { request, AbortException } from 'keq'
 
-function autoAbort(): KeqMiddleware {
-  return async (context, next) => {
-    setTimeout(() => {
-      context.request.abort(new AbortException('手动中止请求'))
-    }, 3000)
-    await next()
-  }
-}
+const keq = request
+  .get('/cats')
+  .on('abort', ({ reason }) => {
+    if (reason instanceof AbortException) {
+      console.log('请求被中止:', reason.message)
+    } else {
+      console.log('请求被中止:', reason)
+    }
+  })
 
-try {
-  await request
-    .get('/cats')
-    .use(autoAbort())
-    .on('abort', ({ context, reason }) => {
-      if (reason instanceof AbortException) {
-        console.log('请求被中止:', reason.message)
-      } else {
-        console.log('请求被中止:', reason)
-      }
-    })
-} catch (err) {
-  if (err instanceof AbortException) {
-    console.error('请求已中止:', err.message)
-  }
-}
+// 先触发请求，之后由业务代码控制中止时机
+keq.fire()
+keq.abort(new AbortException('用户取消'))
 ```
+
+:::tip
+通常直接使用 `.abort()` / `.abortWhen()` 即可，详见[终止请求](../features/abort)。在中间件中也可以使用 `context.request.abort(reason)`。
+:::
 
 ### error
 

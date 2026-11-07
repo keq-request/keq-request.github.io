@@ -189,34 +189,26 @@ Triggered when a request is aborted.
 | reason  | `any`              | Abort reason       |
 
 ```typescript
-import { request, AbortException, KeqMiddleware } from 'keq'
+import { request, AbortException } from 'keq'
 
-function autoAbort(): KeqMiddleware {
-  return async (context, next) => {
-    setTimeout(() => {
-      context.request.abort(new AbortException('Manually aborted request'))
-    }, 3000)
-    await next()
-  }
-}
+const keq = request
+  .get('/cats')
+  .on('abort', ({ reason }) => {
+    if (reason instanceof AbortException) {
+      console.log('Request aborted:', reason.message)
+    } else {
+      console.log('Request aborted:', reason)
+    }
+  })
 
-try {
-  await request
-    .get('/cats')
-    .use(autoAbort())
-    .on('abort', ({ context, reason }) => {
-      if (reason instanceof AbortException) {
-        console.log('Request aborted:', reason.message)
-      } else {
-        console.log('Request aborted:', reason)
-      }
-    })
-} catch (err) {
-  if (err instanceof AbortException) {
-    console.error('Request was aborted:', err.message)
-  }
-}
+// Trigger the request first; application code then controls the abort timing
+keq.fire()
+keq.abort(new AbortException('User cancelled'))
 ```
+
+:::tip
+Usually `.abort()` / `.abortWhen()` is all you need — see [Abort Requests](../features/abort). Inside middleware you can also use `context.request.abort(reason)`.
+:::
 
 ### error
 
