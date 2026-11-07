@@ -180,7 +180,7 @@ request
 | **属性**             | **描述**                                                                                                                                                   |
 | :------------------- | :--------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `context.request`    | Http 请求的参数                                                                                                                                            |
-| `context.abort()`    | **ReadOnly** 终止当前请求                                                                                                                                  |
+| `context.abort(reason)` | **ReadOnly** 终止当前请求（不会继续重试），`reason` 会作为请求的拒绝原因 |
 | `context.global`     | `context.global` 中存储的数据在 `Middleware` 执行完成后不会随 `context` 一起销毁。使用时请务必注意内存溢出问题。                                           |
 | `context.res`        | 原始 [`Response`][Response MDN] 对象. 请求成功发送后由 `fetchMiddleware` 添加至 `context`。请尽可能使用 `context.response` 除非你确实需要原始 `Response`。 |
 | `context.response`   | `context.res` 的代理，解决了 [`Response`][Response MDN] 的 `.json()`、`.test() ` 等方法无法被多次调用，导致多个 Middleware 重复获取响应体报错的问题。      |

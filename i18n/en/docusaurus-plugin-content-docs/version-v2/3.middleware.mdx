@@ -180,7 +180,7 @@ By interacting with `context`, `Middleware` can completely control request behav
 | **Property**         | **Description**                                                                                                                                                                 |
 | :------------------- | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | `context.request`    | HTTP request parameters                                                                                                                                                         |
-| `context.abort()`    | **ReadOnly** Abort the current request                                                                                                                                          |
+| `context.abort(reason)` | **ReadOnly** Abort the current request (no further retry), `reason` becomes the rejection reason |
 | `context.global`     | Data stored in `context.global` will not be destroyed with `context` after `request` completed. Please be aware of memory overflow issues when using it.                    |
 | `context.res`        | Original [`Response`][Response MDN] object. Added to `context` by `fetchMiddleware` after the request is successfully sent. Use `context.response` whenever possible unless you really need the raw `Response`. |
 | `context.response`   | Proxy of `context.res`, solving the problem that [`Response`][Response MDN]'s `.json()`, `.text()` and other methods cannot be called multiple times, which would cause errors when multiple `Middleware` repeatedly get the response body. |
