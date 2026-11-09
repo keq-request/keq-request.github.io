@@ -1,0 +1,36 @@
+# Async Context
+
+On Node.js, Keq fully preserves the caller's [`AsyncLocalStorage`](https://nodejs.org/api/async_context.html) (ALS) context: middleware always reads the context the request was started in.
+
+This matters most when requests have to queue. Whether it is `serial` / `concurrent` [flow control](./flow-control) or [`@keq-request/cache`](../libraries/cache/overview) serializing requests that share a cache key, a request still reads its own context by the time it runs.
+
+```typescript
+import { AsyncLocalStorage } from "node:async_hooks";
+import { request } from "keq";
+
+const als = new AsyncLocalStorage<{ traceId: string }>();
+
+request.use(async (ctx, next) => {
+  // Always this request's own traceId, however long it waited in the queue
+  ctx.set("x-trace-id", als.getStore()!.traceId);
+  await next();
+});
+
+await Promise.all(
+  tasks.map((task) =>
+    als.run({ traceId: task.traceId }, () =>
+      request.get("/api/cats").flowControl("serial", "cats"),
+    ),
+  ),
+);
+```
+
+:::tip The context belongs to the `await` site
+Requests are **lazy** — they only run when awaited (or via `.then()` / `.fire()`). What takes effect is the context around the `await`, not the place where `request.get()` was written:
+
+```typescript
+const keq = request.get("/api/cats"); // no request is sent here
+
+await als.run({ traceId: "abc" }, () => keq); // reads traceId: "abc"
+```
+:::

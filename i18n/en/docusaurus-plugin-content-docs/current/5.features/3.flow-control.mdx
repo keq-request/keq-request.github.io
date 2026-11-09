@@ -46,7 +46,7 @@ await Promise.all(
 ```
 
 :::tip Performance Note
-Browsers limit concurrent HTTP connections to the same domain (typically 6). Using `serial` mode gives you precise control over concurrency, preventing request queuing.
+Browsers limit concurrent HTTP connections to the same domain (typically 6), and requests beyond that queue inside the browser where you can neither cancel nor reprioritize them. `serial` moves the queuing back into your application, where you control the order.
 :::
 
 ## Concurrent Throttling - concurrent
@@ -87,7 +87,7 @@ await Promise.all(
 ```
 
 :::tip serial vs concurrent
-`serial` is equivalent to `concurrent` with a concurrency of 1. Use `serial` when strict ordering is required; use `concurrent` when you just need throttling.
+`serial` is equivalent to `concurrent` with a concurrency of 1. An omitted `concurrencyLimit`, or one below 1, also falls back to 1.
 :::
 
 ## Abort Previous - abort
@@ -140,12 +140,12 @@ function SearchBox() {
       <input
         type="text"
         onChange={(e) => handleSearch(e.target.value)}
-        placeholder="Searching..."
+        placeholder="Search cats..."
       />
       <ul>
         {suggestions.map((suggestion, i) => (
           <li key={i}>{suggestion}</li>
-        ))
+        ))}
       </ul>
     </div>
   )

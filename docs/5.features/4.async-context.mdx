@@ -1,0 +1,36 @@
+# 异步上下文
+
+Keq 在 Node.js 下完整保留调用方的 [`AsyncLocalStorage`](https://nodejs.org/api/async_context.html)（ALS）上下文：中间件读到的始终是发起该请求时所在的上下文。
+
+这一点在请求需要排队时尤为重要。无论是[并发控制](./flow-control)的 `serial` / `concurrent`，还是 [`@keq-request/cache`](../libraries/cache/overview) 对同一缓存键的串行化，请求等到被执行时读到的仍是自己的上下文。
+
+```typescript
+import { AsyncLocalStorage } from "node:async_hooks";
+import { request } from "keq";
+
+const als = new AsyncLocalStorage<{ traceId: string }>();
+
+request.use(async (ctx, next) => {
+  // 始终是该请求自己的 traceId，排队再久也不会错位
+  ctx.set("x-trace-id", als.getStore()!.traceId);
+  await next();
+});
+
+await Promise.all(
+  tasks.map((task) =>
+    als.run({ traceId: task.traceId }, () =>
+      request.get("/api/cats").flowControl("serial", "cats"),
+    ),
+  ),
+);
+```
+
+:::tip 上下文归属于 `await` 的位置
+请求是**惰性发起**的 —— 只有在 `await`（或 `.then()` / `.fire()`）时才真正执行。因此生效的是 `await` 所在的上下文，而不是 `request.get()` 被写下的位置：
+
+```typescript
+const keq = request.get("/api/cats"); // 此处不发起请求
+
+await als.run({ traceId: "abc" }, () => keq); // 读到 traceId: "abc"
+```
+:::

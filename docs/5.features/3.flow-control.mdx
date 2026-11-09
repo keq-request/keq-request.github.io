@@ -46,7 +46,7 @@ await Promise.all(
 ```
 
 :::tip 性能提示
-浏览器对同一域名的并发 HTTP 连接数有限制（通常为 6 个）。使用 `serial` 模式可以精确控制并发数，避免请求排队。
+浏览器对同一域名的并发 HTTP 连接数有限制（通常为 6 个），超出的请求会在浏览器层面排队，无法被取消或调整优先级。`serial` 把排队收回到应用层，由你决定顺序。
 :::
 
 ## 并发限流 - concurrent
@@ -87,7 +87,7 @@ await Promise.all(
 ```
 
 :::tip serial vs concurrent
-`serial` 等价于 `concurrent` 并发数为 1 的情况。当需要严格顺序时用 `serial`，当只需限流时用 `concurrent`。
+`serial` 等价于 `concurrent` 并发数为 1 的情况。`concurrencyLimit` 缺省或小于 1 时同样退化为 1。
 :::
 
 ## 中止旧请求 - abort
@@ -140,12 +140,12 @@ function SearchBox() {
       <input
         type="text"
         onChange={(e) => handleSearch(e.target.value)}
-        placeholder="搜索中..."
+        placeholder="搜索猫咪..."
       />
       <ul>
         {suggestions.map((suggestion, i) => (
           <li key={i}>{suggestion}</li>
-        ))
+        ))}
       </ul>
     </div>
   )
