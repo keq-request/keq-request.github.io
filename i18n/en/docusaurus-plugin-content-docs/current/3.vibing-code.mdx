@@ -1,0 +1,134 @@
+# Vibing Code
+
+Keq provides a set of Agent Skills that let AI coding assistants such as Claude Code, Codex, and Cursor work with Keq's API, middleware, and CLI workflows when writing HTTP requests. Describe the task, and get Keq code you can run.
+
+## Included Skills
+
+| Skill           | Package                  | Purpose                                    |
+| :-------------- | :----------------------- | :----------------------------------------- |
+| `keq`           | `keq`                    | HTTP request building, middleware, flow control |
+| `keq-cli`       | `@keq-request/cli`       | OpenAPI/Swagger code generation, mock server |
+| `keq-cache`     | `@keq-request/cache`     | Request caching strategies                 |
+| `keq-exception` | `@keq-request/exception` | Structured HTTP error handling             |
+| `keq-url`       | `@keq-request/url`       | URL manipulation middleware                |
+| `keq-headers`   | `@keq-request/headers`   | Header manipulation middleware             |
+| `keq-nestjs`    | `@keq-request/nestjs`    | NestJS dependency injection integration    |
+
+## Installation
+
+### skills CLI
+
+Run this in your project root:
+
+```bash
+npx skills add keq-request/skills
+```
+
+The command lists the skills in the repository and lets you choose which skills to install and which AI assistant to target. Skills are installed into the current project.
+
+To install a single skill:
+
+```bash
+npx skills add keq-request/skills --skill keq-cli -a claude-code
+```
+
+List installed skills:
+
+```bash
+npx skills list
+```
+
+:::note
+The `skills` CLI requires Node.js >= 22.20. If the project uses an older Node.js version, use the Claude Code Marketplace below.
+:::
+
+### Claude Code Marketplace
+
+Register the marketplace in Claude Code:
+
+```text
+/plugin marketplace add keq-request/skills
+```
+
+Then install the skills you need:
+
+```text
+/plugin install keq@keq-request-skills
+/plugin install keq-cli@keq-request-skills
+/plugin install keq-cache@keq-request-skills
+/plugin install keq-exception@keq-request-skills
+/plugin install keq-url@keq-request-skills
+/plugin install keq-headers@keq-request-skills
+/plugin install keq-nestjs@keq-request-skills
+```
+
+## Hand it to the AI
+
+Once installed, describe the task to your AI assistant. Here are a few prompts you can copy and the code the assistant writes.
+
+### One sentence, one typed request
+
+```text
+Build a cat adoption page with breed filtering for adoptable cats.
+```
+
+The assistant reads `.keqrc`, finds the `catService` endpoints, and writes:
+
+```typescript
+import { getBreeds, getCats } from "./apis/cat_service"
+
+async function loadAdoptionPage(breed?: string) {
+  const breeds = await getBreeds()
+  const cats = await getCats({ breed, status: "adoptable" })
+  //                           ^^^^^ Parameter types come from OpenAPI; typos fail at compile time
+  return { breeds, cats }
+}
+```
+
+Request parameters and return values in the page are typed; a wrong field fails at compile time.
+
+### Add auth to a module
+
+```text
+Add an Authorization header to every catService request.
+```
+
+```typescript
+import { request as catServiceRequest } from "./apis/cat_service/request"
+
+catServiceRequest.use(async (context, next) => {
+  context.request.headers.set("Authorization", `Bearer ${getToken()}`)
+  await next()
+})
+```
+
+Every catService request carries the auth header without editing each call site.
+
+### Add retry and timeout to a call
+
+```text
+Retry the cat list request 3 times on failure and time out after 5 seconds.
+```
+
+```typescript
+const cats = await getCats({ breed })
+  .retry(3, 1000)
+  .timeout(5000)
+```
+
+Retries on network flakiness and aborts after 5 seconds.
+
+### Regenerate after an API change
+
+```text
+The backend updated GET /cats. Regenerate the catService code.
+```
+
+The assistant runs:
+
+```bash
+keq build --module catService --pathname /cats --method get
+```
+
+When the generated files update, parameter and return types in the page update with them. If the change is incompatible, every affected call site fails at compile time, and the assistant works through the errors one by one, leaving none behind.
+

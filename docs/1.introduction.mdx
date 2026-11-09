@@ -4,7 +4,7 @@
 
 Keq 是一个**为 AI 编程时代设计的 TypeScript HTTP 客户端**。它基于 [Fetch API](https://developer.mozilla.org/en-US/docs/Web/API/Fetch_API) 构建，融合了 [Koa](https://github.com/koajs/koa) 的中间件设计和 [SuperAgent](https://github.com/ladjs/superagent) 的链式调用体验。
 
-与传统 HTTP 客户端不同，Keq 天然为 AI 编程助手提供了完整的 API 感知能力——你的 AI 助手不仅能理解项目中的每一个 API 接口，还能直接生成类型安全的调用代码。
+与传统 HTTP 客户端不同，Keq 把 OpenAPI 文档变成 AI 可直接检索的结构化知识，并让请求代码由工具生成，而不是由 AI 手写——你的 AI 助手既能精确定位接口，也能拿到与接口定义完全一致的类型。
 
 ## 为 AI 编程而生
 
@@ -36,55 +36,54 @@ export function AdoptionPage() {
 }
 ```
 
-AI 在编写功能的过程中，自动通过语义搜索定位所需接口、生成类型安全的请求代码。TypeScript 编译器确保生成的代码类型正确——即使 AI 犯错，编译器也会拦住它。
+这段代码里没有手写 URL、参数类型或响应结构：`getCats` / `getBreeds` 的签名来自 OpenAPI 文档，AI 只负责把它们组合进页面。请求层的类型由生成器维护，页面代码专注业务逻辑。
 
-### 一行配置，解锁 AI 能力
+### 为 AI 助手安装 Keq Skills
 
-不需要学习新概念，只需在项目中添加一行配置，AI 助手就能自动理解你的所有 API：
+在项目根目录执行：
 
-import Tabs from '@theme/Tabs';
-import TabItem from '@theme/TabItem';
+```bash
+npx skills add keq-request/skills
+```
 
-<Tabs>
-  <TabItem value="claude" label="Claude Code" default>
-    ```json title=".mcp.json"
-    {
-      "mcpServers": {
-        "keq": { "command": "npx", "args": ["@keq-request/cli", "mcp"] }
-      }
-    }
-    ```
-  </TabItem>
-  <TabItem value="cursor" label="Cursor">
-    ```json title=".cursor/mcp.json"
-    {
-      "mcpServers": {
-        "keq": { "command": "npx", "args": ["keq", "mcp"] }
-      }
-    }
-    ```
-  </TabItem>
-  <TabItem value="vscode" label="VS Code">
-    ```json title=".vscode/mcp.json"
-    {
-      "servers": {
-        "keq": { "command": "npx", "args": ["keq", "mcp"] }
-      }
-    }
-    ```
-  </TabItem>
-</Tabs>
+安装后，AI 助手会在需要时加载 Keq 的编码规范，获得以下能力：
 
-配置完成后，AI 助手即刻获得以下能力：
+- 🔍 **自然语言搜索** — 用中文或英文描述你想要的接口，AI 通过 `keq search` 语义匹配
+- 🏗️ **按需生成代码** — AI 根据 `.keqrc` 执行 `keq build`，生成类型安全的 TypeScript 请求函数
+- 📋 **过滤规则管理** — AI 维护 `.keqfilter`，只生成项目实际用到的接口代码
+- 🔄 **实时感知变更** — OpenAPI 文档更新后重新生成，AI 始终基于最新接口信息工作
 
-- 🔍 **自然语言搜索** — 用中文或英文描述你想要的接口，AI 从数百个 API 中语义匹配
-- 🏗️ **按需生成代码** — AI 判断需要哪些接口，自动生成类型安全的 TypeScript 请求函数
-- 📋 **过滤规则管理** — AI 自动维护 `.keqfilter`，只生成项目实际用到的接口代码
-- 🔄 **实时感知变更** — API 文档更新时自动同步，AI 始终基于最新接口信息工作
+完整用法见 [Vibing Code](./vibing-code)。
 
 ### 为什么 AI 编程需要 Keq？
 
-AI 编程助手面对 HTTP 请求时，最大的问题是**缺乏 API 上下文**——它不知道项目有哪些接口、参数是什么结构。Keq 通过将 OpenAPI 文档转化为 AI 可感知的结构化知识，让 AI 精确掌握每个接口的路径、方法、参数和响应结构，生成的代码自带完整类型推断，编译器自动校验正确性。
+AI 写 HTTP 请求，难点通常不是把请求发出去，而是让代码在后续迭代中始终和接口定义保持一致。AI 很容易写出“看起来能跑”的代码，但 API 上下文、类型约束和接口变更这三件事，往往没有处理好。
+
+#### 上下文浪费：AI 不知道有哪些接口，只能翻原始文档
+
+AI 缺少 API 上下文时，只能读取大段 Swagger/OpenAPI JSON，或者到后端代码里搜索路由。这会消耗大量上下文，还容易找错接口。
+
+Keq 把 OpenAPI 文档变成 AI 可以直接检索的结构化知识：
+
+- `keq search "猫咪 品种"`：用自然语言定位接口
+- `keq apis`：列出模块、接口和数据结构
+- `keq describe operation`：查看单个接口的完整参数与响应 Schema
+
+AI 只读取当前任务需要的接口信息，不必把整份 API 文档或后端代码塞进上下文。
+
+#### 类型漂移：为了让代码通过，类型被改成 `any`
+
+手写类型的问题在于，它是对接口定义的一次性拷贝。接口字段一变，这份拷贝就失效；为了让编译继续通过，AI 往往会放宽类型，而不是逐一修正调用点。
+
+Keq 的请求函数由 [`@keq-request/cli`](./libraries/cli/overview) 从 OpenAPI 文档编译生成。参数、返回值、请求体类型都来自接口定义，AI 只调用生成好的函数，不需要手写类型，也不应该修改生成文件。
+
+#### 变更可追踪：不兼容改动会让所有调用点一起报错
+
+接口不会一成不变：字段重命名、类型收紧、必填参数增加，都会影响已有调用。手写请求时，这些影响散落在各个文件里，AI 可能只改了眼前的代码，漏掉其他调用点。
+
+Keq 的请求函数由接口定义生成。接口发生不兼容变更后，重新生成代码，所有受影响的调用点都会在 TypeScript 编译时暴露出来：参数少传、类型不匹配、返回值用法错误，都会变成具体文件里的具体报错。编译错误就是一份完整的待修清单，AI 沿着它逐个修正即可。
+
+一个让 AI 不必翻原始文档，一个让 AI 不必手写类型，一个让不兼容改动无处可藏——这就是 Keq 为 AI 编程准备的三项基础能力。
 
 ## 核心特性
 

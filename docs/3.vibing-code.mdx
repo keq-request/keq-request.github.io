@@ -1,0 +1,134 @@
+# Vibing Code
+
+Keq 提供一组 Agent Skills，让 Claude Code、Codex、Cursor 等 AI 编程助手在编写 HTTP 请求时直接使用 Keq 的 API、中间件和 CLI 工作流。把需求描述给 AI，就能得到可以直接运行的 Keq 代码。
+
+## 包含的 Skill
+
+| Skill            | 对应包                     | 用途                                |
+| :--------------- | :------------------------- | :---------------------------------- |
+| `keq`            | `keq`                      | HTTP 请求构建、中间件、并发控制     |
+| `keq-cli`        | `@keq-request/cli`         | OpenAPI/Swagger 代码生成、Mock     |
+| `keq-cache`      | `@keq-request/cache`       | 请求缓存策略                        |
+| `keq-exception`  | `@keq-request/exception`   | 结构化 HTTP 异常处理                |
+| `keq-url`        | `@keq-request/url`         | URL 操作中间件                      |
+| `keq-headers`    | `@keq-request/headers`     | 请求头操作中间件                    |
+| `keq-nestjs`     | `@keq-request/nestjs`      | NestJS 依赖注入集成                 |
+
+## 安装
+
+### skills CLI
+
+在项目根目录执行：
+
+```bash
+npx skills add keq-request/skills
+```
+
+命令会列出仓库中的 skill，并让你选择要安装的 skill 和目标 AI 助手，安装到当前项目。
+
+只安装其中一个 skill 时：
+
+```bash
+npx skills add keq-request/skills --skill keq-cli -a claude-code
+```
+
+安装完成后可以查看已安装的 skill：
+
+```bash
+npx skills list
+```
+
+:::note
+`skills` CLI 需要 Node.js >= 22.20。如果项目使用更低版本的 Node.js，可以通过下面的 Claude Code Marketplace 安装。
+:::
+
+### Claude Code Marketplace
+
+在 Claude Code 中注册 marketplace：
+
+```text
+/plugin marketplace add keq-request/skills
+```
+
+然后安装需要的 skill：
+
+```text
+/plugin install keq@keq-request-skills
+/plugin install keq-cli@keq-request-skills
+/plugin install keq-cache@keq-request-skills
+/plugin install keq-exception@keq-request-skills
+/plugin install keq-url@keq-request-skills
+/plugin install keq-headers@keq-request-skills
+/plugin install keq-nestjs@keq-request-skills
+```
+
+## 把需求交给 AI
+
+安装后，把需求直接描述给 AI 助手即可。下面是几个可以直接复制的提示词，以及 AI 会写出的代码。
+
+### 一句话生成类型安全的请求
+
+```text
+帮我写一个猫咪领养页面，支持按品种筛选可领养的猫咪。
+```
+
+AI 会读取 `.keqrc`，找到 `catService` 的接口，并写出：
+
+```typescript
+import { getBreeds, getCats } from "./apis/cat_service"
+
+async function loadAdoptionPage(breed?: string) {
+  const breeds = await getBreeds()
+  const cats = await getCats({ breed, status: "adoptable" })
+  //                           ^^^^^ 参数类型由 OpenAPI 推断，拼错字段会在编译时报错
+  return { breeds, cats }
+}
+```
+
+页面里的请求参数和返回值都有了类型，字段写错会在编译期报错。
+
+### 给模块统一加鉴权
+
+```text
+给 catService 的所有请求加上 Authorization 头。
+```
+
+```typescript
+import { request as catServiceRequest } from "./apis/cat_service/request"
+
+catServiceRequest.use(async (context, next) => {
+  context.request.headers.set("Authorization", `Bearer ${getToken()}`)
+  await next()
+})
+```
+
+catService 的所有请求都会带上鉴权头，不需要逐个调用点修改。
+
+### 给调用补上重试和超时
+
+```text
+猫咪列表接口失败时重试 3 次，超时 5 秒。
+```
+
+```typescript
+const cats = await getCats({ breed })
+  .retry(3, 1000)
+  .timeout(5000)
+```
+
+网络抖动时自动重试，超过 5 秒会中止请求。
+
+### 接口变更后同步代码
+
+```text
+后端更新了 GET /cats，重新生成 catService 的代码。
+```
+
+AI 会执行：
+
+```bash
+keq build --module catService --pathname /cats --method get
+```
+
+生成文件更新后，页面里的参数和返回类型会一起同步；如果存在不兼容变更，所有受影响的调用点都会在编译时报错，AI 会沿着错误逐个修正，不会遗漏。
+
