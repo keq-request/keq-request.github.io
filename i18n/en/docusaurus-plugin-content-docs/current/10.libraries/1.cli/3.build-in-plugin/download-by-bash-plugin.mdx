@@ -1,0 +1,38 @@
+# DownloadByBashPlugin
+
+A core plugin — no configuration needed. It activates when a `modules` address starts with `bash://`.
+
+Everything after `bash://` is a script path. `keq` runs that script and treats its **stdout** as the OpenAPI document. Useful when a backend service isn't running in a monorepo, when the document needs authentication, or when it has to pass through your own generator first.
+
+```typescript title=".keqrc.ts"
+export default defineConfig({
+  outdir: "./src/apis",
+  modules: {
+    catService: "bash://./scripts/export-swagger.sh",
+  },
+})
+```
+
+```bash title="scripts/export-swagger.sh"
+#!/usr/bin/env bash
+curl -fsSL "$BACKEND_URL/v3/api-docs"
+```
+
+## How it runs
+
+| Item         | Behaviour                                                            |
+| :----------- | :------------------------------------------------------------------- |
+| Script path  | Relative paths resolve against `keq`'s working directory (usually the project root) |
+| Execution    | `/bin/bash <script path>`, same working directory                    |
+| Output       | stdout, parsed as JSON first, then as YAML                           |
+| Timeout      | 30 seconds                                                           |
+| Output limit | 50 MB                                                                |
+| Cache        | Keyed by script path; invalidated when the script's `mtime` changes  |
+
+Failures name the step that broke: `script not found`, `script produced no output` (with stderr attached), or `script output is neither valid JSON nor YAML`.
+
+:::note The cache only watches the script's `mtime`. If the document changes while the script does not — a script that fetches from a remote endpoint on every run, for example — the build keeps reusing the old bytes. Clear it with `keq cache clear`, or bypass it for one run with `keq build --no-cache`.
+:::
+
+:::tip Need POSIX `sh` instead of `bash`? Use [`sh://`](./download-by-sh-plugin).
+:::

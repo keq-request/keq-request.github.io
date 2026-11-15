@@ -1,0 +1,35 @@
+# DownloadByShPlugin
+
+核心插件，无需手动配置：当 `modules` 里的地址以 `sh://` 开头时自动启用。
+
+`sh://` 之后是脚本路径，`keq` 会执行该脚本，并把它的 **stdout** 当作 OpenAPI 文档。行为与 [DownloadByBashPlugin](./download-by-bash-plugin) 一致，区别只在于用 `/bin/sh` 执行，适合环境里只有 POSIX shell 的场景。
+
+```typescript title=".keqrc.ts"
+export default defineConfig({
+  outdir: "./src/apis",
+  modules: {
+    catService: "sh://./scripts/export-swagger.sh",
+  },
+})
+```
+
+```bash title="scripts/export-swagger.sh"
+#!/usr/bin/env sh
+curl -fsSL "$BACKEND_URL/v3/api-docs"
+```
+
+## 执行规则
+
+| 项目     | 说明                                                       |
+| :------- | :--------------------------------------------------------- |
+| 脚本路径 | 相对路径按 `keq` 的工作目录（通常是项目根目录）解析         |
+| 执行方式 | `/bin/sh <脚本路径>`，工作目录同上                          |
+| 读取内容 | stdout；先按 JSON 解析，失败再按 YAML                       |
+| 超时     | 30 秒                                                       |
+| 输出上限 | 50 MB                                                       |
+| 缓存     | 以脚本路径为键；脚本文件的 `mtime` 变化时失效               |
+
+失败时错误信息会指明是哪一环：`script not found`、`script produced no output`（附带 stderr）、`script output is neither valid JSON nor YAML`。
+
+:::note 缓存只认脚本的 `mtime`。如果文档变了而脚本没变（例如脚本每次都从远端拉取），构建会继续用旧内容。此时用 `keq cache clear` 清缓存，或用 `keq build --no-cache` 单次绕过。
+:::
