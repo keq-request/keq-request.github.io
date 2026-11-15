@@ -130,9 +130,9 @@ getCats.method = "get"
 
 ```typescript
 // .keqrc.ts
-import { defineKeqConfig, IsolatedTranslator } from "@keq-request/cli"
+import { defineConfig, IsolatedTranslator } from "@keq-request/cli"
 
-export default defineKeqConfig({
+export default defineConfig({
   outdir: "./src/apis",
   modules: {
     catService: "./cat-service-swagger.json",
@@ -162,9 +162,9 @@ const response = await getCats({ breed: 'persian' })
 
 ```typescript
 // .keqrc.ts
-import { defineKeqConfig, NestjsTranslator } from "@keq-request/cli"
+import { defineConfig, NestjsTranslator } from "@keq-request/cli"
 
-export default defineKeqConfig({
+export default defineConfig({
   outdir: "./src/apis",
   modules: {
     catService: "./cat-service-swagger.json",
@@ -193,9 +193,9 @@ export class AppModule {}
 
 ```typescript
 // .keqrc.ts
-import { defineKeqConfig, MicroFunctionTranslator } from "@keq-request/cli"
+import { defineConfig, MicroFunctionTranslator } from "@keq-request/cli"
 
-export default defineKeqConfig({
+export default defineConfig({
   outdir: "./src/apis",
   modules: {
     catService: "./cat-service-swagger.json",
@@ -211,11 +211,11 @@ export default defineKeqConfig({
 
 ```typescript
 // 以下两种配置等效
-export default defineKeqConfig({
+export default defineConfig({
   // ...
 })
 
-export default defineKeqConfig({
+export default defineConfig({
   // ...
   translators: [new MicroFunctionTranslator()],
 })
@@ -226,9 +226,9 @@ export default defineKeqConfig({
 你可以同时配置多个 translators（虽然这种情况比较少见）：
 
 ```typescript
-import { defineKeqConfig, MicroFunctionTranslator, NestjsTranslator } from "@keq-request/cli"
+import { defineConfig, MicroFunctionTranslator, NestjsTranslator } from "@keq-request/cli"
 
-export default defineKeqConfig({
+export default defineConfig({
   outdir: "./src/apis",
   modules: {
     catService: "./cat-service-swagger.json",
@@ -313,10 +313,10 @@ class MyCustomPlugin implements Plugin {
 
 ```typescript
 // .keqrc.ts
-import { defineKeqConfig } from "@keq-request/cli"
+import { defineConfig } from "@keq-request/cli"
 import { CustomTranslator } from "./custom-translator"
 
-export default defineKeqConfig({
+export default defineConfig({
   outdir: "./src/apis",
   modules: {
     catService: "./cat-service-swagger.json",

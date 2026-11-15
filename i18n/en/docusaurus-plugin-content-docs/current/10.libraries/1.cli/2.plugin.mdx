@@ -19,10 +19,10 @@ export class MyPlugin implements Plugin {
 Then enable the Plugin in the configuration file:
 
 ```typescript title=".keqrc.ts"
-import { defineKeqConfig } from "@keq-request/cli"
+import { defineConfig } from "@keq-request/cli"
 import { MyPlugin } from "./my-plugin"
 
-export default defineKeqConfig({
+export default defineConfig({
   outdir: "./src/apis",
   modules: {
     catService: "./cat-service-swagger.json",

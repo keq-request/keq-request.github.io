@@ -215,9 +215,9 @@ export class AppMiddleware {
 在 `.keqrc.ts` 中设置 `mode` 为 `nestjs-module`：
 
 ```typescript title=".keqrc.ts"
-import { defineKeqConfig, FileNamingStyle } from '@keq-request/cli'
+import { defineConfig, FileNamingStyle } from '@keq-request/cli'
 
-export default defineKeqConfig({
+export default defineConfig({
   mode: 'nestjs-module',   // [!code ++]
   outdir: "./src/apis",
   rendering: {

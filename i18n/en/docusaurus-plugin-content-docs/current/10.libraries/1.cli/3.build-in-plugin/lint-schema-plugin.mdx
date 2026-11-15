@@ -11,7 +11,7 @@ Many Swagger/OpenAPI documents contain non-compliant schema definitions (e.g., u
 ```typescript title=".keqrc.ts"
 import { LintSchemaPlugin } from '@keq-request/cli/plugins'
 
-export default defineKeqConfig({
+export default defineConfig({
   outdir: "./src/apis",
   modules: {
     catService: "./cat-service-swagger.json",
@@ -46,7 +46,7 @@ By default, the plugin only outputs warnings and continues the build. If you wan
 ```typescript title=".keqrc.ts"
 import { LintSchemaPlugin } from '@keq-request/cli/plugins'
 
-export default defineKeqConfig({
+export default defineConfig({
   outdir: "./src/apis",
   modules: {
     catService: "./cat-service-swagger.json",

@@ -6,7 +6,7 @@ In OpenAPI documents, `operationId` identifies each API operation, and the CLI t
 ```typescript title=".keqrc.ts"
 import { OverwriteOperationIdPlugin } from '@keq-request/cli/plugins'
 
-export default defineKeqConfig({
+export default defineConfig({
   outdir: "./src/apis",
   modules: {
     catService: "./cat-service-swagger.json",

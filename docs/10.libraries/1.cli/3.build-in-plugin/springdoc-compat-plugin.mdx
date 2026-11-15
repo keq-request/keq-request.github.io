@@ -10,10 +10,10 @@ SpringDoc 在某些版本中会输出以下不规范的结构，导致解析和�
 ## 配置方法
 
 ```typescript title=".keqrc.ts"
-import { defineKeqConfig } from "@keq-request/cli"
+import { defineConfig } from "@keq-request/cli"
 import { SpringdocCompatPlugin } from '@keq-request/cli/plugins'
 
-export default defineKeqConfig({
+export default defineConfig({
   outdir: "./src/apis",
   modules: {
     userService: "./user-service-swagger.json",
@@ -40,9 +40,9 @@ export default defineKeqConfig({
 此选项已被 [`rendering.emptyJsonRequestBodyMode`](../1.overview.mdx#配置文件) 取代。请使用 `rendering.emptyJsonRequestBodyMode: 'empty-object'` 实现相同效果。
 
 ```typescript title=".keqrc.ts"
-import { defineKeqConfig } from "@keq-request/cli"
+import { defineConfig } from "@keq-request/cli"
 
-export default defineKeqConfig({
+export default defineConfig({
   outdir: "./src/apis",
   modules: {
     userService: "./user-service-swagger.json",
@@ -62,10 +62,10 @@ export default defineKeqConfig({
 Spring Boot 默认使用 Jackson 作为 JSON 反序列化器。当请求设置了 `Content-Type: application/json` 但未携带 body 时，Jackson 会直接报错。启用 `ensureJsonBody` 后，生成的代码会自动发送空对象 `{}`。
 
 ```typescript title=".keqrc.ts"
-import { defineKeqConfig } from "@keq-request/cli"
+import { defineConfig } from "@keq-request/cli"
 import { SpringdocCompatPlugin } from '@keq-request/cli/plugins'
 
-export default defineKeqConfig({
+export default defineConfig({
   outdir: "./src/apis",
   modules: {
     userService: "./user-service-swagger.json",

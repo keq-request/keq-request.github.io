@@ -10,10 +10,10 @@ In some versions, SpringDoc outputs non-compliant structures that cause parsing 
 ## Configuration
 
 ```typescript title=".keqrc.ts"
-import { defineKeqConfig } from "@keq-request/cli"
+import { defineConfig } from "@keq-request/cli"
 import { SpringdocCompatPlugin } from '@keq-request/cli/plugins'
 
-export default defineKeqConfig({
+export default defineConfig({
   outdir: "./src/apis",
   modules: {
     userService: "./user-service-swagger.json",
@@ -37,12 +37,12 @@ If you encounter any of the following errors during validation, your OpenAPI doc
 ### ensureJsonBody
 
 :::caution **Deprecated**
-This option has been replaced by [`rendering.emptyJsonRequestBodyMode`](../1.overview.mdx#configuration). Use `rendering.emptyJsonRequestBodyMode: 'empty-object'` to achieve the same effect.
+This option has been replaced by [`rendering.emptyJsonRequestBodyMode`](../1.overview.mdx#configuration-files). Use `rendering.emptyJsonRequestBodyMode: 'empty-object'` to achieve the same effect.
 
 ```typescript title=".keqrc.ts"
-import { defineKeqConfig } from "@keq-request/cli"
+import { defineConfig } from "@keq-request/cli"
 
-export default defineKeqConfig({
+export default defineConfig({
   outdir: "./src/apis",
   modules: {
     userService: "./user-service-swagger.json",
@@ -53,7 +53,7 @@ export default defineKeqConfig({
 })
 ```
 
-`rendering.emptyJsonRequestBodyMode` also supports additional options: `'strict'`, `'omit'`, `'null'`. See the [configuration docs](../1.overview.mdx#configuration) for details.
+`rendering.emptyJsonRequestBodyMode` also supports additional options: `'strict'`, `'omit'`, `'null'`. See the [configuration docs](../1.overview.mdx#configuration-files) for details.
 :::
 
 <details>
@@ -62,10 +62,10 @@ export default defineKeqConfig({
 Spring Boot uses Jackson as the default JSON deserializer. When a request has `Content-Type: application/json` but carries no body, Jackson throws an error. With `ensureJsonBody` enabled, the generated code automatically sends an empty object `{}`.
 
 ```typescript title=".keqrc.ts"
-import { defineKeqConfig } from "@keq-request/cli"
+import { defineConfig } from "@keq-request/cli"
 import { SpringdocCompatPlugin } from '@keq-request/cli/plugins'
 
-export default defineKeqConfig({
+export default defineConfig({
   outdir: "./src/apis",
   modules: {
     userService: "./user-service-swagger.json",

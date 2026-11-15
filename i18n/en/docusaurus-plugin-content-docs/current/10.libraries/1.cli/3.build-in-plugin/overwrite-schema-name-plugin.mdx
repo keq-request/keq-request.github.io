@@ -7,10 +7,10 @@ The plugin automatically updates all `$ref` paths referencing the renamed Schema
 ## Configuration
 
 ```typescript title=".keqrc.ts"
-import { defineKeqConfig } from "@keq-request/cli"
+import { defineConfig } from "@keq-request/cli"
 import { OverwriteSchemaNamePlugin } from '@keq-request/cli/plugins'
 
-export default defineKeqConfig({
+export default defineConfig({
   outdir: "./src/apis",
   modules: {
     catService: "./cat-service-swagger.json",
