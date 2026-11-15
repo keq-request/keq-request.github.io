@@ -96,7 +96,7 @@ Then, create the `@keq-request/cli` configuration file specifying the swagger do
         fileNamingStyle: FileNamingStyle.snakeCase,
       },
       modules: {
-        catService: "./cat-service-swagger.json",
+        catService: "file:///absolute/path/to/cat-service-swagger.json",
         // You can also fetch swagger documents from the network:
         // dogService: "http://dog.example.com/swagger.json"
         // You can also fetch swagger documents by executing scripts
@@ -117,7 +117,7 @@ Then, create the `@keq-request/cli` configuration file specifying the swagger do
         fileNamingStyle: FileNamingStyle.snakeCase,
       },
       modules: {
-        catService: "./cat-service-swagger.json",
+        catService: "file:///absolute/path/to/cat-service-swagger.json",
         // You can also fetch swagger documents from the network:
         // dogService: "http://dog.example.com/swagger.json"
         // You can also fetch swagger documents by executing scripts
@@ -134,7 +134,7 @@ Then, create the `@keq-request/cli` configuration file specifying the swagger do
     rendering:
       fileNamingStyle: snake_case
     modules:
-      catService: ./cat-service-swagger.json
+      catService: file:///absolute/path/to/cat-service-swagger.json
       # You can also fetch swagger documents from the network:
       # dogService: http://dog.example.com/swagger.json
       # You can also fetch swagger documents by executing scripts
@@ -143,6 +143,12 @@ Then, create the `@keq-request/cli` configuration file specifying the swagger do
     ```
   </TabItem>
 </Tabs>
+
+:::warning Module addresses must be URLs
+A local file needs a `file://` address with an absolute path, e.g. `file:///Users/me/project/cat-service-swagger.json`. A bare path such as `./cat-service-swagger.json` is rejected with `is not a valid URL`.
+
+A `file://` address carries a machine-specific absolute path, so it breaks as soon as the config is shared. Prefer a remote address for configs that get committed.
+:::
 
 :::tip Recommendation
 Prefer `typescript` or `javascript` configuration files. Some advanced features (like `operationIdFactory`) can only be implemented through code.
@@ -309,7 +315,7 @@ You can specify the configuration file path with `-c --config <config_file_path>
 | **Parameter**       | **Required** | **Default**                                                  | **Description**                                                          |
 | :----------------- | :----------- | :---------------------------------------------------------- | :---------------------------------------------------------------- |
 | outdir             | true         | -                                                           | Output directory for compiled results                                                |
-| modules            | true         | -                                                           | Swagger file paths and module names. Supports `http://`/`https://` remote URLs, local file paths, `bash://` and `sh://` script paths |
+| modules            | true         | -                                                           | Swagger file addresses and module names. Supports `http://`/`https://` remote URLs, `file://` local file addresses (must be absolute), `bash://` and `sh://` script paths |
 | rendering          | false        | `{}`                                                        | Options controlling code generation output                                        |
 | rendering.fileNamingStyle    | false        | -                                                   | File naming style                                                        |
 | rendering.esm                | false        | `true` if `package.json` has `"type": "module"` | Whether to generate ESM-style code                                |
