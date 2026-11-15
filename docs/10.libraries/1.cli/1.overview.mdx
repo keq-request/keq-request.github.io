@@ -49,6 +49,7 @@ import ExecPackageCommandCode from '@site/docs/components/_exec-package-command-
           ],
           "responses": {
             "200": {
+              "description": "OK",
               "content": {
                 "application/json": {
                   "schema": {
@@ -88,9 +89,9 @@ import ExecPackageCommandCode from '@site/docs/components/_exec-package-command-
 <Tabs>
   <TabItem value="ts" label="Typescript" default>
     ```typescript title=".keqrc.ts"
-    import { defineKeqConfig, FileNamingStyle } from "@keq-request/cli"
+    import { defineConfig, FileNamingStyle } from "@keq-request/cli"
 
-    export default defineKeqConfig({
+    export default defineConfig({
       outdir: "./src/apis", // 编译结果的输出目录
       rendering: {
         fileNamingStyle: FileNamingStyle.snakeCase,
@@ -109,9 +110,9 @@ import ExecPackageCommandCode from '@site/docs/components/_exec-package-command-
 
   <TabItem value="js" label="Javascript">
     ```javascript title=".keqrc.js"
-    const { defineKeqConfig, FileNamingStyle } = require("@keq-request/cli")
+    const { defineConfig, FileNamingStyle } = require("@keq-request/cli")
 
-    module.exports = defineKeqConfig({
+    module.exports = defineConfig({
       outdir: "./src/apis", // 编译结果的输出目录
       rendering: {
         fileNamingStyle: FileNamingStyle.snakeCase,
@@ -162,12 +163,11 @@ import ExecPackageCommandCode from '@site/docs/components/_exec-package-command-
 
 <Tabs>
   <TabItem value="services_get_cats" label="请求函数" default>
-    ```typescript title="./src/apis/cat_service/get_cats.request.ts"
+    ```typescript title="./src/apis/cat_service/operations/get_cats.fn.ts"
     import { Keq } from "keq"
-    import { request } from './request'
-    import type { GetCatsOperation, GetCatsResponseBodies, GetCatsRequestParameters } from "./types/operations/get_cats.type.js"
-    export type { GetCatsRequestQuery, GetCatsRequestHeaders, GetCatsRequestBodies } from "./types/operations/get_cats.type.js"
-
+    import { request } from "../request"
+    import type { GetCatsOperation, GetCatsResponseBodies, GetCatsRequestParameters } from "../types/operations/get_cats.type"
+    export type { GetCatsRequestQuery, GetCatsRequestHeaders, GetCatsRequestBodies } from "../types/operations/get_cats.type"
 
     const method = "get"
     const pathname = "/cats"
@@ -175,9 +175,9 @@ import ExecPackageCommandCode from '@site/docs/components/_exec-package-command-
     export function getCats<STATUS extends keyof GetCatsResponseBodies, CONTENT_TYPE extends never = never>(args?: GetCatsRequestParameters): Keq<GetCatsOperation<STATUS, CONTENT_TYPE>> {
       const req = request.get<GetCatsResponseBodies[STATUS]>("/cats")
 
-      if (args && "breed" in args) req.query("breed", args["breed"], {"arrayFormat":"repeat"})
+      if (args && "breed" in args) void req.query("breed", args["breed"], {"arrayFormat":"repeat"})
 
-      return req
+      return req as ReturnType<typeof getCats<STATUS, CONTENT_TYPE>>
     }
 
     getCats.pathname = pathname
@@ -199,11 +199,14 @@ import ExecPackageCommandCode from '@site/docs/components/_exec-package-command-
   <TabItem value="type_cat" label="接口类型定义">
 
     ```typescript title="./src/apis/cat_service/types/operations/get_cats.type.ts"
+    // Method: GET
+    // Pathname: /cats
+
     import type { KeqOperation, KeqPathParameterInit, KeqQueryInit, ServerSentEvent } from "keq"
-    import type { Cat as CatSchema } from "../components/schemas/cat.schema.js"
+    import type { Cat as CatSchema } from "../components/schemas/cat.schema"
 
     export interface GetCatsResponseBodies {
-      200: CatSchema[] | CatSchema[]
+      200: CatSchema[]
     }
 
     export interface GetCatsRequestBodies {}
@@ -234,6 +237,7 @@ import ExecPackageCommandCode from '@site/docs/components/_exec-package-command-
     export interface Cat {
       "name"?: string
       "age"?: number
+      [key: string]: unknown
     }
     ```
   </TabItem>
@@ -242,7 +246,7 @@ import ExecPackageCommandCode from '@site/docs/components/_exec-package-command-
 这样，我们就可以调用 `getCats` 函数来发送 HTTP 请求：
 
 ```typescript
-import { getCats } from "./src/apis/cat_service/operations"
+import { getCats } from "./src/apis/cat_service/operations/get_cats.fn"
 
 const cats = await getCats({ breed: "siamese", unknownKey: 'value' }) // unknownKey 未在 swagger 定义，将被丢弃
   .retry(3, 1000)
@@ -258,7 +262,7 @@ console.log(`我的猫咪有：${cats.map(cat => cat.name).join('、')}`)
 console.log(`请求路径：${getCats.pathname}`)
 ```
 
-:::note [`BodyFallbackPlugin`](#bodyfallbackplugin) 可以将 `unknownKey` 这样的未定义请求参数，全部添加到请求体中。
+:::note [`BodyFallbackPlugin`](./3.build-in-plugin/body-fallback-plugin.mdx) 可以将 `unknownKey` 这样的未定义请求参数，全部添加到请求体中。
 :::
 
 
@@ -319,7 +323,7 @@ dogServiceRequest.inherit(coreRequest)
 | outdir             | true         | -                                                           | 编译结果的输出目录                                                |
 | modules            | true         | -                                                           | Swagger 文件地址和模块名称。支持 `http://`/`https://` 远程地址、`file://` 本地文件地址（必须是绝对路径）、`bash://` 和 `sh://` 脚本路径 |
 | rendering          | false        | `{}`                                                        | 控制代码生成结果的渲染选项                                        |
-| rendering.fileNamingStyle    | false        | -                                                   | 文件名风格                                                        |
+| rendering.fileNamingStyle    | false        | `raw`                                                    | 文件名风格                                                        |
 | rendering.esm                | false        | 若 `package.json` 是否设置了 `"type": "module"` 则为 `true` | 是否生成 ESM 风格的代码                                |
 | rendering.additionalPropertiesType | false  | `'unknown'`                                          | 控制 `additionalProperties: true`（或未声明时）在生成的 TypeScript 类型中渲染为 `unknown` 还是 `any` |
 | rendering.entrypoint               | false  | `false`                                              | 开启后会为每个模块生成 `index.ts` 入口文件，统一 re-export 该目录下的所有生成文件；目录中没有可导出内容时会生成 `export {}`，保证入口文件始终存在 |

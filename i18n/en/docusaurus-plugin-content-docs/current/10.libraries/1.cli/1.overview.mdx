@@ -49,6 +49,7 @@ First, we need a `swagger` document. For example, the following `cat-service-swa
           ],
           "responses": {
             "200": {
+              "description": "OK",
               "content": {
                 "application/json": {
                   "schema": {
@@ -88,9 +89,9 @@ Then, create the `@keq-request/cli` configuration file specifying the swagger do
 <Tabs>
   <TabItem value="ts" label="Typescript" default>
     ```typescript title=".keqrc.ts"
-    import { defineKeqConfig, FileNamingStyle } from "@keq-request/cli"
+    import { defineConfig, FileNamingStyle } from "@keq-request/cli"
 
-    export default defineKeqConfig({
+    export default defineConfig({
       outdir: "./src/apis", // Output directory for compiled results
       rendering: {
         fileNamingStyle: FileNamingStyle.snakeCase,
@@ -109,9 +110,9 @@ Then, create the `@keq-request/cli` configuration file specifying the swagger do
 
   <TabItem value="js" label="Javascript">
     ```javascript title=".keqrc.js"
-    const { defineKeqConfig, FileNamingStyle } = require("@keq-request/cli")
+    const { defineConfig, FileNamingStyle } = require("@keq-request/cli")
 
-    module.exports = defineKeqConfig({
+    module.exports = defineConfig({
       outdir: "./src/apis", // Output directory for compiled results
       rendering: {
         fileNamingStyle: FileNamingStyle.snakeCase,
@@ -162,12 +163,11 @@ After execution, `@keq-request/cli` generates the following files under `./src/a
 
 <Tabs>
   <TabItem value="services_get_cats" label="Request Function" default>
-    ```typescript title="./src/apis/cat_service/get_cats.request.ts"
+    ```typescript title="./src/apis/cat_service/operations/get_cats.fn.ts"
     import { Keq } from "keq"
-    import { request } from './request'
-    import type { GetCatsOperation, GetCatsResponseBodies, GetCatsRequestParameters } from "./types/operations/get_cats.type.js"
-    export type { GetCatsRequestQuery, GetCatsRequestHeaders, GetCatsRequestBodies } from "./types/operations/get_cats.type.js"
-
+    import { request } from "../request"
+    import type { GetCatsOperation, GetCatsResponseBodies, GetCatsRequestParameters } from "../types/operations/get_cats.type"
+    export type { GetCatsRequestQuery, GetCatsRequestHeaders, GetCatsRequestBodies } from "../types/operations/get_cats.type"
 
     const method = "get"
     const pathname = "/cats"
@@ -175,9 +175,9 @@ After execution, `@keq-request/cli` generates the following files under `./src/a
     export function getCats<STATUS extends keyof GetCatsResponseBodies, CONTENT_TYPE extends never = never>(args?: GetCatsRequestParameters): Keq<GetCatsOperation<STATUS, CONTENT_TYPE>> {
       const req = request.get<GetCatsResponseBodies[STATUS]>("/cats")
 
-      if (args && "breed" in args) req.query("breed", args["breed"], {"arrayFormat":"repeat"})
+      if (args && "breed" in args) void req.query("breed", args["breed"], {"arrayFormat":"repeat"})
 
-      return req
+      return req as ReturnType<typeof getCats<STATUS, CONTENT_TYPE>>
     }
 
     getCats.pathname = pathname
@@ -199,11 +199,14 @@ After execution, `@keq-request/cli` generates the following files under `./src/a
   <TabItem value="type_cat" label="Interface Type Definitions">
 
     ```typescript title="./src/apis/cat_service/types/operations/get_cats.type.ts"
+    // Method: GET
+    // Pathname: /cats
+
     import type { KeqOperation, KeqPathParameterInit, KeqQueryInit, ServerSentEvent } from "keq"
-    import type { Cat as CatSchema } from "../components/schemas/cat.schema.js"
+    import type { Cat as CatSchema } from "../components/schemas/cat.schema"
 
     export interface GetCatsResponseBodies {
-      200: CatSchema[] | CatSchema[]
+      200: CatSchema[]
     }
 
     export interface GetCatsRequestBodies {}
@@ -234,6 +237,7 @@ After execution, `@keq-request/cli` generates the following files under `./src/a
     export interface Cat {
       "name"?: string
       "age"?: number
+      [key: string]: unknown
     }
     ```
   </TabItem>
@@ -242,7 +246,7 @@ After execution, `@keq-request/cli` generates the following files under `./src/a
 Now we can call the `getCats` function to send HTTP requests:
 
 ```typescript
-import { getCats } from "./src/apis/cat_service/operations"
+import { getCats } from "./src/apis/cat_service/operations/get_cats.fn"
 
 const cats = await getCats({ breed: "siamese", unknownKey: 'value' }) // unknownKey is not in swagger, will be discarded
   .retry(3, 1000)
@@ -317,7 +321,7 @@ You can specify the configuration file path with `-c --config <config_file_path>
 | outdir             | true         | -                                                           | Output directory for compiled results                                                |
 | modules            | true         | -                                                           | Swagger file addresses and module names. Supports `http://`/`https://` remote URLs, `file://` local file addresses (must be absolute), `bash://` and `sh://` script paths |
 | rendering          | false        | `{}`                                                        | Options controlling code generation output                                        |
-| rendering.fileNamingStyle    | false        | -                                                   | File naming style                                                        |
+| rendering.fileNamingStyle    | false        | `raw`                                                        | File naming style                                                        |
 | rendering.esm                | false        | `true` if `package.json` has `"type": "module"` | Whether to generate ESM-style code                                |
 | rendering.additionalPropertiesType | false  | `'unknown'`                                          | Controls whether `additionalProperties: true` (or undeclared) renders as `unknown` or `any` in generated TypeScript types |
 | rendering.entrypoint               | false  | `false`                                              | When enabled, generates an `index.ts` entry file for each module that re-exports all generated files. If there is nothing to export, the file contains `export {}` so the entry file always exists |
