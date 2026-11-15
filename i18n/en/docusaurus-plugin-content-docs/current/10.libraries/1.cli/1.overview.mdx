@@ -378,6 +378,17 @@ POST    dogService:/dogs
 
 ## Commands
 
+### `keq init [options]`
+
+Creates a configuration file skeleton in the project, without overwriting an existing one. The filename is chosen from the project: `.keqrc.ts` when a `tsconfig.json` exists (including in a parent directory), `.keqrc.mjs` when `package.json` has `"type": "module"`, otherwise `.keqrc.js`. You still have to fill in `modules` yourself.
+
+| **Option**                         | **Description**                                                                                                 |
+| :------------------------------- | :------------------------------------------------------------------------------------------------------- |
+| `-f --force`                     | Overwrite an existing configuration file                                                                                     |
+
+:::note A `.keqrc.ts` is compiled and loaded through TypeScript, so the project's `typescript` must still ship the classic JS API (`5.x`, `6.x`). `typescript@7` removed it and cannot load `.keqrc.ts`; use `.keqrc.mjs` or `.keqrc.js` instead.
+:::
+
 ### `keq build [options]`
 
 Generates code according to the configuration file.
@@ -392,6 +403,28 @@ Generates code according to the configuration file.
 | `--no-cache`                     | Disables download cache, re-downloads OpenAPI documents on every build                                                         |
 | `--method <method...>`           | Only generates HTTP endpoints matching the method (`'get' \| 'post' \| 'put' \| 'patch' \| 'head' \| 'options' \| 'delete'`) |
 | `--pathname <pathname...>`       | Only generates HTTP endpoints matching the pathname                                                                         |
+
+### `keq list [options]`
+
+Lists the files the current configuration would generate, without writing any of them. It runs the same compiler as `keq build`, so it lets you confirm that the configuration is valid and the output size is acceptable before generating anything.
+
+| **Option**                         | **Description**                                                                                                 |
+| :------------------------------- | :------------------------------------------------------------------------------------------------------- |
+| `-c --config <config_file_path>` | Path to the configuration file                                                                                           |
+| `--invalid`                      | Only list files already present in the output directory that are not part of the current build                                                       |
+| `--tolerant`                     | Tolerant mode: ignores invalid Swagger/OpenAPI document structure                                                             |
+| `--debug`                        | Print debug information                                                                                             |
+
+```bash
+npx keq list
+```
+
+```
+src/apis/cat_service/operations/get_cats.fn.ts
+src/apis/cat_service/request.ts
+src/apis/cat_service/types/components/schemas/cat.schema.ts
+src/apis/cat_service/types/operations/get_cats.type.ts
+```
 
 ### `keq filter <mode> [options]`
 

@@ -380,6 +380,17 @@ POST    dogService:/dogs
 
 ## 命令
 
+### `keq init [options]`
+
+在项目里生成一份配置文件骨架，不会覆盖已有配置。文件名按项目自动选择：存在 `tsconfig.json`（包括父目录）时为 `.keqrc.ts`；`package.json` 的 `"type"` 为 `"module"` 时为 `.keqrc.mjs`；否则为 `.keqrc.js`。生成后需要自己补充 `modules`。
+
+| **选项**                         | **描述**                                                                                                 |
+| :------------------------------- | :------------------------------------------------------------------------------------------------------- |
+| `-f --force`                     | 覆盖已存在的配置文件                                                                                     |
+
+:::note `.keqrc.ts` 由 TypeScript 编译后加载，需要项目里的 `typescript` 支持经典 JS API（`5.x`、`6.x`）。`typescript@7` 移除了这套 API，无法加载 `.keqrc.ts`，此时请改用 `.keqrc.mjs` 或 `.keqrc.js`。
+:::
+
 ### `keq build [options]`
 
 按照配置文件的内容，生成代码。
@@ -394,6 +405,28 @@ POST    dogService:/dogs
 | `--no-cache`                     | 禁用下载缓存，每次构建都重新下载 OpenAPI 文档                                                         |
 | `--method <method...>`           | 仅生成匹配 method(`'get' \| 'post' \| 'put' \| 'patch' \| 'head' \| 'options' \| 'delete'`) 的 HTTP 接口 |
 | `--pathname <pathname...>`       | 仅生成匹配 pathname 的 HTTP 接口                                                                         |
+
+### `keq list [options]`
+
+列出当前配置会生成的文件，但不写入磁盘。与 `keq build` 使用同一套编译流程，可以在真正生成前确认配置是否有效、输出规模是否可以接受。
+
+| **选项**                         | **描述**                                                                                                 |
+| :------------------------------- | :------------------------------------------------------------------------------------------------------- |
+| `-c --config <config_file_path>` | 配置文件的地址                                                                                           |
+| `--invalid`                      | 只列出输出目录中已存在、但不在当前构建结果里的文件                                                       |
+| `--tolerant`                     | 容错模式：忽略无效的 Swagger/OpenAPI 文档结构                                                             |
+| `--debug`                        | 打印调试信息                                                                                             |
+
+```bash
+npx keq list
+```
+
+```
+src/apis/cat_service/operations/get_cats.fn.ts
+src/apis/cat_service/request.ts
+src/apis/cat_service/types/components/schemas/cat.schema.ts
+src/apis/cat_service/types/operations/get_cats.type.ts
+```
 
 ### `keq filter <mode> [options]`
 
