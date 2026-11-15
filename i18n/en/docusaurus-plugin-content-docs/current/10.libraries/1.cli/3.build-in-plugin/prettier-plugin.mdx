@@ -8,7 +8,7 @@ import { PrettierPlugin } from '@keq-request/cli/plugins'
 export default defineConfig({
   outdir: "./src/apis",
   modules: {
-    catService: "./cat-service-swagger.json",
+    catService: "file:///absolute/path/to/cat-service-swagger.json",
   },
   plugins: [new PrettierPlugin()],
 })

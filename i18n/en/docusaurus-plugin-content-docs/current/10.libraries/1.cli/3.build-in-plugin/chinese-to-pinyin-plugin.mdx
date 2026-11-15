@@ -52,7 +52,7 @@ import { ChineseToPinyinPlugin } from '@keq-request/cli/plugins'
 export default defineConfig({
   outdir: "./src/apis",
   modules: {
-    userService: "./user-service-swagger.json",
+    userService: "file:///absolute/path/to/user-service-swagger.json",
   },
   plugins: [new ChineseToPinyinPlugin()],
 })

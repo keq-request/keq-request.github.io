@@ -16,7 +16,7 @@ import { SpringdocCompatPlugin } from '@keq-request/cli/plugins'
 export default defineConfig({
   outdir: "./src/apis",
   modules: {
-    userService: "./user-service-swagger.json",
+    userService: "file:///absolute/path/to/user-service-swagger.json",
   },
   plugins: [new SpringdocCompatPlugin()],
 })
@@ -45,7 +45,7 @@ import { defineConfig } from "@keq-request/cli"
 export default defineConfig({
   outdir: "./src/apis",
   modules: {
-    userService: "./user-service-swagger.json",
+    userService: "file:///absolute/path/to/user-service-swagger.json",
   },
   rendering: {
     emptyJsonRequestBodyMode: 'empty-object', // [!code highlight]
@@ -68,7 +68,7 @@ import { SpringdocCompatPlugin } from '@keq-request/cli/plugins'
 export default defineConfig({
   outdir: "./src/apis",
   modules: {
-    userService: "./user-service-swagger.json",
+    userService: "file:///absolute/path/to/user-service-swagger.json",
   },
   plugins: [new SpringdocCompatPlugin({ ensureJsonBody: true })],
 })
