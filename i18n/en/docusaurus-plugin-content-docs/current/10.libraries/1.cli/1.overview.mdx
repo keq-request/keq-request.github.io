@@ -380,13 +380,13 @@ POST    dogService:/dogs
 
 ### `keq init [options]`
 
-Creates a configuration file skeleton in the project, without overwriting an existing one. The filename is chosen from the project: `.keqrc.ts` when a `tsconfig.json` exists (including in a parent directory), `.keqrc.mjs` when `package.json` has `"type": "module"`, otherwise `.keqrc.js`. You still have to fill in `modules` yourself.
+Creates a configuration file skeleton in the project, without overwriting an existing one. The filename is chosen from the project: `.keqrc.ts` when a `tsconfig.json` exists (including in a parent directory) and `typescript` 5.x/6.x can be resolved, `.keqrc.mjs` when `package.json` has `"type": "module"`, otherwise `.keqrc.js`. You still have to fill in `modules` yourself.
 
 | **Option**                         | **Description**                                                                                                 |
 | :------------------------------- | :------------------------------------------------------------------------------------------------------- |
 | `-f --force`                     | Overwrite an existing configuration file                                                                                     |
 
-:::note A `.keqrc.ts` is compiled and loaded through TypeScript, so the project's `typescript` must still ship the classic JS API (`5.x`, `6.x`). `typescript@7` removed it and cannot load `.keqrc.ts`; use `.keqrc.mjs` or `.keqrc.js` instead.
+:::note A `.keqrc.ts` is compiled and loaded through TypeScript, so the project's `typescript` must still ship the classic JS API (`5.x`, `6.x`). `typescript@7` removed it and cannot load `.keqrc.ts`. When `typescript` is missing or 7+, `keq init` generates `.keqrc.mjs` / `.keqrc.js` instead; an existing `.keqrc.ts` has to be renamed after upgrading to `typescript@7`.
 :::
 
 ### `keq build [options]`

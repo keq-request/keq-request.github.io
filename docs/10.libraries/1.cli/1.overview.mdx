@@ -382,13 +382,13 @@ POST    dogService:/dogs
 
 ### `keq init [options]`
 
-在项目里生成一份配置文件骨架，不会覆盖已有配置。文件名按项目自动选择：存在 `tsconfig.json`（包括父目录）时为 `.keqrc.ts`；`package.json` 的 `"type"` 为 `"module"` 时为 `.keqrc.mjs`；否则为 `.keqrc.js`。生成后需要自己补充 `modules`。
+在项目里生成一份配置文件骨架，不会覆盖已有配置。文件名按项目自动选择：存在 `tsconfig.json`（包括父目录）且能解析到 `typescript` 5.x/6.x 时为 `.keqrc.ts`；`package.json` 的 `"type"` 为 `"module"` 时为 `.keqrc.mjs`；否则为 `.keqrc.js`。生成后需要自己补充 `modules`。
 
 | **选项**                         | **描述**                                                                                                 |
 | :------------------------------- | :------------------------------------------------------------------------------------------------------- |
 | `-f --force`                     | 覆盖已存在的配置文件                                                                                     |
 
-:::note `.keqrc.ts` 由 TypeScript 编译后加载，需要项目里的 `typescript` 支持经典 JS API（`5.x`、`6.x`）。`typescript@7` 移除了这套 API，无法加载 `.keqrc.ts`，此时请改用 `.keqrc.mjs` 或 `.keqrc.js`。
+:::note `.keqrc.ts` 由 TypeScript 编译后加载，需要项目里的 `typescript` 支持经典 JS API（`5.x`、`6.x`）。`typescript@7` 移除了这套 API，无法加载 `.keqrc.ts`；`keq init` 检测到未安装 `typescript` 或版本为 7 及以上时会改为生成 `.keqrc.mjs` / `.keqrc.js`。已有的 `.keqrc.ts` 在升级到 `typescript@7` 后需要手动改名。
 :::
 
 ### `keq build [options]`
