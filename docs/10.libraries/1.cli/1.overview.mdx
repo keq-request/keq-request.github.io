@@ -613,3 +613,14 @@ Schema: Cat
     name  string
     age   number
 ```
+
+### `keq cache clear [options]`
+
+清理远程 OpenAPI 文档的下载缓存。缓存保存在项目之外的系统缓存目录（macOS 为 `~/Library/Caches/keq-request/cli/v5/`，Linux 为 `$XDG_CACHE_HOME/keq-request/cli/v5/`，Windows 为 `%LOCALAPPDATA%\keq-request\cli\Cache\v5`），每个项目按路径哈希隔离。
+
+远程文档已经更新、但构建仍在用旧内容时使用；准备全量重新生成时也可以先清一次。只想单次绕过缓存，用 `keq build --no-cache`。
+
+| **选项**                         | **描述**                                                                                                 |
+| :------------------------------- | :------------------------------------------------------------------------------------------------------- |
+| `-c --config <config_file_path>` | 配置文件的地址                                                                                           |
+| `--all`                          | 清理所有项目的缓存                                                                                       |

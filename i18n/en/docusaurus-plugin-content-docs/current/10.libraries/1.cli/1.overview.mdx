@@ -611,3 +611,14 @@ Schema: Cat
     name  string
     age   number
 ```
+
+### `keq cache clear [options]`
+
+Clears the download cache for remote OpenAPI documents. The cache lives outside the project, in the OS cache directory (`~/Library/Caches/keq-request/cli/v5/` on macOS, `$XDG_CACHE_HOME/keq-request/cli/v5/` on Linux, `%LOCALAPPDATA%\keq-request\cli\Cache\v5` on Windows), isolated per project by a hash of its path.
+
+Use it when a remote document has changed but the build keeps reusing the old bytes, or before a full regeneration. To bypass the cache for a single run instead, use `keq build --no-cache`.
+
+| **Option**                         | **Description**                                                                                                 |
+| :------------------------------- | :------------------------------------------------------------------------------------------------------- |
+| `-c --config <config_file_path>` | Path to the configuration file                                                                                           |
+| `--all`                          | Clear the cache for every project, not just this one                                                                                       |
