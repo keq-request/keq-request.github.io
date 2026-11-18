@@ -6,6 +6,7 @@ SpringDoc 在某些版本中会输出以下不规范的结构，导致解析和�
 
 - **展平嵌套 `extensions`**：SpringDoc 会将扩展字段（如 `x-*`）嵌套在一个额外的 `extensions` 对象中，而非直接放置在父对象上。插件会递归地将其展平回父对象。
 - **补充缺失的 parameter `schema`**：SpringDoc 生成的 `parameters` 有时缺少 `schema` 字段（且未定义 `content`），不符合 OpenAPI 规范要求。插件会自动为这些 parameter 补充 `schema: {}`。
+- **移除为空的 `info.contact.email`**：SpringDoc 在未配置联系方式时会输出 `"email": ""`，不符合 OpenAPI 对 `format: "email"` 的校验，导致整份文档校验失败。插件会删除这个空字符串字段，其余 contact 字段保持不变。
 
 ## 配置方法
 
@@ -26,6 +27,7 @@ export default defineConfig({
 如果你在校验阶段遇到以下错误，说明你的 OpenAPI 文档由 SpringDoc 生成且存在兼容性问题，添加此插件即可解决：
 - `"Property extensions is not expected to be here"`
 - parameter 缺少 `schema` 导致的校验错误
+- `format must match format "email"`（`info.contact.email` 为空字符串）
 :::
 
 ## 选项
